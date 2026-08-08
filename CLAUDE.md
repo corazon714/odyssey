@@ -185,7 +185,7 @@ packages/tools/                                                         ✅ pack
   content-stats/            counts + 4-axis coverage report             ✅
   imagegen/                 build-time AI image pipeline                   (empty)
   i18n-check/               key coverage, pseudo-loc, length audit         (empty)
-docs/                       ADRs, design docs, content style guide      ✅ engine-spec, PROGRESS, sim-baseline, adr/0001-0018
+docs/                       ADRs, design docs, content style guide      ✅ engine-spec, PROGRESS, sim-baseline, adr/0001-0019
                             design docs + content style guide              (planned)
 .claude/                    Claude Code extension layer                 ✅ (not in original layout)
   settings.json             permissions + hook wiring                   ✅ committed, shared
@@ -420,9 +420,19 @@ inverting the layering and making every schema tweak an engine API change. The r
 - **`packages/engine/src/content/` owns the TypeScript types.** ✅ shipped in Phase 1 M5.
 - **`packages/content/schema/` owns the Zod schemas** and is authoritative over _content
   semantics_: which fields a YAML file may have, which values are legal, what an omitted key
-  defaults to. **(planned — Phase 2.)**
-- The two are held **identical** by a bidirectional compile-time assertion (mutual-extends, so
-  a schema narrower _or_ wider than the type fails the build), not by convention.
+  defaults to. ✅ shipped in Phase 2A M2A.1.
+- The two cannot disagree about a field's **presence, type or nullability** without failing the
+  build. They _can_ disagree about `readonly`, in the direction that does not matter. See
+  **`docs/adr/0019`** — the mechanism is two mechanisms, and the earlier wording here
+  ("a bidirectional compile-time assertion (mutual-extends)") was wrong twice over: it was
+  never mutual-extends, and for most types it is not an assertion. Corrected 2026-08-08 by
+  measurement, one deliberate break at a time.
+  - Schemas ending in a **transform** are held by the transform's return annotation, checked by
+    assignability at the builder — which is what produces `TS2741`/`TS2353`/`TS2322` and the
+    error message naming the field.
+  - Schemas that are a **bare `z.enum`** are held by `Equals` identity in `conformance.test.ts`.
+  - A vocabulary is better still: `z.enum(BEAT_TYPES)` is _derived_ from the engine array, so
+    it cannot drift. **Derive rather than assert wherever the shape allows it.**
 
 So if `docs/engine-spec.md` and the schema disagree about what content _means_, the schema is
 right and the doc is a bug. If the schema and the engine type disagree about _shape_, the
