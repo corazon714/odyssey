@@ -9,13 +9,25 @@ import { type TransportMode } from '../state/transport-state.ts';
 /**
  * What a leg costs whether or not anything happens.
  *
- * Every number here is a BALANCE PLACEHOLDER. They exist so the loop can run and the sim can
- * measure; M7/M10 tune them against real distributions. They are gathered in one place rather
- * than scattered through the loop precisely so that tuning is a diff to this file.
+ * Every number here is a BALANCE CONSTANT, gathered in one block so tuning is a diff to this
+ * file. They are tuned against the sim, not derived — see docs/adr/0014.
  *
- * `uneventful` legs run this too — a leg where nothing happened must still cost time and
- * wear, or a run can contain six legs of nothing, which reads as a bug to the player and
- * corrupts the sim's median-days line.
+ * `uneventful` legs run this too: a leg where nothing happened must still cost time and wear,
+ * or a run can contain six legs of nothing, which reads as a bug to the player and corrupts
+ * the sim's median-days line.
+ *
+ * The shape of the drift is the part that matters, and it is not arbitrary (ADR 0014). Three
+ * rules, each fixing a way the original was structurally wrong rather than merely mistuned:
+ *
+ *   1. TIME makes you hungry, not legs. A nine-hour walk and a four-hour train ride used to
+ *      cost the same point of hunger, so the clock and the body disagreed.
+ *   2. EFFORT drains energy, not legs. Sitting on a train is not walking all day.
+ *   3. Penalties are GRADED, not cliffs. Being starving used to cost exactly what being
+ *      peckish cost, so every run crossed the threshold together and died together.
+ *
+ * Hours spent INSIDE an event are the event's business and content pays for them explicitly.
+ * The drift covers travel only, which is why it reads `hours` here rather than the clock —
+ * there is no hidden accumulator, and the tick stays a pure function of (state, hours).
  */
 const HOURS_PER_LEG: Readonly<Record<TransportMode, number>> = {
   foot: 9,
@@ -26,6 +38,70 @@ const HOURS_PER_LEG: Readonly<Record<TransportMode, number>> = {
   ferry: 7,
   rideshare: 5,
 };
+
+/**
+ * Travel hours per point of hunger.
+ *
+ * Charged against the CLOCK SPAN the leg covers, not against the leg — `floor(after / N) -
+ * floor(before / N)`. Consecutive ticks are contiguous, so the remainder carries and nothing
+ * is lost to rounding; but because the span is quantised, a short hop can genuinely cost
+ * nothing while a long one costs two. That is where the variance in the hunger curve comes
+ * from, and it is why every run no longer crosses the threshold on the same leg.
+ */
+const HOURS_PER_HUNGER = 6;
+
+/** A leg at least this long costs hygiene. Short hops do not. */
+const HOURS_PER_HYGIENE = 6;
+
+/**
+ * Travel hours per point of energy, by how much of the work is yours. A passenger dozes; a
+ * driver does not; a walker least of all. This is the main reason transport mode is a real
+ * decision rather than a travel-time number, and it replaces a flat one-point-per-leg that
+ * charged a four-hour train the same as a nine-hour walk.
+ *
+ * Same span quantisation as hunger, so the remainder carries and a mode change costs at most
+ * one point of phase rather than rebasing the whole curve.
+ */
+const HOURS_PER_ENERGY: Readonly<Record<TransportMode, number>> = {
+  foot: 5,
+  bus: 10,
+  train: 14,
+  car: 9,
+  truck: 9,
+  ferry: 11,
+  rideshare: 10,
+};
+
+/**
+ * Weather that costs an extra point of energy — but only on a long leg. An hour in the rain
+ * is nothing; a nine-hour day in it is the leg that breaks you. Gating on length is also what
+ * keeps the penalty from applying to three legs in four once the weather starts rolling.
+ */
+const HARSH_WEATHER: readonly string[] = ['rain', 'wind', 'heat'];
+const HARSH_WEATHER_HOURS = 6;
+
+/**
+ * Hunger thresholds, and how fast each rung costs health — in HOURS, like every other drain
+ * here. Starvation damage was the last per-leg holdout in this file, and being per-leg is why
+ * it converged: a short hop hurt exactly as much as a long haul, so once the population was
+ * past the threshold it lost health in lockstep no matter how anyone travelled.
+ */
+const HUNGER_HURTS = 8;
+const HUNGER_STARVING = 10;
+const HOURS_PER_HUNGER_DAMAGE = 10;
+const HOURS_PER_STARVING_DAMAGE = 5;
+
+/**
+ * Energy at or below this costs a point of morale each leg.
+ *
+ * Deliberately NOT graded, unlike hunger, and the asymmetry is the interesting part. Energy
+ * FLOORS at 0 and most runs sit there, so a second harsher rung is a penalty the whole
+ * population takes on the same leg — it synchronises the collapse instead of spreading it.
+ * Measured: adding a `-2 at energy 0` rung drove leg-15 morale from `0/2/6` to `0/0/0`.
+ * Hunger has no ceiling, so its rungs are reached at genuinely different times and grading
+ * there does spread. Grade a penalty on an unbounded meter; never on a floored one.
+ */
+const ENERGY_TIRED = 1;
 
 const WEATHERS = ['clear', 'rain', 'fog', 'wind', 'heat'] as const;
 
@@ -39,22 +115,28 @@ export function worldTick(state: RunState, rng: Rng): RunState {
 
   const legShare = state.route.legCount > 0 ? state.route.totalKm / state.route.legCount : 0;
 
+  const elapsed = elapsedHours(state);
+  const harsh = HARSH_WEATHER.includes(state.weather) && hours >= HARSH_WEATHER_HOURS;
+  const hunger = spanPoints(elapsed, hours, HOURS_PER_HUNGER);
+  const energy =
+    spanPoints(elapsed, hours, HOURS_PER_ENERGY[state.transport.mode]) + (harsh ? 1 : 0);
+
   const effects: Effect[] = [
     { op: 'advanceTime', hours },
     { op: 'route', change: { field: 'progressKm', delta: Math.round(legShare) } },
-    { op: 'resource', key: 'hunger', delta: 1 },
-    { op: 'resource', key: 'energy', delta: -1 },
+    { op: 'resource', key: 'energy', delta: -energy },
   ];
 
-  // Hygiene erodes at half rate, so it is a slow pressure rather than a second hunger.
-  if (state.route.legIndex % 2 === 0) {
-    effects.push({ op: 'resource', key: 'hygiene', delta: -1 });
-  }
+  if (hunger > 0) effects.push({ op: 'resource', key: 'hunger', delta: hunger });
+  if (hours >= HOURS_PER_HYGIENE) effects.push({ op: 'resource', key: 'hygiene', delta: -1 });
 
-  // Hunger and exhaustion cost health once they bite. This is the main failure pressure in
-  // M6 — without it every run completes and the sim's completion rate says nothing.
-  if (state.resources.hunger >= 8) effects.push({ op: 'resource', key: 'health', delta: -1 });
-  if (state.resources.energy <= 1) effects.push({ op: 'resource', key: 'morale', delta: -1 });
+  // Graded, not a cliff. A flat penalty at one threshold makes the whole population cross
+  // together and collapse together, which is what made the old curve's p10/p50/p90 identical.
+  const health = healthCost(state.resources.hunger, elapsed, hours);
+  if (health > 0) effects.push({ op: 'resource', key: 'health', delta: -health });
+
+  const morale = moraleCost(state.resources.energy);
+  if (morale > 0) effects.push({ op: 'resource', key: 'morale', delta: -morale });
 
   // Weather changes roughly one leg in four.
   if (rng.nextInt(0, 3, 'worldTick') === 0) {
@@ -68,4 +150,42 @@ export function worldTick(state: RunState, rng: Rng): RunState {
   }
 
   return applyEffects(state, effects, createEffectContext(TICK_SOURCE)).state;
+}
+
+/** Hours the run has been going. The clock is the only accumulator the drift needs. */
+function elapsedHours(state: RunState): number {
+  return state.clock.day * 24 + state.clock.hour;
+}
+
+/**
+ * Points accrued by travelling `hours` from `before` hours elapsed, one point per `per` hours.
+ *
+ * Exported so a test can prove the property that matters: summed over a contiguous sequence
+ * of spans, the total equals `floor(total / per)` exactly, with no drift. A per-leg
+ * `floor(hours / per)` would discard the remainder every leg and quietly halve the rate — and
+ * would also make the cost of a leg independent of when it happened, which is what removed
+ * every trace of variance from the old curve.
+ */
+export function spanPoints(before: number, hours: number, per: number): number {
+  return Math.floor((before + hours) / per) - Math.floor(before / per);
+}
+
+/**
+ * Health lost to hunger over a leg's clock span. Exported for tests.
+ *
+ * Two rungs, both charged per hour rather than per leg: being starving costs twice as fast as
+ * being merely hungry, and a nine-hour haul on an empty stomach costs more than a four-hour
+ * hop. Hunger is the right meter to grade because it has no ceiling — the rungs are therefore
+ * reached at genuinely different times. Compare `ENERGY_TIRED`, which is deliberately not
+ * graded for the opposite reason.
+ */
+export function healthCost(hunger: number, before: number, hours: number): number {
+  if (hunger >= HUNGER_STARVING) return spanPoints(before, hours, HOURS_PER_STARVING_DAMAGE);
+  if (hunger >= HUNGER_HURTS) return spanPoints(before, hours, HOURS_PER_HUNGER_DAMAGE);
+  return 0;
+}
+
+/** Morale lost this leg to exhaustion. Single-rung on purpose — see `ENERGY_TIRED`. */
+export function moraleCost(energy: number): number {
+  return energy <= ENERGY_TIRED ? 1 : 0;
 }
