@@ -20,7 +20,7 @@ const ALL_PREDICATES: readonly Predicate[] = [
   { kind: 'all', of: [{ kind: 'always' }, { kind: 'never' }] },
   { kind: 'any', of: [{ kind: 'always' }, { kind: 'never' }] },
   { kind: 'not', of: { kind: 'always' } },
-  { kind: 'resource', key: 'money', cmp: { op: 'gte', value: 30 } },
+  { kind: 'resource', key: 'cash', cmp: { op: 'gte', value: 30 } },
   { kind: 'skill', key: 'negotiation', cmp: { op: 'gte', value: 2 } },
   { kind: 'language', id: 'ru' as never },
   { kind: 'trait', id: traitId('smooth_talker') },
@@ -84,7 +84,7 @@ describe('trace consistency', () => {
       of: [
         {
           kind: 'any',
-          of: [{ kind: 'never' }, { kind: 'resource', key: 'money', cmp: { op: 'gte', value: 0 } }],
+          of: [{ kind: 'never' }, { kind: 'resource', key: 'cash', cmp: { op: 'gte', value: 0 } }],
         },
         { kind: 'not', of: { kind: 'flag', id: flagId('wanted'), cmp: { op: 'isSet' } } },
       ],
@@ -169,8 +169,8 @@ describe('describeReason', () => {
   });
 
   it('composes nested negation', () => {
-    const ctx = makeContext({ resources: { ...createResources(), money: 100 } });
-    const inner: Predicate = { kind: 'resource', key: 'money', cmp: { op: 'gte', value: 30 } };
+    const ctx = makeContext({ resources: { ...createResources(), cash: 100 } });
+    const inner: Predicate = { kind: 'resource', key: 'cash', cmp: { op: 'gte', value: 30 } };
 
     expect(describeReason(evaluatePredicate(inner, ctx).trace)[0]?.polarity).toBe('pro');
     expect(

@@ -70,7 +70,7 @@ function populated(): RunState {
         choiceId: choiceId('chase'),
         textKey: 'events.rest.pickpocket_victim.out.lost',
         params: { amount: 40 },
-        tags: ['theft', 'money'],
+        tags: ['theft', 'cash'],
       },
     ],
     presentation: {

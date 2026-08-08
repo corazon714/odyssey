@@ -52,11 +52,11 @@ choices:
             delta: -2
   - id: find_help
     requires:
-      resource: money
+      resource: cash
       gte: 60
     costs:
       - op: resource
-        key: money
+        key: cash
         delta: -60
     outcomes:
       - id: towed

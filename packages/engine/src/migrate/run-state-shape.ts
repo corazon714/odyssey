@@ -1,4 +1,6 @@
 import { RNG_STREAMS } from '../rng/rng-stream.ts';
+import { RESOURCE_KEYS } from '../state/resources.ts';
+import { SKILL_KEYS } from '../state/skills.ts';
 import { type RunState } from '../state/run-state.ts';
 
 /**
@@ -37,6 +39,30 @@ export function isRunStateShape(value: unknown): value is RunState {
     const branch = save[key];
     if (branch === null || typeof branch !== 'object' || Array.isArray(branch)) return false;
   }
+
+  /**
+   * Resources and skills are checked EXHAUSTIVELY, for the same reason the rng cursors are.
+   *
+   * The docstring above justifies the cursor loop by "a missing cursor is silently
+   * catastrophic". A missing resource key is exactly as catastrophic and was unchecked until
+   * SAVE_VERSION 2: `resources[key] + delta` is `NaN`, `clampResources` compares `NaN < min`
+   * and `NaN > max` — both false — so it writes the NaN straight through, and `stateDigest`
+   * serialises it as `null`. The run continues with a meter that is not a number and every
+   * comparison against it silently false.
+   *
+   * Adding `bank` is what made that reachable: a v1 save has no such key, so a migration that
+   * forgot it would produce exactly this.
+   */
+  const resources = save['resources'] as Record<string, unknown>;
+  for (const key of RESOURCE_KEYS) {
+    if (typeof resources[key] !== 'number' || Number.isNaN(resources[key])) return false;
+  }
+
+  const skills = save['skills'] as Record<string, unknown>;
+  for (const key of SKILL_KEYS) {
+    if (typeof skills[key] !== 'number' || Number.isNaN(skills[key])) return false;
+  }
+  if (!Array.isArray(skills['languages'])) return false;
 
   for (const key of ['traits', 'inventory', 'pendingEvents', 'history', 'unlockedEndings']) {
     if (!Array.isArray(save[key])) return false;

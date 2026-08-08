@@ -21,7 +21,7 @@ function start(seed = 'loop-seed'): RunState {
   const result = createRunState({
     ...createRunInit(seed, PACK.version, SCENARIO.route),
     transport: { ...createTransport('truck'), vehicleId: 'v', legal: false },
-    resources: { ...createResources(), money: SCENARIO.start.money },
+    resources: { ...createResources(), cash: SCENARIO.start.cash },
     startHour: SCENARIO.start.startHour,
     weather: SCENARIO.start.weather,
   });

@@ -196,7 +196,7 @@
         "of": [
           {
             "kind": "resource",
-            "key": "money",
+            "key": "cash",
             "cmp": {
               "op": "gte",
               "value": 30
@@ -228,7 +228,7 @@
           "costs": [
             {
               "op": "resource",
-              "key": "money",
+              "key": "cash",
               "delta": -40
             }
           ],
@@ -705,7 +705,7 @@
       "exclusiveGroup": null,
       "requires": {
         "kind": "resource",
-        "key": "money",
+        "key": "cash",
         "cmp": {
           "op": "gte",
           "value": 10
@@ -778,7 +778,7 @@
               "effects": [
                 {
                   "op": "resource",
-                  "key": "money",
+                  "key": "cash",
                   "delta": -40
                 },
                 {
@@ -817,7 +817,7 @@
               "effects": [
                 {
                   "op": "resource",
-                  "key": "money",
+                  "key": "cash",
                   "delta": -40
                 },
                 {
@@ -999,7 +999,7 @@
           "labelKey": "events.crisis.breakdown.choice.find_help",
           "requires": {
             "kind": "resource",
-            "key": "money",
+            "key": "cash",
             "cmp": {
               "op": "gte",
               "value": 60
@@ -1009,7 +1009,7 @@
           "costs": [
             {
               "op": "resource",
-              "key": "money",
+              "key": "cash",
               "delta": -60
             }
           ],

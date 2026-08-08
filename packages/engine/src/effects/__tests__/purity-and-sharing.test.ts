@@ -19,7 +19,7 @@ function makeState(): RunState {
 
 /** One of every op, so the sweeps below touch every branch of the applier. */
 const ALL_EFFECTS: readonly Effect[] = [
-  { op: 'resource', key: 'money', delta: 50 },
+  { op: 'resource', key: 'cash', delta: 50 },
   { op: 'skill', key: 'stealth', delta: 2 },
   { op: 'flag', id: flagId('wanted'), value: true, ttlLegs: 3 },
   { op: 'clearFlag', id: flagId('wanted') },
@@ -73,7 +73,7 @@ describe('applier purity (CLAUDE.md 2.8)', () => {
     expect(Object.isFrozen(frozen)).toBe(true);
     expect(Object.isFrozen(frozen.resources)).toBe(true);
     expect(() => {
-      (frozen.resources as { money: number }).money = 999;
+      (frozen.resources as { cash: number }).cash = 999;
     }).toThrow();
   });
 
@@ -86,7 +86,7 @@ describe('applier purity (CLAUDE.md 2.8)', () => {
 describe('structural sharing', () => {
   it('keeps untouched branches identical', () => {
     const state = makeState();
-    const { state: next } = applyEffects(state, [{ op: 'resource', key: 'money', delta: 10 }], CTX);
+    const { state: next } = applyEffects(state, [{ op: 'resource', key: 'cash', delta: 10 }], CTX);
 
     expect(next).not.toBe(state);
     expect(next.resources).not.toBe(state.resources);

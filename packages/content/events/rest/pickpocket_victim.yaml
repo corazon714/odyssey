@@ -14,7 +14,7 @@ context:
 cooldownLegs: 10
 maxOccurrences: 2
 requires:
-  resource: money
+  resource: cash
   gte: 10
 choices:
   - id: chase
@@ -48,7 +48,7 @@ choices:
         onCheck: failure
         effects:
           - op: resource
-            key: money
+            key: cash
             delta: -40
           - op: resource
             key: energy
@@ -62,7 +62,7 @@ choices:
         weight: 1
         effects:
           - op: resource
-            key: money
+            key: cash
             delta: -40
           - op: resource
             key: morale

@@ -20,7 +20,7 @@
       "start": {
         "transportMode": "car",
         "vehicleLegal": true,
-        "money": 320,
+        "cash": 320,
         "startHour": 7,
         "weather": "clear"
       },
@@ -71,7 +71,7 @@
       "start": {
         "transportMode": "truck",
         "vehicleLegal": false,
-        "money": 540,
+        "cash": 540,
         "startHour": 19,
         "weather": "fog"
       },
@@ -159,7 +159,7 @@
       "start": {
         "transportMode": "bus",
         "vehicleLegal": true,
-        "money": 260,
+        "cash": 260,
         "startHour": 9,
         "weather": "clear"
       },

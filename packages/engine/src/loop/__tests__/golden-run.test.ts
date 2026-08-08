@@ -70,7 +70,7 @@ function initFor(run: GoldenRun, contentVersion = PACK.version): RunInit {
       vehicleId: `${scenario.route.id}-vehicle`,
       legal: scenario.start.vehicleLegal,
     },
-    resources: { ...createResources(), money: scenario.start.money },
+    resources: { ...createResources(), cash: scenario.start.cash },
     startHour: scenario.start.startHour,
     weather: scenario.start.weather,
   };

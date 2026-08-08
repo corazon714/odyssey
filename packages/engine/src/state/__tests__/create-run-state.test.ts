@@ -58,7 +58,7 @@ describe('createRunState', () => {
   it('applies supplied preparation choices', () => {
     const result = createRunState({
       ...init(),
-      resources: { ...createResources(), money: 250 },
+      resources: { ...createResources(), cash: 250 },
       traits: [traitId('smooth_talker')],
       languages: [languageId('ru')],
       startHour: 20,
@@ -67,7 +67,7 @@ describe('createRunState', () => {
     });
     if (!result.ok) throw new Error('expected ok');
 
-    expect(result.state.resources.money).toBe(250);
+    expect(result.state.resources.cash).toBe(250);
     expect(result.state.traits).toEqual([traitId('smooth_talker')]);
     expect(result.state.skills.languages).toEqual([languageId('ru')]);
     expect(result.state.clock).toEqual({ day: 0, hour: 20, weekday: 4 });
@@ -79,23 +79,23 @@ describe('createRunState clamping', () => {
   it('clamps out-of-range resources and REPORTS each clamp', () => {
     const result = createRunState({
       ...init(),
-      resources: { ...createResources(), money: -50, energy: 99, reputation: -20 },
+      resources: { ...createResources(), cash: -50, energy: 99, reputation: -20 },
     });
     if (!result.ok) throw new Error('expected ok');
 
-    expect(result.state.resources.money).toBe(0);
+    expect(result.state.resources.cash).toBe(0);
     expect(result.state.resources.energy).toBe(10);
     expect(result.state.resources.reputation).toBe(-5);
 
     // The report is the point: a silent Math.min would hide a preparation screen that
     // over-allocates, and the sim could never count it.
     expect(result.clamps.map((c) => `${c.key}:${c.bound}`)).toEqual([
-      'money:min',
+      'cash:min',
       'energy:max',
       'reputation:min',
     ]);
     expect(result.clamps[0]).toEqual({
-      key: 'money',
+      key: 'cash',
       requested: -50,
       applied: 0,
       bound: 'min',
@@ -124,10 +124,10 @@ describe('createRunState clamping', () => {
   it('leaves money unbounded above', () => {
     const result = createRunState({
       ...init(),
-      resources: { ...createResources(), money: 5_000_000 },
+      resources: { ...createResources(), cash: 5_000_000 },
     });
     if (!result.ok) throw new Error('expected ok');
-    expect(result.state.resources.money).toBe(5_000_000);
+    expect(result.state.resources.cash).toBe(5_000_000);
     expect(result.clamps).toEqual([]);
   });
 });

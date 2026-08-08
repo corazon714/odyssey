@@ -50,7 +50,7 @@
 # finding it. They cannot both apply, so they conflict and concealment wins on priority.
 - id: large_cash_on_person
   appliesTo: [authority, search, bribery]
-  when: { resource: money, gte: 400 }
+  when: { resource: cash, gte: 400 }
   delta: -2
   sourceKind: condition
   conflictsWith: [cash_concealed]
@@ -81,4 +81,27 @@
   delta: 2
   sourceKind: relationship
   priority: 55
+  stacks: true
+
+# ── the three-tier money model, made visible to a check ─────────────────────────────────
+# Cash is stealable and VISIBLE; bank is neither. Someone who has moved their money into an
+# account looks broke to a guard, which is the whole mechanical point of the distinction —
+# without a row like this, `bank` would be a resource nothing ever reads.
+- id: looks_broke
+  appliesTo: [authority, search, bribery]
+  when: { all: [{ resource: cash, lte: 20 }, { resource: bank, gte: 200 }] }
+  delta: 1
+  sourceKind: condition
+  priority: 45
+  stacks: false
+
+# The other side of it: a bribe you cannot fund. Below the threshold the choice should be
+# hidden by `hiddenUnless` rather than merely penalised, but until the seed corpus has those
+# choices this row makes the floor visible in the chip list rather than invisible.
+- id: cannot_cover_a_bribe
+  appliesTo: [bribery]
+  when: { resource: cash, lte: 10 }
+  delta: -3
+  sourceKind: condition
+  priority: 65
   stacks: true

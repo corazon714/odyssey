@@ -26,9 +26,11 @@ const { events, registries } = loadMiniPack();
 const PACK = createContentPack(events, registries);
 
 function loadSave(version: number): Record<string, unknown> {
-  return JSON.parse(
-    readFileSync(join(FIXTURE_DIR, `save-v${String(version)}.json`), 'utf8'),
-  ) as Record<string, unknown>;
+  return readSave(`save-v${String(version)}.json`);
+}
+
+function readSave(name: string): Record<string, unknown> {
+  return JSON.parse(readFileSync(join(FIXTURE_DIR, name), 'utf8')) as Record<string, unknown>;
 }
 
 describe('fixture completeness — the meta-test', () => {
@@ -66,18 +68,59 @@ describe('fixture completeness — the meta-test', () => {
 
 describe('migrateSave', () => {
   it('accepts a current save unchanged', () => {
-    const result = migrateSave(loadSave(1));
+    // Retargeted from v1 when SAVE_VERSION became 2: a v1 save now MIGRATES, so it is no
+    // longer the already-current case this test is about.
+    const result = migrateSave(loadSave(SAVE_VERSION));
     if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
-    expect(result.fromVersion).toBe(1);
+    expect(result.fromVersion).toBe(SAVE_VERSION);
     expect(result.applied).toEqual([]);
     expect(result.state.version).toBe(SAVE_VERSION);
   });
 
-  it('round-trips a real save without changing its digest', () => {
-    const raw = loadSave(1);
+  it('round-trips a CURRENT save without changing its digest', () => {
+    const raw = loadSave(SAVE_VERSION);
     const result = migrateSave(raw);
     if (!result.ok) throw new Error('expected ok');
     expect(stateDigest(result.state)).toBe(stateDigest(raw as unknown as RunState));
+  });
+
+  it('CHANGES the digest of a v1 save, because a real migration ran', () => {
+    // The other half, and the half that would otherwise be missing. Asserting only that a
+    // current save round-trips unchanged would pass just as well if the ladder did nothing.
+    const raw = loadSave(1);
+    const result = migrateSave(raw);
+    if (!result.ok) throw new Error('expected ok');
+    expect(stateDigest(result.state)).not.toBe(stateDigest(raw as unknown as RunState));
+    expect(result.applied).toHaveLength(1);
+  });
+
+  it('migrates a LOADED v1 save to exactly the checked-in v2 fixture', () => {
+    // The migration's actual golden. The plain v1 fixture has an empty inventory, no passport
+    // and a null `requires`, so a test against it exercises almost nothing — including, and
+    // especially, the recursive predicate rewrite.
+    const loaded = readSave('save-v1-loaded.json');
+    const result = migrateSave(loaded);
+    if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
+    expect(result.state).toEqual(readSave('save-v2-loaded.json'));
+  });
+
+  it('rewrites `money` inside a PERSISTED predicate tree, not just in resources', () => {
+    // The part that is not a field rename, and the one most likely to be forgotten:
+    // `pendingEvents[].requires` stores a canonical Predicate, and
+    // `{ kind: 'resource', key: 'money' }` is a legal node in it. Left alone, every queued
+    // promise would gate on a resource key that no longer exists — reading undefined,
+    // comparing false, and expiring unfired. Silent, and it would look like a director bug.
+    const result = migrateSave(readSave('save-v1-loaded.json'));
+    if (!result.ok) throw new Error('expected ok');
+
+    const requires = result.state.pendingEvents[0]?.requires;
+    const json = JSON.stringify(requires);
+    expect(json).not.toContain('"key":"money"');
+    expect(json).toContain('"key":"cash"');
+
+    // ...and a FLAG whose id happens to be `money` is a different thing entirely. Renaming it
+    // would silently retarget a gate at a flag that does not exist.
+    expect(json).toContain('"id":"money"');
   });
 
   it('REFUSES a future version rather than guessing', () => {
@@ -129,7 +172,11 @@ describe('migrateSave', () => {
       },
     ];
 
-    const result = migrateSave({ ...loadSave(1), version: 1 }, synthetic, 3);
+    // Starts from a CURRENT-shaped save, not v1. The synthetic migrations only add `weather`
+    // and `tension`, so beginning from a v1 body would leave `resources.cash` absent and the
+    // post-migration shape guard would reject it — failing this test for a reason that has
+    // nothing to do with the chaining it exists to prove.
+    const result = migrateSave({ ...loadSave(SAVE_VERSION), version: 1 }, synthetic, 3);
     if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
 
     expect(order).toEqual(['1->2', '2->3']);
@@ -151,12 +198,35 @@ describe('migrateSave', () => {
 
 describe('isRunStateShape', () => {
   it('accepts a real save', () => {
-    expect(isRunStateShape(loadSave(1))).toBe(true);
+    // SAVE_VERSION, not 1: a v1 save is genuinely no longer a valid RunState shape — it has
+    // no `resources.cash` and no `resources.bank`. That it now fails here is the guard
+    // working, and is exactly what stops a half-written migration reaching a player.
+    expect(isRunStateShape(loadSave(SAVE_VERSION))).toBe(true);
+  });
+
+  it('REJECTS a v1 save, which is missing cash and bank', () => {
+    expect(isRunStateShape(loadSave(1))).toBe(false);
+  });
+
+  it('rejects a save whose resource is NaN rather than writing it through', () => {
+    // The hazard the exhaustive resource loop was added for. NaN compares false against both
+    // bounds, so clampResources writes it straight through and stateDigest serialises it as
+    // `null` — a meter that is not a number, and every comparison against it silently false.
+    const save = loadSave(SAVE_VERSION);
+    const resources = { ...(save['resources'] as Record<string, unknown>), cash: Number.NaN };
+    expect(isRunStateShape({ ...save, resources })).toBe(false);
+  });
+
+  it('rejects a save missing a single resource key', () => {
+    const save = loadSave(SAVE_VERSION);
+    const resources = { ...(save['resources'] as Record<string, unknown>) };
+    delete resources['bank'];
+    expect(isRunStateShape({ ...save, resources })).toBe(false);
   });
 
   it('rejects a save missing a single rng cursor', () => {
     // Silently catastrophic otherwise: every draw would read undefined and produce NaN.
-    const save = loadSave(1);
+    const save = loadSave(SAVE_VERSION);
     const cursors = { ...(save['rngCursors'] as Record<string, number>) };
     delete cursors['chanceGate'];
     expect(isRunStateShape({ ...save, rngCursors: cursors })).toBe(false);
@@ -164,7 +234,7 @@ describe('isRunStateShape', () => {
 
   it('rejects each missing top-level branch', () => {
     for (const key of ['clock', 'route', 'resources', 'flags', 'history', 'pendingEvents']) {
-      const save = loadSave(1);
+      const save = loadSave(SAVE_VERSION);
       delete save[key];
       expect(isRunStateShape(save), `accepted a save with no ${key}`).toBe(false);
     }

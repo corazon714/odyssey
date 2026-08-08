@@ -48,8 +48,8 @@ const CASES: readonly { readonly terse: TersePredicate; readonly canonical: Pred
   },
   { terse: { not: { always: true } }, canonical: { kind: 'not', of: { kind: 'always' } } },
   {
-    terse: { resource: 'money', gte: 30 },
-    canonical: { kind: 'resource', key: 'money', cmp: { op: 'gte', value: 30 } },
+    terse: { resource: 'cash', gte: 30 },
+    canonical: { kind: 'resource', key: 'cash', cmp: { op: 'gte', value: 30 } },
   },
   {
     terse: { skill: 'negotiation', lt: 4 },
@@ -137,12 +137,12 @@ describe('terse -> canonical predicate transform', () => {
   it('recurses through all/any/not', () => {
     expect(
       predicateSchema.parse({
-        all: [{ resource: 'money', gte: 30 }, { not: { flag: 'bribed_this_border' } }],
+        all: [{ resource: 'cash', gte: 30 }, { not: { flag: 'bribed_this_border' } }],
       }),
     ).toEqual({
       kind: 'all',
       of: [
-        { kind: 'resource', key: 'money', cmp: { op: 'gte', value: 30 } },
+        { kind: 'resource', key: 'cash', cmp: { op: 'gte', value: 30 } },
         {
           kind: 'not',
           of: { kind: 'flag', id: 'bribed_this_border', cmp: { op: 'isSet' } },
@@ -156,14 +156,14 @@ describe('what the transform refuses', () => {
   it('rejects an unknown key instead of silently dropping it', () => {
     // A misspelling that Zod strips would produce a defaulted predicate and still satisfy
     // every type assertion above. This is the reason every object here is strict.
-    expect(() => predicateSchema.parse({ resource: 'money', gtee: 30 })).toThrow();
+    expect(() => predicateSchema.parse({ resource: 'cash', gtee: 30 })).toThrow();
   });
 
   it('rejects a comparison with no operator, and one with two', () => {
-    expect(() => predicateSchema.parse({ resource: 'money' })).toThrow(/exactly one comparison/);
+    expect(() => predicateSchema.parse({ resource: 'cash' })).toThrow(/exactly one comparison/);
     // `{ gte: 30, lte: 10 }` is not a range — it is an author who meant `all`. Keeping the
     // first silently would hide a contradiction the linter is separately trying to catch.
-    expect(() => predicateSchema.parse({ resource: 'money', gte: 30, lte: 10 })).toThrow(
+    expect(() => predicateSchema.parse({ resource: 'cash', gte: 30, lte: 10 })).toThrow(
       /2 comparisons/,
     );
   });

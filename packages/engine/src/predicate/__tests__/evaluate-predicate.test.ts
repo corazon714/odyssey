@@ -56,32 +56,24 @@ describe('logical nodes', () => {
 
 describe('resource, skill and inventory leaves', () => {
   it('compares a resource with each operator', () => {
-    const ctx = makeContext({ resources: { ...createResources(), money: 30 } });
-    expect(value({ kind: 'resource', key: 'money', cmp: { op: 'gte', value: 30 } }, ctx)).toBe(
-      true,
-    );
-    expect(value({ kind: 'resource', key: 'money', cmp: { op: 'gt', value: 30 } }, ctx)).toBe(
+    const ctx = makeContext({ resources: { ...createResources(), cash: 30 } });
+    expect(value({ kind: 'resource', key: 'cash', cmp: { op: 'gte', value: 30 } }, ctx)).toBe(true);
+    expect(value({ kind: 'resource', key: 'cash', cmp: { op: 'gt', value: 30 } }, ctx)).toBe(false);
+    expect(value({ kind: 'resource', key: 'cash', cmp: { op: 'eq', value: 30 } }, ctx)).toBe(true);
+    expect(value({ kind: 'resource', key: 'cash', cmp: { op: 'neq', value: 30 } }, ctx)).toBe(
       false,
     );
-    expect(value({ kind: 'resource', key: 'money', cmp: { op: 'eq', value: 30 } }, ctx)).toBe(true);
-    expect(value({ kind: 'resource', key: 'money', cmp: { op: 'neq', value: 30 } }, ctx)).toBe(
-      false,
-    );
-    expect(value({ kind: 'resource', key: 'money', cmp: { op: 'lte', value: 30 } }, ctx)).toBe(
-      true,
-    );
-    expect(value({ kind: 'resource', key: 'money', cmp: { op: 'lt', value: 30 } }, ctx)).toBe(
-      false,
-    );
+    expect(value({ kind: 'resource', key: 'cash', cmp: { op: 'lte', value: 30 } }, ctx)).toBe(true);
+    expect(value({ kind: 'resource', key: 'cash', cmp: { op: 'lt', value: 30 } }, ctx)).toBe(false);
   });
 
   it('reports actual alongside required', () => {
-    const ctx = makeContext({ resources: { ...createResources(), money: 12 } });
+    const ctx = makeContext({ resources: { ...createResources(), cash: 12 } });
     const { trace } = evaluatePredicate(
-      { kind: 'resource', key: 'money', cmp: { op: 'gte', value: 30 } },
+      { kind: 'resource', key: 'cash', cmp: { op: 'gte', value: 30 } },
       ctx,
     );
-    expect(trace.params).toEqual({ key: 'money', required: 30, actual: 12 });
+    expect(trace.params).toEqual({ key: 'cash', required: 30, actual: 12 });
   });
 
   it('compares a skill', () => {

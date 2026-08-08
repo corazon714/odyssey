@@ -12,7 +12,7 @@ import { createTransport } from './transport-state.ts';
 import { validateRoute } from './validate-route.ts';
 
 /** The save schema version this build writes. Bumping it requires a migration and a fixture. */
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export type CreateRunStateResult =
   | { readonly ok: true; readonly state: RunState; readonly clamps: readonly ClampEvent[] }

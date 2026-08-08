@@ -16,7 +16,7 @@ describe('clampValue', () => {
   });
 
   it('treats a null max as unbounded', () => {
-    expect(clampValue('money', 10_000_000, 0, null).clamp).toBeNull();
+    expect(clampValue('cash', 10_000_000, 0, null).clamp).toBeNull();
   });
 
   it('keeps the bounds themselves in range', () => {
@@ -42,9 +42,9 @@ describe('clampResources', () => {
   it('reports clamps in declaration order, not insertion order', () => {
     // Determinism: the clamps array feeds the digest and the sim, so its order cannot
     // depend on how the caller happened to build the object.
-    const scrambled = { ...createResources(), reputation: -99, energy: -1, money: -1 };
+    const scrambled = { ...createResources(), reputation: -99, energy: -1, cash: -1 };
     const { clamps } = clampResources(scrambled);
-    expect(clamps.map((c) => c.key)).toEqual(['money', 'energy', 'reputation']);
+    expect(clamps.map((c) => c.key)).toEqual(['cash', 'energy', 'reputation']);
   });
 
   it('is pure', () => {

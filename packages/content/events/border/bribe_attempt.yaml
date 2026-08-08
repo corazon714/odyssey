@@ -27,7 +27,7 @@ exclusiveGroup: border_resolution
 image: border/bribe_attempt
 requires:
   all:
-    - resource: money
+    - resource: cash
       gte: 30
     - not:
         flag: bribed_this_border
@@ -36,7 +36,7 @@ choices:
     labelKey: events.border.bribe_attempt.choice.offer
     costs:
       - op: resource
-        key: money
+        key: cash
         delta: -40
     check:
       skill: negotiation
