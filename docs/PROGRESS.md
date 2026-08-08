@@ -5,15 +5,54 @@
 
 ---
 
-## Current state: Phase 1 in progress — M0–M5 shipped. **M6 is a REVIEW GATE.**
+## Current state: Phase 1 — M0–M6 shipped. **M6 GATE PASSED, awaiting review.**
 
-M5 completed the last piece before the walking skeleton. `src/content/` holds the engine-owned
-types, `createContentPack` and the dangling-reference walk; the nine-event fixture pack and
-three fixture routes are JSON data under `src/__tests__/__fixtures__/`. 591 Vitest + 3 Jest.
+**The game runs.** `pnpm sim -- --runs=1000` completes a thousand full journeys end to end.
+653 Vitest + 3 Jest.
 
-**M6 is the second of the two review gates you set.** It is the first point where a mistake in
-M1–M5 becomes visible — a broken RNG, a predicate that never passes, an effect that mutates in
-place all surface as an absurd sim number rather than as a passing unit test. Stop there.
+```
+Completion rate             33.7%      (engine-spec 6 target band 30-50%)
+Median legs / days          11 / 5
+Uneventful legs              0.0%      (target <2%)
+Fallback legs                0.0%      (target <2%)
+Long-range payoff rate     100.0%      (20/20 scheduled)
+Never-fired events              0      of 9
+Wall clock                219 ms       (0.22 ms/run)
+Extrapolated to 20,000    4.4 s        (target <30 s — 7x margin)
+```
+
+Every gate criterion met. **The performance target is not close** — 4.4 s against a 30 s
+budget, before any of M7's optimisation levers (pack pre-indexing, `explain` off) are needed.
+
+### What the gate caught — the point of building it
+
+Two bugs that every unit test in M1–M5 passed straight through, both found in the first
+1,000-run report:
+
+1. **5 of 9 events were unreachable.** The fixture routes supplied no preparation choices, so
+   transport defaulted to `foot` and money to 0 — silently making every vehicle-constrained
+   and cost-gated event impossible. Fixed by giving each fixture route a `start` block, which
+   is what the preparation screen will produce.
+2. **`border.guard_remembers`: scheduled 20×, fired 0×** — the exact signature ADR 0001 names
+   as the shape of a whole class of silent content bug. The payoff window `[9,17]` contained
+   exactly ONE leg whose location could host it, and zero if the bribe fired at leg 17. Fixed
+   by adding checkpoints inside the windows. Payoff rate went 0% → 100%.
+
+A third, found by its own test rather than the report: **`greedy-safe` and `risk-taker` were
+producing byte-identical runs** on every fixture seed, because `risk-taker`'s bonus only
+applied where a skill check existed. Two policies that always agree bound nothing, so they
+were rebuilt as maximin and maximax.
+
+### One engine addition M6 forced
+
+`RouteState.legLocations` — one `LocationType` per leg, caller-supplied like the rest of the
+route. Without it `context.locationTypes` cannot be evaluated at all, which makes every border
+and rest-stop event unfilterable. `validateRoute` now rejects a length mismatch, because a
+short list would silently fall back to `roadside` for the tail of the route.
+
+---
+
+## Superseded — current state before M6
 
 ---
 
@@ -258,7 +297,36 @@ The honest gaps are _unverified_, not _broken_:
 
 ## Next step (ONE task, start here)
 
-**M6 — the walking skeleton. ★ REVIEW GATE — stop here.**
+**M7 — the director's scoring, and the full relaxation ladder.** _(after the M6 review)_
+
+M6's director picks UNIFORMLY among eligible events and has a two-rung ladder. M7 makes it a
+director.
+
+1. **The six scoring factors** with the ranges recorded in the plan: `contextAffinity`
+   [0.50, 2.00] · `tensionFit` [0.25, 1.50] · `novelty` [0.20, 1.00] · `recency` [0.05, 1.00]
+   · `tagSaturation` [0.25, 1.00] · `priorityBoost` {0.40, 1, 1, 3.00}. **Multiplication order
+   is part of the replay contract** — float multiplication is not associative, so reordering
+   changes `Math.round`, which changes the pick. Pin it with `scoring-order.test.ts`.
+2. **`pickWeight = clampInt(round(score), 1, 1_000_000)`** so an eligible event is ALWAYS
+   pickable. That invariant is what separates scoring from filtering; it gets its own test.
+3. **All rational arithmetic.** No `Math.pow`/`exp`; `purity.test.ts` enforces it.
+4. **`tagSaturation` uses `max`, not a product** — a six-tag event in a busy window would
+   otherwise collapse to near-zero and become a filter in disguise. Window derives from
+   `history`, which already carries tags copied at fire time.
+5. **The full seven-rung ladder**: beat gate → `exclusiveGroup` → soft context → cooldown +
+   recency → `locationTypes` → filler pool → `uneventful`. `requires` and `maxOccurrences`
+   never relax, at any rung.
+6. **The complication hook** — the second Phase 2 seam. Post-selection, drawing from
+   `encounterFlavor` so Phase 2 can consume randomness without shifting `eventPick`. Test it
+   as a seam, like `ModifierSource`.
+7. **`tension`** — `nextTension(state, pack)`, with the "breathe after two high-tension
+   events" rule from engine-spec 4.
+
+Re-run the sim after each factor lands; the numbers above are the baseline to diff against.
+
+---
+
+## M6 brief (delivered) — the walking skeleton
 
 The minimum that proves the loop end to end. Deliberately NOT the full director: scoring,
 the relaxation ladder, beats and the queue's caps all come after, because their bugs are

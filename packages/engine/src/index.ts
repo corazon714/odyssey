@@ -168,3 +168,18 @@ export { RNG_STREAMS, type RngStream } from './rng/rng-stream.ts';
 export { CHECK_DIE_SIDES, type RollModifier, type RollResult } from './rng/roll-result.ts';
 export { createStreamKeys, deriveKey, streamKey, type StreamKeys } from './rng/stream-key.ts';
 export { pickByWeight, totalWeight, type WeightedEntry } from './rng/weighted-pick.ts';
+
+export {
+  filterEvent,
+  RELAX_NOTHING,
+  type FilterVerdict,
+  type Relaxation,
+} from './director/hard-filters.ts';
+export { duePendingEvents, selectEvent, type SelectionResult } from './director/select-event.ts';
+
+export { advanceLeg, type AdvanceLegResult } from './loop/advance-leg.ts';
+export { pickOutcome, resolveChoice, type ResolveChoiceResult } from './loop/resolve-choice.ts';
+export { runSkillCheck } from './loop/run-skill-check.ts';
+export { checkRunEnd, type RunEndVerdict } from './loop/check-run-end.ts';
+export { worldTick } from './loop/world-tick.ts';
+export { locationAtLeg } from './state/route-state.ts';

@@ -93,17 +93,42 @@ export function loadMiniPack(): MiniPackFile {
   };
 }
 
-export function loadFixtureRoutes(): readonly RouteState[] {
-  const file = requireObject(readJson('routes.json'), 'routes.json');
-  const routes = requireArray(file['routes'], 'routes');
+/**
+ * The preparation choices a run starts from — what the preparation screen produces.
+ *
+ * Bundled with each fixture route because they are inseparable in practice: a route through
+ * two border crossings implies a vehicle, and a pack full of vehicle-constrained events is
+ * unreachable without one. The walking skeleton found this the hard way, with 5 of 9 events
+ * never firing because transport defaulted to `foot` and money to 0.
+ */
+export type FixtureStart = {
+  readonly transportMode: string;
+  readonly vehicleLegal: boolean;
+  readonly money: number;
+  readonly startHour: number;
+  readonly weather: string;
+};
 
-  routes.forEach((raw, i) => {
-    const route = requireObject(raw, `routes[${i}]`);
-    requireString(route['id'], `routes[${i}].id`);
-    requireArray(route['nodes'], `routes[${i}].nodes`);
-    requireArray(route['edges'], `routes[${i}].edges`);
-    requireArray(route['beatSchedule'], `routes[${i}].beatSchedule`);
+export type FixtureRoute = { readonly start: FixtureStart; readonly route: RouteState };
+
+export function loadFixtureRouteEntries(): readonly FixtureRoute[] {
+  const file = requireObject(readJson('routes.json'), 'routes.json');
+  const entries = requireArray(file['routes'], 'routes');
+
+  entries.forEach((raw, i) => {
+    const entry = requireObject(raw, `routes[${i}]`);
+    requireObject(entry['start'], `routes[${i}].start`);
+    const route = requireObject(entry['route'], `routes[${i}].route`);
+    requireString(route['id'], `routes[${i}].route.id`);
+    requireArray(route['nodes'], `routes[${i}].route.nodes`);
+    requireArray(route['edges'], `routes[${i}].route.edges`);
+    requireArray(route['beatSchedule'], `routes[${i}].route.beatSchedule`);
+    requireArray(route['legLocations'], `routes[${i}].route.legLocations`);
   });
 
-  return routes as readonly RouteState[];
+  return entries as readonly FixtureRoute[];
+}
+
+export function loadFixtureRoutes(): readonly RouteState[] {
+  return loadFixtureRouteEntries().map((entry) => entry.route);
 }

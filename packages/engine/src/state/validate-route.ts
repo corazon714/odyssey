@@ -27,6 +27,16 @@ export function validateRoute(route: RouteState): EngineError | null {
     return engineError('route/leg-count-mismatch', { legCount: route.legCount });
   }
 
+  if (route.legLocations.length !== route.legCount) {
+    // A short list would silently fall back to `roadside` for the tail of the route, turning
+    // every border event into one that can never fire — a content bug wearing a balance
+    // problem's clothes, which is exactly what this validator exists to catch early.
+    return engineError('route/leg-count-mismatch', {
+      legCount: route.legCount,
+      legLocations: route.legLocations.length,
+    });
+  }
+
   const seenLegs = new Set<number>();
   for (const slot of route.beatSchedule) {
     if (!Number.isInteger(slot.legIndex) || slot.legIndex < 0 || slot.legIndex >= route.legCount) {

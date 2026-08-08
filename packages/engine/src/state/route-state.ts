@@ -1,3 +1,4 @@
+import { type LocationType } from '../content/location-type.ts';
 import { type EdgeId, type NodeId, type RouteId } from '../ids/content-ids.ts';
 import { type BeatSlot } from './beat-slot.ts';
 
@@ -26,4 +27,20 @@ export type RouteState = {
   readonly progressKm: number;
   readonly totalKm: number;
   readonly beatSchedule: readonly BeatSlot[];
+  /**
+   * What kind of place each leg passes through — one entry per leg.
+   *
+   * Caller-supplied along with the rest of the route, for the same reason: deriving it needs
+   * geo data (Phase 2). Without it `context.locationTypes` cannot be evaluated at all, which
+   * would make every border and rest-stop event unfilterable — so the field is load-bearing
+   * rather than decorative.
+   *
+   * These are TYPES, never places (CLAUDE.md 11). There is nowhere here to put a nationality.
+   */
+  readonly legLocations: readonly LocationType[];
 };
+
+/** The location of the current leg, or `roadside` if the route under-specifies. */
+export function locationAtLeg(route: RouteState, legIndex: number): LocationType {
+  return route.legLocations[legIndex] ?? 'roadside';
+}
