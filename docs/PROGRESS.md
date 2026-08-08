@@ -5,7 +5,62 @@
 
 ---
 
-## Shipped this session (2026-08-08, session 3) — **PHASE 1 COMPLETE**, M0–M11
+## Shipped this session (2026-08-08, session 4) — Phase 2A M2A.0
+
+**Phase 2A is planned and approved** — 8 milestones, plan at
+`~/.claude/plans/phase-2a-plan-mode-precious-elephant.md`. Review gates after M2A.2 and M2A.5.
+Three questions were settled by the human before planning: rename `money` → `cash` and add
+`bank`; skill bypasses the modifier clamp (`d20 + skill + clamp(mods, −8..+6)`); fix `worldTick`
+first as its own milestone.
+
+### M2A.0 — the drift curve. `docs/adr/0014`. Two commits.
+
+`worldTick` now charges every drain against the **clock span the leg covers**, not the leg.
+Open question 1 is **closed**.
+
+- **The defect, measured:** health first dropped on leg 8 in **1500 of 1500 runs**, distinct=1.
+  Identical, not clustered — because every drain was per-leg and unconditional, so a nine-hour
+  walk cost the same as a four-hour train ride and nothing read the hour jitter.
+- **After:** distinct=**9** (legs 5–14). Completion 30.1% → 31.2%, inside the 30–50% band, so
+  this is not a difficulty change. `gave_up` 39.1% → 33.2%, `collapsed` 30.8% → 35.6% — the two
+  failure modes are near-balanced where one dominated.
+- **`spanPoints(before, hours, per)`** carries the remainder across legs, so summed cost is
+  exactly `floor(total / per)` (property test). **No new state** — the clock is already the
+  accumulator, so `SAVE_VERSION` is untouched and there is no migration.
+- **The finding worth keeping (ADR 0014 §3): grade a penalty on an unbounded meter, never on a
+  floored one.** Energy floors at 0 and most runs sit there, so a second harsher morale rung is
+  a penalty the whole population takes on the same leg — it _synchronises_ the collapse.
+  Measured: it drove leg-15 morale from `0/2/6` to `0/0/0`. Hunger has no ceiling, so grading
+  there spreads. This cost the most to learn.
+- **`worldTick` had no unit test at all**, which is how a curve that resolves to a constant
+  survived to a sim report. It has 12 now, pinning the _shape_ not the constants; verified
+  failing on a deliberate violation first.
+- **`pnpm golden:update` now exists.** `golden-runs.json`'s header and `golden-run.test.ts` both
+  said to regenerate with `ODYSSEY_UPDATE_GOLDEN=1`; **nothing implemented it.** The generator is
+  `packages/tools/sim/regenerate-goldens.ts` — outside the engine because the engine may not
+  touch `process` or write files, and it derives expectations from `replayRun` rather than the
+  simulator so the two cannot drift apart and still look green.
+
+**Still true and not fixed by M2A.0:** the fixture pack contains **no food** — nothing reduces
+hunger, one effect grants energy. Health decline is therefore irreversible and every long run
+still converges to 0; only the leg it _starts_ varies. A wide p10/p90 at a fixed late leg needs
+the seed corpus.
+
+Baseline regenerated; `pnpm sim:diff -- --runs=2000` reports no change. 863 Vitest + 3 Jest.
+
+### Next: M2A.1 — schema foundations
+
+**Run the three experiments first**, before writing eleven schemas against an unproven idiom:
+(a) does `Equals<z.infer<z.intersection(A,B)>, A & B>` hold under TS 6.0.3; (b) are
+`Awaited<EventId>` / `NoUndefined<EventId>` identity-equal to `EventId`; (c) **the load-bearing
+one** — can Zod 4.4.3's getter recursion express the terse→canonical `Predicate` transform
+_without_ a `z.ZodType` annotation? If not, the ADR 0009 assertion is **vacuous** for `Predicate`
+and `Effect` (and transitively for `GameEvent`/`Choice`/`Outcome`), and the L1' input-side
+assertion described in the plan is what has to carry it.
+
+---
+
+## Shipped in session 3 (2026-08-08) — **PHASE 1 COMPLETE**, M0–M11
 
 The engine plays a full run, replays it bit-for-bit, reports on itself, and migrates its own
 saves. **[PR #2](https://github.com/corazon714/odyssey/pull/2) is open against `main`, all six
