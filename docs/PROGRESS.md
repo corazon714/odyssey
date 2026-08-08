@@ -28,6 +28,23 @@ pnpm install && pnpm typecheck && pnpm lint && pnpm test && pnpm test:engine && 
 
 All six exit 0. Tests: **15 Vitest** (3 projects) + **3 Jest** (apps/mobile).
 
+**Every one of the 9 scripts in `package.json` has been executed**, not just the six above:
+
+| Script         | Result                                           |
+| -------------- | ------------------------------------------------ |
+| `dev`          | Metro starts, `Waiting on http://localhost:8081` |
+| `typecheck`    | exit 0 — 4 projects                              |
+| `lint`         | exit 0                                           |
+| `lint:fix`     | exit 0, **0 files changed**                      |
+| `format`       | exit 0, **0 files changed**                      |
+| `format:check` | exit 0                                           |
+| `test`         | exit 0 — 15 Vitest + 3 Jest                      |
+| `test:engine`  | exit 0 — 5 tests                                 |
+| `prepare`      | exit 0, `core.hooksPath = .husky/_`              |
+
+`format` and `lint:fix` changing zero files is the meaningful assertion — it means the
+committed tree is already canonical, not merely that the commands exit 0.
+
 ### Versions pinned deliberately BEHIND npm latest
 
 Read `docs/adr/0002` before "upgrading" any of these. Each was pinned because latest is
@@ -84,6 +101,25 @@ Timings: docs-only commit **113ms**, `packages/engine` commit **5.9s**, full mon
 Also `.claude/skills/handoff/SKILL.md` (`/handoff`) and
 `.claude/agents/code-reviewer.md` (reviews a diff against `CLAUDE.md` §2).
 
+### Fixed during verification: `expo-env.d.ts` was tracked and shouldn't be
+
+Running `pnpm dev` for the first time exposed a real defect in the Phase 0 scaffold.
+`expo start` **regenerates** `apps/mobile/expo-env.d.ts` (without a trailing newline) and
+writes its own `apps/mobile/.gitignore` listing that file. Because the hand-written version
+was committed, `pnpm format:check` failed for anyone who had ever started the dev server —
+a check that passed in CI and failed on every developer machine.
+
+Fix: untracked the file, committed Expo's generated `.gitignore`, and added the path to
+`.prettierignore` (Prettier does **not** read `.gitignore`, verified). Confirmed first that
+`apps/mobile` still typechecks with the file absent, which is the fresh-CI-checkout case.
+
+### The permission layer fired live
+
+While cleaning up a probe file, `rm` was **denied** by the `Bash(rm *)` deny rule in
+`.claude/settings.json`. Removal went through `git clean -f <path>` (an `ask` rule) instead
+of being routed around with a node one-liner. First live confirmation that the permission
+layer works, as opposed to the hook scripts, which were proven by contract.
+
 ### CLAUDE.md audit
 
 Every claim checked against the repo; aspirational sections marked `(planned)` (42
@@ -103,8 +139,9 @@ The honest gaps are _unverified_, not _broken_:
 - **CI has never executed.** `.github/workflows/ci.yml` has not run on a real runner. First
   push will be the first test of it.
 - **The app has never run on a device or simulator.** `expo export` bundles cleanly on both
-  platforms (android 1226 modules, ios 1097), which is the real test of pnpm's hoisted
-  `node_modules` against Metro. But no `expo prebuild`, no Gradle/Xcode build, no launch.
+  platforms (android 1226 modules, ios 1097) and `pnpm dev` starts Metro on port 8081 — that
+  is the real test of pnpm's hoisted `node_modules` against Metro resolution. But no
+  `expo prebuild`, no Gradle/Xcode build, and nothing has ever rendered on a screen.
 - **Hooks proven by contract, not by live firing.** They were driven with the exact stdin
   JSON Claude Code sends. Hooks load at session start, so they were not armed in the session
   that wrote them — verified by writing to `reports/` and watching it succeed.
