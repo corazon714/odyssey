@@ -61,10 +61,15 @@
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
       "Read(~/.npmrc)",
-      "Write(~/.claude/**)",
-      "Edit(~/.claude/**)",
       "Write(~/.ssh/**)",
-      "Edit(~/.ssh/**)"
+      "Edit(~/.ssh/**)",
+      "Read(~/.claude/.credentials.json)",
+      "Write(~/.claude/.credentials.json)",
+      "Edit(~/.claude/.credentials.json)",
+      "Write(~/.claude/settings.json)",
+      "Edit(~/.claude/settings.json)",
+      "Write(~/.claude/settings.local.json)",
+      "Edit(~/.claude/settings.local.json)"
     ]
   },
   "hooks": {
