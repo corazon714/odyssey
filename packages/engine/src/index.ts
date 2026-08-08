@@ -208,3 +208,16 @@ export { runSkillCheck } from './loop/run-skill-check.ts';
 export { checkRunEnd, type RunEndVerdict } from './loop/check-run-end.ts';
 export { worldTick } from './loop/world-tick.ts';
 export { locationAtLeg } from './state/route-state.ts';
+
+export {
+  MAX_PENDING,
+  MAX_PENDING_PER_EVENT,
+  PENDING_DROP_REASONS,
+  type PendingDropReason,
+} from './queue/queue-limits.ts';
+export { NO_DROPS, pendingDrop, type PendingDrop } from './queue/pending-drop.ts';
+export { evictPending, type EvictResult } from './queue/evict-pending.ts';
+export { consumePending, expirePending, type ExpireResult } from './queue/expire-pending.ts';
+export { rebasePendingEvents, type Rebase, type RebaseResult } from './queue/rebase-pending.ts';
+export { schedulePending } from './queue/schedule-pending.ts';
+export { unresolvedThreads, type UnresolvedThread } from './queue/unresolved-threads.ts';

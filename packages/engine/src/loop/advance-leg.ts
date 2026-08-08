@@ -2,6 +2,8 @@ import { type ContentPack } from '../content/content-pack.ts';
 import { selectEvent, type SelectionResult } from '../director/select-event.ts';
 import { nextTension } from '../director/tension.ts';
 import { engineError, type EngineError } from '../errors/engine-error.ts';
+import { consumePending, expirePending } from '../queue/expire-pending.ts';
+import { type PendingDrop } from '../queue/pending-drop.ts';
 import { createRng } from '../rng/rng.ts';
 import { type RunState } from '../state/run-state.ts';
 import { checkRunEnd, type RunEndVerdict } from './check-run-end.ts';
@@ -24,6 +26,7 @@ export type AdvanceLegResult =
       readonly ok: true;
       readonly state: RunState;
       readonly selection: SelectionResult | null;
+      readonly queueDrops: readonly PendingDrop[];
       readonly end: RunEndVerdict;
     };
 
@@ -69,7 +72,24 @@ export function advanceLeg(state: RunState, pack: ContentPack): AdvanceLegResult
   const failure = checkRunEnd(next);
   if (failure.ended) return { ok: true, ...endRun(next, failure, rng) };
 
+  // Expire before selecting: an entry whose window closed must not be offered this leg, and
+  // the drop is a real signal (scheduled, never became eligible) rather than housekeeping.
+  const expired = expirePending(next.pendingEvents, legIndex);
+  next = { ...next, pendingEvents: expired.pending };
+  const queueDrops: PendingDrop[] = [...expired.dropped];
+
   const selection = selectEvent(next, pack, rng);
+
+  // Dedupe at fire time (ADR 0001): the promise that fired leaves the queue, and its siblings
+  // go with it. Without this the queue never shrinks on success, every kept promise shows up
+  // as an unresolved thread, and only maxOccurrences stops the payoff re-firing every leg of
+  // its window — a filter doing the queue's job.
+  if (selection.kind === 'event' && selection.fromQueue) {
+    const consumed = consumePending(next.pendingEvents, selection.event.id, legIndex);
+    next = { ...next, pendingEvents: consumed.pending };
+    queueDrops.push(...consumed.dropped);
+  }
+
   next = {
     ...next,
     rngCursors: rng.cursors(),
@@ -84,14 +104,14 @@ export function advanceLeg(state: RunState, pack: ContentPack): AdvanceLegResult
         : { kind: 'uneventful', presentedAtLeg: legIndex, reasonKey: selection.reasonKey },
   };
 
-  return { ok: true, state: next, selection, end: { ended: false } };
+  return { ok: true, state: next, selection, end: { ended: false }, queueDrops };
 }
 
 function endRun(
   state: RunState,
   verdict: RunEndVerdict & { ended: true },
   rng: ReturnType<typeof createRng>,
-): { state: RunState; selection: null; end: RunEndVerdict } {
+): { state: RunState; selection: null; end: RunEndVerdict; queueDrops: readonly PendingDrop[] } {
   const unlocked = [...state.unlockedEndings];
   for (const id of verdict.endingIds) {
     if (!unlocked.includes(id)) unlocked.push(id);
@@ -107,5 +127,8 @@ function endRun(
     },
     selection: null,
     end: verdict,
+    // The queue is NOT cleared on an ending. It feeds the journal's unresolved threads and
+    // the sim's scheduled-but-never-fired line (see queue/unresolved-threads.ts).
+    queueDrops: [],
   };
 }

@@ -1,3 +1,4 @@
+import { schedulePending } from '../queue/schedule-pending.ts';
 import { readFlag } from '../state/flag-access.ts';
 import { type RunState } from '../state/run-state.ts';
 import { appliedEffect, type AppliedEffect } from './applied-effect.ts';
@@ -103,27 +104,29 @@ export function applyMemoryEffect(
       const earliestLeg = leg + Math.max(0, Math.min(fromOffset, toOffset));
       const latestLeg = leg + Math.max(fromOffset, toOffset);
 
-      return {
-        state: {
-          ...state,
-          pendingEvents: [
-            ...state.pendingEvents,
-            {
-              eventId: effect.eventId,
-              earliestLeg,
-              latestLeg,
-              scheduledAtLeg: leg,
-              source: ctx.sourceEventId,
-              requires: effect.requires,
-              payload: effect.payload,
-            },
-          ],
+      const scheduled = schedulePending(
+        state.pendingEvents,
+        {
+          eventId: effect.eventId,
+          earliestLeg,
+          latestLeg,
+          scheduledAtLeg: leg,
+          source: ctx.sourceEventId,
+          requires: effect.requires,
+          payload: effect.payload,
         },
+        leg,
+      );
+
+      return {
+        state: { ...state, pendingEvents: scheduled.pending },
         applied: appliedEffect(effect, true, {
           eventId: effect.eventId,
           earliestLeg,
           latestLeg,
           source: ctx.sourceEventId,
+          // Non-zero when the caps displaced something — a queue-pressure signal for the sim.
+          evicted: scheduled.dropped.length,
         }),
       };
     }

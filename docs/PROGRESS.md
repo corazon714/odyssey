@@ -5,13 +5,66 @@
 
 ---
 
-## Current state: Phase 1 — M0–M7 shipped. M8 next.
+## Current state: Phase 1 — M0–M8 shipped. M9 next.
 
-**The game runs, and the director now paces it.** M7 added the six scoring factors, the full
-seven-rung relaxation ladder, the tension signal and the complication seam. 690 engine tests;
-733 Vitest + 3 Jest total.
+**The game runs, the director paces it, and consequences survive.** 733 engine tests;
+756 Vitest + 3 Jest total.
 
-### M7 sim delta against the M6 baseline
+---
+
+## Next step (ONE task, start here)
+
+**M9 — beat consumption: the gate, sliding, expiry and schedule validation.**
+
+M7 gave the beat gate a rung on the ladder. M9 makes slots actually get consumed. Generation
+stays out of Phase 1 — leg density needs terrain data and sim tuning — so the engine consumes
+and validates a caller-supplied schedule.
+
+1. **Mark a slot `filled`** when a beat event fires into it. Nothing does this today, so a slot
+   stays `pending` and can be re-filled on a later leg. `apply-world-effects.ts` already has
+   the `route/beatStatus` op; the loop needs to use it.
+2. **Sliding** — an unfillable slot moves forward up to `slackLegs` rather than being lost. A
+   missed beat is a pacing failure the slot can absorb; firing the wrong event is a coherence
+   failure that cannot be undone. That asymmetry is why the beat gate is rung 1.
+3. **Expiry** — a slot that slid past its slack becomes `expired` and is REPORTED. The sim
+   gains a beat-miss rate: a balance signal, not an error.
+4. **Pack-level validation** — a `beatType` scheduled on a route with no event in the pack that
+   can fill it is a content bug, and should surface at pack build like `danglingRefs` does.
+   `content-pack.test.ts` already asserts the fixture routes cover every beat type the pack can
+   fill; this makes it a product of `createContentPack` rather than a test-only check.
+
+Diff the sim against the M8 baseline below.
+
+---
+
+## M8 shipped — the consequence queue
+
+7 files under `src/queue/`. See `docs/adr/0011`. Engine tests 690 → 733.
+
+**M8 found a real defect while being built:** nothing removed a pending entry when it fired.
+The promise stayed queued for the rest of the run, and only `maxOccurrences` stopped the payoff
+re-firing on every leg of its window — a filter doing the queue's job. Every kept promise would
+also have surfaced in the journal as an unresolved thread. The sim now reports **18 queue
+departures against 18 fires, and 0 unresolved threads**.
+
+- **Eviction uses a TOTAL order** ending in an insertion index, so ties are impossible by
+  construction. Tested by evicting from EVERY permutation of a tie-heavy set and asserting one
+  answer — a stronger claim than "the comparator looks total".
+- **Append-then-evict, not reject-when-full**, so a promise due next leg displaces one due
+  twenty legs out instead of being turned away at the door.
+- **Rebase COMPRESSES rather than drops.** Nothing calls it yet — re-routing is Phase 2 — but
+  the queue's shape was chosen for it, and a shape chosen for an unimplemented capability is
+  one nobody has checked. A property test sweeps leg counts 1–30 against deltas −10..+10.
+- **The queue survives an ending**, feeding the journal ("Dmitri never found you") and the
+  sim's bug detector.
+
+The sim is otherwise unchanged from the M7 baseline: nine events schedule one payoff, so the
+caps are never approached. Expected — they bound pathological runs, not fixture ones, and the
+unit tests are what exercise them.
+
+---
+
+## M7 sim delta against the M6 baseline (still the balance baseline)
 
 |                 | M6 (uniform) | M7 (scored)                                       |
 | --------------- | ------------ | ------------------------------------------------- |

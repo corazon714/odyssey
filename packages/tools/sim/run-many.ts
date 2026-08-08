@@ -22,6 +22,8 @@ export type SimSummary = {
   readonly payoffRate: number;
   readonly errors: readonly string[];
   readonly turnCapHits: number;
+  readonly unresolvedThreads: number;
+  readonly queueDrops: number;
 };
 
 /**
@@ -73,6 +75,8 @@ export function summarise(runs: readonly SimRun[], pack: ContentPack): SimSummar
     payoffRate: rate(queueFires, scheduled),
     errors: [...new Set(runs.filter((r) => r.error !== null).map((r) => r.error ?? ''))],
     turnCapHits: runs.filter((r) => r.turnCapHit).length,
+    unresolvedThreads: usable.reduce((sum, r) => sum + r.unresolvedThreads, 0),
+    queueDrops: usable.reduce((sum, r) => sum + r.queueDrops, 0),
   };
 }
 

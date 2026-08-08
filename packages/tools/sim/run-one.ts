@@ -6,6 +6,7 @@ import {
   createRunState,
   resolveChoice,
   stateDigest,
+  unresolvedThreads,
   type ContentPack,
   type EndingId,
   type EventId,
@@ -38,6 +39,8 @@ export type SimRun = {
   readonly scheduled: number;
   readonly noOutcomeChoices: number;
   readonly clamps: number;
+  readonly unresolvedThreads: number;
+  readonly queueDrops: number;
   readonly turnCapHit: boolean;
   readonly error: string | null;
   readonly digest: string;
@@ -74,6 +77,7 @@ export function runOne(
   let scheduled = 0;
   let noOutcomeChoices = 0;
   let clamps = created.clamps.length;
+  let queueDrops = 0;
   let turns = 0;
 
   while (state.status !== 'ended' && turns < MAX_TURNS) {
@@ -82,6 +86,7 @@ export function runOne(
     const advanced = advanceLeg(state, pack);
     if (!advanced.ok) return blank(seed, route, policyName, `advanceLeg: ${advanced.error.code}`);
     state = advanced.state;
+    queueDrops += advanced.queueDrops.length;
 
     const selection = advanced.selection;
     if (selection === null) continue;
@@ -130,6 +135,8 @@ export function runOne(
     scheduled,
     noOutcomeChoices,
     clamps,
+    unresolvedThreads: unresolvedThreads(state, pack).length,
+    queueDrops,
     turnCapHit: turns >= MAX_TURNS,
     error: null,
     digest: stateDigest(state),
@@ -157,6 +164,8 @@ function blank(
     scheduled: 0,
     noOutcomeChoices: 0,
     clamps: 0,
+    unresolvedThreads: 0,
+    queueDrops: 0,
     turnCapHit: false,
     error,
     digest: '',

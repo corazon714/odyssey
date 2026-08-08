@@ -31,6 +31,8 @@ function format(
     `Fallback legs             ${pct(summary.fallbackRate).padStart(7)}   (target <2%)`,
     `Long-range payoff rate    ${pct(summary.payoffRate).padStart(7)}   (${String(summary.queueFires)}/${String(summary.scheduled)} scheduled)`,
     `Never-fired events        ${String(summary.neverFired.length).padStart(7)}   of ${String(summary.runs.length > 0 ? summary.neverFired.length + firedCount(summary) : 0)}`,
+    `Unresolved threads        ${String(summary.unresolvedThreads).padStart(7)}   (promises a run ended owing)`,
+    `Queue departures          ${String(summary.queueDrops).padStart(7)}   (fired / expired / evicted)`,
     '',
     `Wall clock                ${String(ms)} ms   (${(ms / runs).toFixed(2)} ms/run)`,
     `Extrapolated to 20,000    ${(((ms / runs) * 20000) / 1000).toFixed(1)} s   (target <30 s)`,
