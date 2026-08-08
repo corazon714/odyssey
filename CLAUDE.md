@@ -23,13 +23,18 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status as of 2026-08-08 — Phase 1 complete.** Steps 5, 6 and 7 RUN: the leg loop, event
-> selection from a filtered and scored pool, choices resolving to weighted outcomes, and all
-> four memory mechanisms. `pnpm sim -- --runs=20000` completes twenty thousand journeys.
+> **Status as of 2026-08-08 — Phase 1 and Phase 2A complete.** Steps 5, 6 and 7 RUN: the leg
+> loop, event selection from a filtered and scored pool, choices resolving to weighted
+> outcomes, and all four memory mechanisms. `pnpm sim -- --runs=20000` completes twenty
+> thousand journeys.
 >
 > Steps 1-4 do NOT: no map, no route generation, no preparation screen. The route is
-> caller-supplied via `RunInit.route`. There is no content — the nine events under
-> `packages/engine/src/__tests__/__fixtures__/` are test fixtures, not the seed corpus.
+> caller-supplied via `RunInit.route`.
+>
+> **Content is now a real pipeline** — YAML under `packages/content/events/`, validated by Zod,
+> held identical to the engine types by a conformance harness, and checked by
+> `pnpm content:lint` in CI. But the nine events there are still FIXTURES re-expressed from
+> Phase 1, not the seed corpus. The twelve seed events are Phase 2B.
 >
 > `docs/PROGRESS.md` is the authority on current state; `docs/engine-spec.md` Part II is the
 > authority on what the engine actually does, written from the code.
@@ -160,21 +165,27 @@ packages/engine/            Pure TS game engine                         ✅ pack
   src/queue/                consequence queue: caps, eviction, rebase   ✅ (not in original layout)
   src/loop/                 advanceLeg · resolveChoice · replayRun      ✅ (not in original layout)
   src/migrate/              save migration ladder + content reconcile   ✅ (not in original layout)
-  src/route/                route graph traversal, k-shortest paths        (planned — Phase 2)
+  src/modifiers/            check tags, registry, resolution pipeline   ✅ ADR 0015
+  src/state/container-state.ts  four containers + drain order           ✅ ADR 0017
+  src/route/                route graph traversal, k-shortest paths        (planned — Phase 2B)
 packages/content/                                                       ✅ package exists
-  events/                   *.yaml event definitions (grouped by category) (empty)
+  events/                   *.yaml event definitions (grouped by category) ✅ 9 fixtures
   geo/                      nodes.json, edges.json, world.simplified.geojson (empty)
   i18n/                     en/, tr/, ru/, de/                             (empty — all four)
   images/                   asset directory                                (empty)
   images/manifest.json      image spec -> asset mapping                    (planned)
-  schema/                   Zod schemas (single source of truth)        ✅ empty barrel, no schemas yet
+  schema/                   Zod schemas + terse->canonical transform    ✅ ADR 0009
+  loader/                   YAML -> GameEvent, file:line:col issues     ✅ separate export
+  flags/items/npcs/traits/endings.yaml   declaration registries         ✅
+  modifiers.yaml            the global check-modifier registry          ✅ ADR 0015
 packages/tools/                                                         ✅ package exists
   shared/                   cross-tool helpers (findWorkspaceRoot)      ✅ (not in original layout)
   sim/                      headless sim harness + engine-spec 6 report  ✅ 11 files
-  content-lint/             structural + semantic content validation       (empty)
+  content-lint/             13 rules, file:line:col, --fix              ✅ CI job
+  content-stats/            counts + 4-axis coverage report             ✅
   imagegen/                 build-time AI image pipeline                   (empty)
   i18n-check/               key coverage, pseudo-loc, length audit         (empty)
-docs/                       ADRs, design docs, content style guide      ✅ engine-spec, PROGRESS, adr/0001-0004
+docs/                       ADRs, design docs, content style guide      ✅ engine-spec, PROGRESS, sim-baseline, adr/0001-0018
                             design docs + content style guide              (planned)
 .claude/                    Claude Code extension layer                 ✅ (not in original layout)
   settings.json             permissions + hook wiring                   ✅ committed, shared
@@ -354,12 +365,15 @@ without having actually run it.
 
 ## 9. The content model in one page
 
-> **Status: entirely (planned).** No part of this section exists in code. There is no
-> `RunState` type, no `Event`/`Choice`/`Outcome` type, no Zod schema, and none of the four
-> registry YAML files. `packages/content/schema/index.ts` is an empty barrel. This is the
-> **specification to build against** in Phase 1 — treat it as a design contract, and never
-> as an API you can import. The sentence below about schemas being authoritative becomes
-> true the moment the first schema is written; today there is nothing to disagree with.
+> **Status: SHIPPED, and this section is now a summary rather than a specification.**
+> `RunState`, `GameEvent`/`Choice`/`Outcome`, the Zod schemas and `modifiers.yaml` all exist.
+> The sketch below is kept because it reads as one page; where it disagrees with the code, the
+> code wins and `docs/engine-spec.md` Part II is the written authority.
+>
+> Three things below are now WRONG as written and are corrected in place: `resources` has
+> `cash` and `bank`, not `money` (ADR 0016); `inventory` is four containers, not a flat array
+> (ADR 0017); and of the four registries only `modifiers.yaml` exists — complications,
+> universal-choices and quirks are Phase 2B.
 
 ```
 RunState
@@ -372,7 +386,7 @@ RunState
 ├─ resources { cash, bank, energy, health, morale, hunger, hygiene, heat, reputation }
 ├─ skills   { negotiation, stealth, mechanics, streetwise, languages[] }
 ├─ traits[]                    from preparation choices; permanent modifiers
-├─ inventory { person, bag, vehicle, stash }   containers, each with slots + searchDC
+├─ inventory { person, bag|null, vehicle|null, stash|null }  slots + searchDC each
 ├─ documents { passport, visas{}, tickets[] }  each records its carrying container
 ├─ flags    { id -> { value, setAtLeg, expiresAtLeg? } }     ← memory
 ├─ relationships { npcId -> { trust, met, lastSeenLeg } }    ← memory
