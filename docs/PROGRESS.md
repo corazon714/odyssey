@@ -5,13 +5,12 @@
 
 ---
 
-## Current state: Phase 1 in progress — M0, M1 and M2 shipped, M3 next.
+## Current state: Phase 1 in progress — M0–M3 shipped, M4 next.
 
-The engine has randomness and state. `packages/engine/src/rng/` holds the seeded RNG and
-`src/state/` holds `RunState`, `createRunState` and `stateDigest`; 350 of the repo's 363 tests
-are engine tests. Still missing: the predicate evaluator, effects, the director, the turn
-loop and all content. `predicate/predicate.ts` exists but holds only `always`/`never`, which
-M3 expands.
+The engine has randomness, state, and the `requires` evaluator. `src/rng/` holds the seeded
+RNG, `src/state/` holds `RunState`/`createRunState`/`stateDigest`, and `src/predicate/` holds
+27 predicate kinds with a full reason trace; 487 of the repo's 490 tests are engine tests.
+Still missing: effects, the content model, the director, the turn loop, and all content.
 
 The Phase 1 plan is approved, with review gates after **M0** (done) and **M6** (the walking
 skeleton, where `pnpm sim -- --runs=1000` first runs end to end). Milestones: M0 prerequisites
@@ -242,7 +241,63 @@ The honest gaps are _unverified_, not _broken_:
 
 ## Next step (ONE task, start here)
 
-**M3 — build `packages/engine/src/predicate/`: the `requires` DSL and its evaluator.**
+**M4 — build `packages/engine/src/effects/`: the Effect DSL and its applier.**
+
+M3 shipped (below). Effects are the other half of the same contract: predicates read state,
+effects write it, and CLAUDE.md 2.7 says every mutation goes through one.
+
+Deliver:
+
+1. **The 11 ops from engine-spec §2**: `resource` · `flag` · `relationship` · `advanceTime` ·
+   `scheduleEvent` · `unlockEnding` · `item` · `skill` · `transport` · `document` · `route`.
+   `op` is already a proper discriminant, so no terse→canonical normalisation is needed —
+   unlike predicates.
+2. **`applyEffects(state, effects, ctx) -> { state, applied }`**, pure, with **structural
+   sharing**: untouched branches keep object identity. A full clone per effect is ~30 legs ×
+   many effects of needless allocation in a 20k-run sim.
+3. **`AppliedEffect` records what actually happened**, not what was asked for — including
+   **clamp reporting** (reuse `ClampEvent` from M2) and a `noop` case. `{ requested: -40,
+applied: -12, clampedAt: 'floor' }` is what makes "money floors at 0 after leg 15" visible
+   to the sim rather than absorbed by a silent `Math.max`.
+4. **`ModifierSource` seam** (`effects/modifier-source.ts`) — ships **empty, not absent**.
+   `runSkillCheck` (M6) never reads `check.modifiers` directly; it collects from an ordered
+   list of sources. Phase 1 passes one (`choiceModifierSource`, filtering by each modifier's
+   `when` predicate); Phase 2 appends the registry and quirk sources **with no call-site
+   change**. A test must prove an empty source list is inert and a stub source's output
+   reaches the result.
+5. **`scheduleEvent` appends naively.** Caps, per-eventId limits, deterministic eviction and
+   rebasing all land in M8 — do not build them here.
+
+Tests that matter: one per op; `frozen-input-purity` (deep-freeze the input, apply all 11,
+assert no throw and an unchanged digest); `structural-sharing` (untouched branches keep
+identity); `applied-length-invariant` (`applied.length === effects.length`, so a silently
+dropped effect is impossible).
+
+---
+
+## M3 shipped — the predicate DSL and the reason trace
+
+10 files under `src/predicate/`, plus `state/flag-access.ts`. Engine tests 350 → 487.
+`docs/adr/0007` records the decisions. Worth knowing:
+
+- **27 predicate kinds**, canonical `kind`-tagged. **Exhaustiveness verified, not asserted**:
+  injecting a `moonPhase` kind failed with `TS2345 … not assignable to parameter of type
+'never'` at the evaluator's guard, then was reverted.
+- **`ReasonNode` / `ReasonLine` are frozen** (ADR 0007 §2). Two user-facing consumers depend
+  on the shape — the result screen and Phase 7's MO2 chips — and they are built in different
+  phases. Changing either type needs an ADR.
+- **`all`/`any` do not short-circuit**, and the trace is built eagerly. Short-circuiting would
+  show one reason where three applied, which is the opposite of design pillar 2.
+- **`chance` consumes no cursor.** `chance-gate.test.ts` asserts all eight cursors stay at
+  zero across 50 evaluations, and that two gates in one predicate get independent answers.
+- **A missing content id is `unknown-ref`; a missing flag is not.** Content ids are a bug the
+  sim must count; flags are runtime data with no registry to be missing from.
+- **Flag TTL is applied at read time**, and `isSet` does not mean truthy — a flag set to
+  `false` or `0` is still set.
+
+---
+
+## M3 brief (delivered) — the `requires` DSL and its evaluator
 
 M2 shipped (below), so state exists to evaluate predicates against. `predicate/predicate.ts`
 currently holds a two-member placeholder union; M3 expands it. Growing a union is additive,

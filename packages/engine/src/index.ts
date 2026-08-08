@@ -26,7 +26,32 @@ export { type Brand } from './ids/brand.ts';
 export * from './ids/content-ids.ts';
 
 export { BEAT_TYPES, type BeatType } from './content/beat-type.ts';
-export { ALWAYS, NEVER, type Predicate } from './predicate/predicate.ts';
+export { ALWAYS, NEVER, type Predicate, type PredicateKind } from './predicate/predicate.ts';
+export {
+  compareNumber,
+  NUMBER_OPS,
+  type NumberCmp,
+  type NumberOp,
+} from './predicate/number-cmp.ts';
+export { compareFlag, type FlagCmp } from './predicate/flag-cmp.ts';
+export {
+  EMPTY_REASONS,
+  leafReason,
+  NO_PARAMS,
+  unknownRefReason,
+  type ReasonNode,
+  type ReasonParams,
+} from './predicate/reason-node.ts';
+export {
+  ALL_REFS_KNOWN,
+  chanceAddress,
+  createPredicateContext,
+  type ContentRefs,
+  type PredicateContext,
+} from './predicate/predicate-context.ts';
+export { evaluatePredicate, type PredicateResult } from './predicate/evaluate-predicate.ts';
+export { describeReason, type ReasonLine } from './predicate/describe-reason.ts';
+export { hasFlag, readFlag } from './state/flag-access.ts';
 
 export { BEAT_SLOT_STATUSES, type BeatSlot, type BeatSlotStatus } from './state/beat-slot.ts';
 export { clampValue, NO_CLAMPS, type ClampEvent } from './state/clamp-event.ts';
