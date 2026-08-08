@@ -5,12 +5,17 @@
 
 ---
 
-## Current state: Phase 1 in progress — M0–M3 shipped, M4 next.
+## Current state: Phase 1 in progress — M0–M4 shipped, M5 next.
 
-The engine has randomness, state, and the `requires` evaluator. `src/rng/` holds the seeded
-RNG, `src/state/` holds `RunState`/`createRunState`/`stateDigest`, and `src/predicate/` holds
-27 predicate kinds with a full reason trace; 487 of the repo's 490 tests are engine tests.
-Still missing: effects, the content model, the director, the turn loop, and all content.
+The engine can now read and write state deterministically. `src/rng/` (seeded RNG),
+`src/state/` (`RunState`, `createRunState`, `stateDigest`), `src/predicate/` (27 kinds + reason
+trace) and `src/effects/` (12 ops + applier) are done; 548 of the repo's 561 tests are engine
+tests (558 Vitest + 3 Jest). Still missing: the content model, the director, the turn loop,
+and all content.
+
+**Both Phase 2 seams are in place and tested as seams:** `ModifierSource` (M4) and the
+complication hook (M7, pending). Neither is decorative — each has a test that appends a stub
+source and asserts it reaches the output.
 
 The Phase 1 plan is approved, with review gates after **M0** (done) and **M6** (the walking
 skeleton, where `pnpm sim -- --runs=1000` first runs end to end). Milestones: M0 prerequisites
@@ -241,7 +246,63 @@ The honest gaps are _unverified_, not _broken_:
 
 ## Next step (ONE task, start here)
 
-**M4 — build `packages/engine/src/effects/`: the Effect DSL and its applier.**
+**M5 — build the content model: engine `src/content/` types + `createContentPack`.**
+
+M4 shipped (below). M5 is the last piece before the walking skeleton, and it is where the
+type-ownership decision from the plan review becomes code.
+
+Deliver:
+
+1. **Engine-owned TypeScript types** in `src/content/`: `GameEvent`, `Choice`, `Outcome`,
+   `SkillCheck` (extend M4's `SkillCheckSpec`), `EventContext`, `EventPriority`,
+   `LocationType`. `BeatType` and `TimeOfDay` already exist. **Hand-written, not `z.infer`** —
+   see the CLAUDE.md §9 amendment below.
+2. **`createContentPack(events)`** — sorts **once, at construction**, into canonical id order
+   using `<`/`>` on strings, and builds lookup indices. Sorting per leg is both wasteful and
+   an invitation to "optimise" the sort away later. `ContentPack` is not `RunState`, so it may
+   legally hold `Map`s.
+3. **`contentVersion(events)`** — a stable hash over the sorted pack, reusing `digestOf`.
+4. **`ContentRefs` implementation** so `PredicateContext` can stop using `ALL_REFS_KNOWN`.
+5. **The fixture pack**: `src/__tests__/__fixtures__/mini-pack.json` — 9 events as JSON DATA,
+   not `.ts` (rule 2.6 honoured rather than bent). Plus `routes.json` carrying `legCount` and
+   `beatSchedule`, which the sim reads by path via `findWorkspaceRoot`.
+6. **Amend `CLAUDE.md` §9** (DoD item 8). It currently says the Zod schemas are the single
+   source of truth, implying engine types are inferred from them. That cannot hold: `z.infer`
+   types are owned by whichever package declares the schema, so the engine would become a
+   consumer of `packages/content` and would need a Zod dependency. The amendment: the schema
+   is authoritative over _content semantics_, and Phase 2 holds schema and type identical with
+   a **bidirectional** compile-time assertion (mutual-extends, so narrower _or_ wider fails).
+
+`packages/content` is still NOT touched — no schemas, no YAML, no seed events.
+`shuffled-pack-invariance` is the test that matters: an identical run digest from a shuffled
+event array, proven end to end rather than by inspecting a sort.
+
+---
+
+## M4 shipped — the Effect DSL and applier
+
+10 files under `src/effects/`, plus `src/text-params.ts`. Engine tests 487 → 548.
+`docs/adr/0008` records the decisions.
+
+- **12 ops** (the spec's 11 plus `clearFlag`). Exhaustiveness verified by injecting a
+  `teleport` op: two errors, one at the dispatcher's `never` guard and one at `EffectOp`,
+  because `EFFECT_OPS` and the union cross-check each other.
+- **`AppliedEffect` records what happened, not what was asked.** Spending 40 when you hold 12
+  logs `applied: -12` plus a `ClampEvent`. `applied.length === effects.length` is an
+  invariant, so an effect can never be silently dropped.
+- **Structural sharing, with identity as the no-op signal.** A resource change leaves `flags`,
+  `route`, `history` as the _same objects_; a no-op returns the identical state.
+- **Purity is enforced by deep-freezing** the input and applying all 12 ops — module code is
+  strict, so an in-place write throws. The freeze is itself guarded by a test.
+- **Compound ops carry a nested tagged `field` union**, not a bag of nullables, because
+  `{ vehicleId: string | null }` cannot distinguish "leave alone" from "set to none".
+- **`ModifierSource` seam is live.** `runSkillCheck` (M6) will never read `check.modifiers`
+  directly. Phase 1 passes one source; Phase 2 appends the registry and quirk sources with no
+  call-site change.
+
+---
+
+## M4 brief (delivered) — the Effect DSL and its applier
 
 M3 shipped (below). Effects are the other half of the same contract: predicates read state,
 effects write it, and CLAUDE.md 2.7 says every mutation goes through one.

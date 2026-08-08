@@ -53,6 +53,31 @@ export { evaluatePredicate, type PredicateResult } from './predicate/evaluate-pr
 export { describeReason, type ReasonLine } from './predicate/describe-reason.ts';
 export { hasFlag, readFlag } from './state/flag-access.ts';
 
+export { NO_TEXT_PARAMS, type TextParams } from './text-params.ts';
+export {
+  EFFECT_OPS,
+  type DocumentChange,
+  type Effect,
+  type EffectOp,
+  type RouteChange,
+  type TransportChange,
+} from './effects/effect.ts';
+export {
+  appliedEffect,
+  type AppliedEffect,
+  type EffectApplication,
+} from './effects/applied-effect.ts';
+export { createEffectContext, type EffectContext } from './effects/effect-context.ts';
+export { applyEffect, applyEffects } from './effects/apply-effects.ts';
+export {
+  choiceModifierSource,
+  collectModifiers,
+  PHASE_1_MODIFIER_SOURCES,
+  type CheckModifier,
+  type ModifierSource,
+  type SkillCheckSpec,
+} from './effects/modifier-source.ts';
+
 export { BEAT_SLOT_STATUSES, type BeatSlot, type BeatSlotStatus } from './state/beat-slot.ts';
 export { clampValue, NO_CLAMPS, type ClampEvent } from './state/clamp-event.ts';
 export {
