@@ -5,11 +5,16 @@
 
 ---
 
-## Current state: Phase 0 complete. Phase 1 planned; M0 (prerequisites) shipped.
+## Current state: Phase 1 in progress — M0 and M1 shipped, M2 next.
 
-There is still **no game logic in the repository**. `packages/engine/src/index.ts` is an
-empty barrel by design. The Phase 1 plan is approved and its first milestone — M0,
-prerequisites only, no game logic — is done. M1 (the seeded RNG) is the next task.
+The engine is no longer empty. `packages/engine/src/rng/` holds the seeded RNG and
+`src/index.ts` exports it; 224 of the repo's 237 tests are engine tests. Nothing else in the
+game loop exists yet — no `RunState`, no predicate, no effects, no director, no content.
+
+The Phase 1 plan is approved, with review gates after **M0** (done) and **M6** (the walking
+skeleton, where `pnpm sim -- --runs=1000` first runs end to end). Milestones: M0 prerequisites
+· **M1 RNG** · M2 state · M3 predicate · M4 effects · M5 content model · M6 walking skeleton ·
+M7 scoring · M8 queue · M9 beat consumption · M10 sim report + goldens · M11 versioning.
 
 ---
 
@@ -235,52 +240,87 @@ The honest gaps are _unverified_, not _broken_:
 
 ## Next step (ONE task, start here)
 
-**M1 — build `packages/engine/src/rng/`: the seeded PRNG with named substreams.**
+**M2 — build `packages/engine/src/state/`: `RunState`, `RunInit` and `createRunState`.**
 
-M0 is done, so the module-specifier question is settled: engine files import each other
-with explicit `.ts` specifiers. This is first because everything else in the engine depends
-on it and because the test below is the one that protects every future golden run.
+M1 shipped (see below), so randomness is settled and every later subsystem can draw from it.
 
-**Algorithm decided (was open question 1): MurmurHash3 x86_32, counter-based,
-`Math.imul` only — no BigInt.** A draw is `drawWord(streamKey, counter)` where
-`streamKey = murmur3_32(`${seed}:${stream}`)`, so **both** inputs are mixed and stream
-isolation is structural rather than probabilistic. The rejected alternative,
-`splitmix64(streamKey + cursor · GAMMA)`, is an additive offset into one shared sequence:
-keys differing by `k · GAMMA` overlap after `k` draws. BigInt was additionally rejected
-because it is unexercised on Hermes (where this ships), allocates across ~6M draws per
-20k-run sim, and has no published test vectors. Record all of this in `docs/adr/0005`.
+Deliver, per `docs/engine-spec.md` §1 and the Phase 1 plan:
 
-Acceptance criteria:
+1. `RunState` as a fully JSON-serialisable type — **no optional properties: use `| null`**.
+   `exactOptionalPropertyTypes` makes `{ ...state, x: maybeUndefined }` an error wherever
+   `x?: T`, which is what a structural-sharing effect applier does constantly; and
+   `undefined` does not survive `JSON.stringify` while `null` does. Authored content types
+   keep `?`, because YAML omission is natural there.
+2. `RunInit` — what the app supplies to start a run. **It carries the route**, including
+   `nodes`, `edges`, `legCount`, `totalKm` and `beatSchedule`: route generation, `legCountFor`
+   and beat-schedule generation are all out of Phase 1. The engine validates what it is
+   given and returns a typed error if the route is incoherent.
+3. `createRunState(init)`, resource/skill clamping with **clamp events recorded, not
+   silently applied** (a clamp is a balance signal the sim must count), and clock arithmetic.
+4. `stateDigest(state)` — a stable hash with **explicitly sorted keys**, because `Object.keys`
+   hoists integer-like keys ahead of string keys.
+5. `state/__tests__/json-serializable.test.ts` — round-trip a fresh state and a state after
+   30 simulated legs; digests must match. This is the only place engine-spec §1's
+   no-`Map`/`Set`/`Date` rule can actually be enforced.
 
-1. A `Rng` created from `(seed, stream)` produces the same sequence every time, across
-   processes and platforms. No `Math.random()` anywhere (the lint will stop you).
-2. Named substreams per `docs/engine-spec.md` §5: `eventPick`, `outcomeRoll`, `skillCheck`,
-   `npcGen`, `encounterFlavor`, `worldTick`, `routeGen` — **plus `chanceGate`**, an addition
-   to §5 (see the `{ chance: p }` note under Phase 1 scope). Substream =
-   `hash(seed + ':' + stream)`.
-3. Cursor per stream, serialisable into `RunState.rngCursors` (a plain
-   `Record<RngStream, number>` — no class instances, no `Map`; save and replay depend on it).
-4. **The test that matters most:** drawing additional values from one substream must NOT
-   shift the sequence any other substream produces. Without this, adding a single event
-   later invalidates every existing golden run and every regression test breaks at once.
-5. `weightedPick(items, stream)` used by the director, with a test proving the distribution
-   is stable for a fixed seed.
+`ids/` (branded `EventId`, `FlagId`, …) lands here rather than in M1, where nothing used it.
 
 Constraints that will bite if ignored:
 
 - `packages/engine` may not import React/RN/Expo, and `tsconfig.src.json` sets `types: []`
   with no `DOM` in `lib` — so no `process`, no `Buffer`, no `crypto` global. Pure TS only.
+- **No `enum`, `namespace`, or parameter properties**: CI runs the engine under Node's
+  strip-only type stripping, which rejects all three. Use `const` objects + union types.
+- Relative imports need an explicit `.ts` extension.
+- No transcendental math, no `**`, no `localeCompare`/`Intl` — `purity.test.ts` enforces it.
 - Files stay readable end-to-end under ~200 lines (`CLAUDE.md` §6); split otherwise.
 - One exported concept per file. No default exports.
 
 Start with:
 
 ```bash
-pnpm install && pnpm typecheck && pnpm lint && pnpm test
+pnpm typecheck && pnpm lint && pnpm test
 ```
 
-All four must be green before writing anything. `docs/engine-spec.md` §5 is the spec
-(written in Turkish).
+---
+
+## M1 shipped — the seeded RNG
+
+19 files under `packages/engine/src/rng/`, 224 engine tests (was 5). `docs/adr/0005` records
+the reasoning; the summary is that a draw is a **pure function of `(streamKey, counter)`**,
+so there is no generator state to serialise and stream isolation holds by construction
+rather than by luck.
+
+All five acceptance criteria met:
+
+| #   | Criterion                                     | Where it is proven                                                                              |
+| --- | --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 1   | Same seed → same sequence, across processes   | `rng.test.ts` — including _resumes exactly where a drained Rng stopped_, which is replay itself |
+| 2   | Named substreams, `hash(seed + ':' + stream)` | `stream-key.test.ts`; **eight** streams — `chanceGate` added, see ADR 0005 §2                   |
+| 3   | Plain `Record<RngStream, number>` cursor      | `rng-cursors.test.ts` — JSON round-trip, no aliasing of the caller's record                     |
+| 4   | **Draws on one stream never shift another**   | `stream-isolation.test.ts` — all 56 ordered pairs                                               |
+| 5   | `weightedPick` stable for a fixed seed        | `weighted-pick.test.ts` — plus proportions within a few percent of declared weights             |
+
+Two things worth knowing beyond the checklist.
+
+**The isolation test has a negative control.** `it('would expose the additive-offset
+generator that was rejected')` builds the rejected `splitmix(streamKey + cursor · GAMMA)`
+inline and demonstrates two of its streams being the _same sequence, shifted by one_ — while
+that generator still passes the non-interference test trivially. Without this case, an
+implementation with that exact flaw would show green.
+
+**The murmur3 vectors are external.** `murmur3.test.ts` checks six published MurmurHash3
+x86_32 vectors covering all four tail lengths. They passed first run, which is mutual
+confirmation from two independent directions: an implementation written from the algorithm,
+and vectors from outside the repo. This is why `utf8Bytes` is hand-rolled — the vectors are
+defined over UTF-8, and hashing UTF-16 code units would have left the test comparing the
+implementation to itself. `drawWord` (the unrolled hot path) is separately asserted equal to
+`murmur3Bytes` over the counter's little-endian bytes across thousands of inputs.
+
+**Open balance parameter:** `CHECK_DIE_SIDES = 20` in `roll-result.ts` is a placeholder.
+engine-spec §2 shows `dc: 5` and ±2..3 modifiers but never states the die, and how a skill
+enters the total needs simulation to settle. It is deliberately the only place the die
+appears. `roll()` knows nothing about skills — M6 passes a skill in as a labelled modifier.
 
 ---
 
