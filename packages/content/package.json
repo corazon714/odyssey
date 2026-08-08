@@ -19,6 +19,8 @@
     "vitest": "catalog:"
   },
   "dependencies": {
+    "@odyssey/engine": "workspace:*",
+    "yaml": "catalog:",
     "zod": "catalog:"
   }
 }

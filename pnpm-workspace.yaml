@@ -55,6 +55,12 @@ catalog:
 
   # --- Runtime -------------------------------------------------------------------
   zod: ^4.4.3
+  # Declared at Phase 2A M2A.1, and it was ALREADY in node_modules before that as an
+  # undeclared phantom: vite lists `yaml` as an optional peer, and autoInstallPeers +
+  # nodeLinker: hoisted put it flat at the top level. Importing it on that basis works
+  # until the day vite drops the peer, at which point the content loader breaks for
+  # reasons nobody would connect to a vite upgrade. Ships its own types; no @types/yaml.
+  yaml: ^2.9.0
 
 # Explicitly reviewed build scripts. strictDepBuilds defaults to true in pnpm 11, so
 # any dependency with an unreviewed postinstall fails the install until listed here.
