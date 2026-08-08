@@ -5,11 +5,34 @@
 
 ---
 
-## Session 5 (2026-08-08) — Phase 2A put under adversarial verification
+## Shipped this session (2026-08-08, session 5) — Phase 2A under adversarial verification
 
-No new features. Six checks against what session 4 claimed. **Four of the six confirmed the
-claim; two did not, and both produced a fix.** Every number below was produced by running
-something, not by reading the code.
+**No new features. The deliverable is knowing which of Phase 2A's guarantees are real.** Six
+checks against what session 4 claimed. Four confirmed it; **two did not, and both produced a
+fix.** Every number below came from running something, not from reading the code.
+
+What is different in the repo afterwards: one engine bug fixed, three documents that asserted
+things the code contradicted corrected, and two new tests.
+
+**Prove it, from a clean checkout:**
+
+```bash
+pnpm i && pnpm typecheck && pnpm lint && pnpm test && pnpm format:check
+```
+
+```bash
+pnpm content:lint              # exit 0 — 0 errors, 29 warnings
+pnpm sim -- --runs=5000        # 31.2% completion, contentVersion 4c57cd5c
+pnpm sim:diff -- --runs=2000   # "No change vs docs/sim-baseline.md."
+```
+
+```bash
+pnpm vitest run --project engine src/effects/__tests__/containers.test.ts
+```
+
+That last one is the session in miniature: 13 tests, of which the two added here are the
+`loseContainer` contract in full and the visa bug it exposed. Totals moved 1053 → **1055
+Vitest + 3 Jest across 47 files**.
 
 ### What was verified, and how
 
@@ -113,19 +136,22 @@ The same test pins the three other things losing a bag does, because they disagr
 other: items go, the passport is **marked**, tickets are **hard-deleted**, and
 `passport.container` still reads `'bag'` after the bag is null.
 
-### Verified state
+### What changed in the repo
 
-`pnpm typecheck` · `pnpm lint` · `pnpm test` (**1055** Vitest + 3 Jest, up from 1053) ·
-`pnpm format:check` · `pnpm content:lint` (0 errors, 29 warnings) · `pnpm sim:diff` — all green.
+| File                                    | Why                                                                  |
+| --------------------------------------- | -------------------------------------------------------------------- |
+| `predicate/evaluate-state-leaf.ts`      | the visa fix                                                         |
+| `effects/__tests__/containers.test.ts`  | +2 tests: the full `loseContainer` contract, and the visa regression |
+| `effects/modifier-source.ts`            | the seam comment promised something that never happened              |
+| `docs/adr/0008`                         | same promise, amended with the prediction left standing              |
+| `docs/adr/0017`                         | records that the visa inheritance it specified was never implemented |
+| `docs/adr/0019`                         | **new** — conformance is enforced by annotation, not identity        |
+| `content/__tests__/conformance.test.ts` | the L1 comment overstated what L1 catches                            |
+| `CLAUDE.md` §9                          | "bidirectional (mutual-extends)" was wrong twice over                |
 
-### New open question, on top of the four below
-
-**Should the conformance harness trade error quality for identity?** Dropping the `: GameEvent`
-return annotations and asserting `Equals<ReturnType<typeof buildEvent>, GameEvent>` would make
-the L1 assertions real and close the readonly gap, at the cost of turning "Property 'mood' is
-missing" into "Type 'false' is not assignable to type 'true'". I lean **no** — the missed
-direction is harmless and the errors are worth more — but the comment now says what is actually
-enforced either way.
+**Half-done, the next step and the open questions are unchanged in shape and live below** —
+this session added no features, so gap 1 (`searchContainer`) is still the next task. Two new
+entries: open question 5, and a design question under Half-done 4.
 
 ---
 
@@ -363,11 +389,31 @@ consequences that read as balance problems but are content gaps:
 They are honest fixture gaps, all warnings, none suppressed. **They should go to zero as 2B
 lands, not be silenced.** Reproduce with `pnpm content:lint`.
 
+### 4. Three things that are pinned by tests but not decided (added session 5)
+
+Not broken — each has a passing test asserting current behaviour. What is missing is a decision
+that the behaviour is _right_. All three live in
+`packages/engine/src/effects/__tests__/containers.test.ts`.
+
+- **Losing a container DELETES its tickets but MARKS its passport.** `apply-container-effects.ts`
+  filters tickets out of the array and sets `passport.present = false`. Defensible — a lost
+  passport opens a recovery storyline and a lost ferry ticket leaves nothing to write against —
+  but the asymmetry is unargued in the code, and an author reasoning about "your bag is stolen"
+  has to know it. Pinned so a change is noticed; see open question 6.
+- **`passport.container` still reads `'bag'` after `inventory.bag` is null.** A dangling name.
+  Harmless today because every read guards on `present` first, and arguably useful — it records
+  _where_ the passport was lost, which a recovery event would want.
+- **The `readonly`-widening gap in the conformance harness** (ADR 0019). Accepted, not fixed;
+  the reasoning and the rejected alternatives are in the ADR. Open question 5 is whether to
+  revisit it.
+
 ---
 
 ## Next step (ONE task, start here)
 
 **Implement `Outcome.search` — the search check — closing gap 1 above.**
+
+_Carried over unchanged from session 4: session 5 was verification and added no features._
 
 This is deliberately NOT "start the seed corpus". Authoring 12 events against an engine that
 cannot resolve a search means writing around the hole and then rewriting; and it is the one
@@ -383,10 +429,13 @@ A fresh agent can start with no other context:
    `readonly search: SearchSpec | null` to `Outcome` in
    `packages/engine/src/content/game-event.ts`. `Outcome` already carries `onCheck`, which is
    the branching mechanism — a search reuses it.
-3. Mirror it in `packages/content/schema/outcome.ts` (`z.strictObject`, `.nullish()`-defaulted
-   per ADR 0009 §2), then run `pnpm test`. **The conformance harness in
-   `packages/content/__tests__/conformance.test.ts` will fail first and tell you exactly what
-   is missing** — that is the harness working, not a problem to route around.
+3. Mirror it in the event schema (`packages/content/schema/event.ts` — there is no
+   `outcome.ts`; `outcomeSchema` lives inside it). `z.strictObject`, `.nullish()`-defaulted per
+   ADR 0009 §2. Then run `pnpm --filter @odyssey/content run typecheck`. **It will fail before
+   you have written the schema, with `TS2741: Property 'search' is missing … but required in
+type 'Outcome'` pointing at `buildOutcome`** — that is the guard working, not a problem to
+   route around. Note per ADR 0019 that the error comes from the builder's return annotation,
+   not from the `Equals` assertions, so `conformance.test.ts` is not where you will see it.
 4. Resolve it in `packages/engine/src/loop/resolve-choice.ts` alongside the existing
    `runSkillCheck` call. Use the **`skillCheck` RNG stream** — do not add a stream, that is an
    `RngCursors` change and a save migration for nothing. The effective DC is the container's
@@ -408,13 +457,14 @@ instruments for writing it; author against `docs/engine-spec.md` Part II. The 12
 
 ## Open questions for the human
 
-1. **`CLAUDE.md` is 481 lines against its own stated ~400-line cap** — and it is a cap the file
-   argues for ("this is a constitution, not documentation"). It grew because every rule in §2
-   now carries an `_Enforcement:_` note, which is genuinely the most useful thing in the file
-   and also ~90 lines of it. **Proposal: move the enforcement notes to `docs/enforcement.md`
-   and leave each rule with a one-line pointer.** This has now been raised four sessions
-   running without an answer; I have not acted on it because reorganising the constitution
-   unasked is not my call.
+1. **`CLAUDE.md` is now 491 lines against its own stated ~400-line cap** (it was 481 last
+   session; §9's conformance correction added the rest) — and it is a cap the file argues for
+   ("this is a constitution, not documentation"). It grew because every rule in §2 now carries
+   an `_Enforcement:_` note, which is genuinely the most useful thing in the file and also ~90
+   lines of it. **Proposal: move the enforcement notes to `docs/enforcement.md` and leave each
+   rule with a one-line pointer.** Raised five sessions running without an answer; I have not
+   acted on it because reorganising the constitution unasked is not my call. **It is getting
+   worse, not better — each session that corrects a claim adds lines.**
 
 2. **`CHECK_DIE_SIDES = 20` is still the Phase 1 placeholder**, and 2A made the question sharp
    rather than answering it. With the clamp at +6/−8 and skill bypassing it, one point of
@@ -435,6 +485,23 @@ instruments for writing it; author against `docs/engine-spec.md` Part II. The 12
    are now simply wrong (`requires: { context: { locationTypes: [...] } }` at `:143` was
    unimplementable and is superseded by the `locationType` predicate kind). Options: delete it,
    or mark it `# Superseded` in place as a design record. I would delete.
+
+5. **Should the conformance harness trade error quality for real identity?** (New — ADR 0019.)
+   Dropping the `: GameEvent` return annotations and asserting
+   `Equals<ReturnType<typeof buildEvent>, GameEvent>` would make all thirteen L1 assertions
+   load-bearing and close the `readonly`-widening gap. It would also turn
+   `Property 'mood' is missing in type … but required in type 'GameEvent'` into
+   `Type 'false' is not assignable to type 'true'` at a line naming no field. **I decided no
+   and wrote the reasoning into ADR 0019** — the missed direction is harmless, the dangerous
+   direction is caught, and the message is worth more than the coverage. Flagging it because it
+   is a guarantee you were told you had in a stronger form than you actually have, and that is
+   your call to accept, not mine.
+
+6. **Should losing a container mark tickets rather than delete them?** (New.) A lost passport
+   becomes `present: false` so a recovery storyline can exist; a lost ticket is removed from the
+   array outright. If tickets are ever meant to be recoverable — "the driver remembers you paid"
+   — the state has to keep them. Cheap to change now while the corpus is nine events and no
+   content depends on either behaviour; expensive after 2B. Both are pinned by tests either way.
 
 ---
 
