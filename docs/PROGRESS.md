@@ -5,7 +5,131 @@
 
 ---
 
-## Shipped this session (2026-08-08, session 4) — **PHASE 2A COMPLETE**, M2A.0–M2A.7
+## Session 5 (2026-08-08) — Phase 2A put under adversarial verification
+
+No new features. Six checks against what session 4 claimed. **Four of the six confirmed the
+claim; two did not, and both produced a fix.** Every number below was produced by running
+something, not by reading the code.
+
+### What was verified, and how
+
+| #   | Claim                                                                      | Verdict                                                            |
+| --- | -------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 1   | `content:lint`'s rules all fire                                            | **33 of 33 rule IDs fired**, one break at a time                   |
+| 2   | Schema/engine drift fails the build                                        | **8 kinds proven to fail**; one kind does not, characterised below |
+| 3   | The registry plugs into the `ModifierSource` seam with no call-site change | **FALSE.** Corrected in three places                               |
+| 4   | Losing a bag takes the passport in it                                      | **True** — and writing the full test found a live bug              |
+| 5   | The sim is unmoved                                                         | `pnpm sim:diff -- --runs=2000` → "No change"                       |
+
+### 1. Every linter rule fires — 33 rule IDs, not 13
+
+The 13 entries in `RULES` emit **33 distinct rule IDs** (the four `UNDECLARED_*` are
+template-constructed from `ContentRefKind`, so they never appear as string literals in the
+source). Each was fired individually against a throwaway copy of `packages/content`, diffed
+against the pristine 29-warning baseline so corpus-global rules could be told apart from
+pre-existing findings.
+
+**`ZERO_WEIGHT_CHOICE` is unreachable through the YAML loader.** Both routes to it are closed
+earlier by a strictly stronger schema: `weight: intSchema.positive()` rejects `weight: 0`
+("Too small: expected number to be >0") and `outcomes: z.array(...).min(1)` rejects an empty
+list. Handed a zero-weight event directly, the rule fires correctly — so it is dead code with
+respect to authored content, not a broken rule. Leave it: it guards `runLint`'s actual input
+type, which is `GameEvent[]` and does permit weight 0.
+
+### 2. The drift guard works — but not by the mechanism the comment claimed
+
+Eight kinds of disagreement were each made to fail the build: engine gains a field (TS2741),
+schema gains a field (TS2353), optional-vs-null (TS2322), engine drops a `readonly` (TS2322),
+a new engine vocabulary with no schema (L2 names it), the vacuity annotation (L1' **and** the
+source scan, independently), a schema enum narrower than the engine's (the `_beatType`
+`Equals`), and a semantic-only transform flip (0 type errors, 13 test failures).
+
+**The finding: most of the `Equals` assertions are tautologies, and the real work is done
+elsewhere.** `buildEvent` is declared `: GameEvent` and every predicate/effect arm is
+`.transform((v): Predicate => …)`, so `z.infer` of those schemas IS the engine type by
+declaration. `_event`, `_choice`, `_outcome`, `_check`, `_modifier`, `_context`, `_predicate`
+and `_effect` cannot go red. That is **not a hole** — the annotation moves the check to the
+builder body, where assignability catches everything above with better error messages than
+`Equals` gives. `_beatType` proves L1 is genuinely load-bearing where no transform annotates
+the output.
+
+**The one uncaught kind: the schema widening `readonly T[]` to `T[]`.** A mutable array is
+assignable to a readonly one, so the builder accepts it. Harmless — same object at runtime,
+and the dangerous direction (the _engine_ going mutable) is caught. Recorded as an open
+question rather than fixed, because closing it means dropping the builder annotations and
+taking worse errors in exchange.
+
+Also worth knowing: **an engine vocabulary growing a member cannot drift at all.** The schemas
+are built from the engine arrays (`z.enum(BEAT_TYPES)`), so adding a beat type propagates
+automatically. Derivation beats assertion.
+
+### 3. The `ModifierSource` seam claim was false — corrected in three places
+
+ADR 0008 promised "Phase 2 appends `registryModifierSource` and `quirkModifierSource` **with no
+change at the call site**." Neither function exists in any source file. `git grep` returns only
+the ADR line and a code comment repeating it. `PHASE_1_MODIFIER_SOURCES` still holds exactly one
+entry. M2A.3 **bypassed the seam**: it threaded the registry as a fifth parameter to
+`runSkillCheck` and resolved it in `modifiers/resolve-modifiers.ts`.
+
+And the call site did change: `runSkillCheck` went 4 params → 5 and `RollResult` →
+`CheckOutcome` (it is a public barrel export, so that is a published-API break);
+`SkillCheckSpec` gained a required `tags`; `resolve-choice.ts` changed across 24 lines.
+
+**Why the bypass was right, which is the part nobody wrote down:** a `ModifierSource` returns a
+flat `RollModifier[]` of `{ labelKey, delta }`. The registry's output is not flat — pillar 2
+needs `rawDelta`, which rows a conflict deleted, and each row's share of the clamp. Widening the
+seam would have made every source pay for the registry's needs.
+
+**What is actually true, and is the claim to make instead:** `resolveChoice(state, pack,
+choiceId)` never changed, because the registry rides on the `pack` argument that already
+existed. `advanceLeg`, `replayRun` and `sim/run-one.ts` were untouched by `8013aac`.
+
+Corrected in `effects/modifier-source.ts`, `docs/adr/0008` (amended, prediction left standing
+so the miss stays legible) and the stale cell in this file's session-3 table.
+
+_One claim NOT repeated:_ the golden digests did move at `8013aac`, but in exactly the 18 lines
+`contentVersion` moved, with `choiceSequence` and `expectedHistoryKeys` untouched — and
+`stateDigest` hashes the whole state including `contentVersion`. Fully explained; not evidence
+of behavioural change.
+
+### 4. A live bug: a visa outlived the passport it is stamped in
+
+`documents-state.ts` and ADR 0017 both state "**visa reads inherit the passport**" — that is the
+stated reason `VisaState` has no container of its own, so that one physical object cannot become
+two independently-losable records. `evaluate-state-leaf.ts` never implemented it: the `visa` arm
+read only `documents.visas[region]`.
+
+So the exact scenario the design ruled out was live. Bag stolen → passport in it marked
+`present: false` → **`visa` still reports `held: true`**. Fixed; the read now requires
+`passport.present === true`, and the trace carries `noPassport` so pillar 2 can distinguish "no
+visa" from "no passport to show it in". The visa RECORD still survives in state, deliberately —
+a recovered passport keeps its stamps.
+
+**Nothing could have caught this.** The state shape was right, the ADR was right, and no test
+tied them together; no event in the corpus uses a `visa` predicate, which is also why the fix is
+sim-neutral. It was found by writing the test the design implied.
+
+The same test pins the three other things losing a bag does, because they disagree with each
+other: items go, the passport is **marked**, tickets are **hard-deleted**, and
+`passport.container` still reads `'bag'` after the bag is null.
+
+### Verified state
+
+`pnpm typecheck` · `pnpm lint` · `pnpm test` (**1055** Vitest + 3 Jest, up from 1053) ·
+`pnpm format:check` · `pnpm content:lint` (0 errors, 29 warnings) · `pnpm sim:diff` — all green.
+
+### New open question, on top of the four below
+
+**Should the conformance harness trade error quality for identity?** Dropping the `: GameEvent`
+return annotations and asserting `Equals<ReturnType<typeof buildEvent>, GameEvent>` would make
+the L1 assertions real and close the readonly gap, at the cost of turning "Property 'mood' is
+missing" into "Type 'false' is not assignable to type 'true'". I lean **no** — the missed
+direction is harmless and the errors are worth more — but the comment now says what is actually
+enforced either way.
+
+---
+
+## Shipped in session 4 (2026-08-08) — **PHASE 2A COMPLETE**, M2A.0–M2A.7
 
 `packages/content` is now a real content pipeline: YAML in, validated `GameEvent[]` out, with a
 compiler-enforced conformance harness holding the Zod schemas identical to the engine's types,
@@ -362,11 +486,11 @@ a queue that never released fired promises (M8), beat slots re-fillable forever 
 Three things are **deliberately inert** — built, tested, and called by nothing. That is by
 design, but a fresh agent will find them and should not "fix" them:
 
-| Path                                                             | State                          | Why                                                                                                                                                                         |
-| ---------------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/engine/src/queue/rebase-pending.ts`                    | Fully tested, **zero callers** | Re-routing is Phase 2. The queue's shape was chosen for it, so the test IS the deliverable (ADR 0011 §3). Wiring is one line when re-routing lands.                         |
-| `packages/engine/src/migrate/migrations.ts`                      | **Empty array**                | `SAVE_VERSION` is 1; no save format has been superseded. Inventing a fake migration would put a lie in the ladder (ADR 0012). Machinery is proven against a synthetic list. |
-| `effects/modifier-source.ts` · `director/complication-source.ts` | Seams ship **empty**           | Phase 2 registries plug in with no call-site change. Each has a test appending a stub and asserting it reaches the output.                                                  |
+| Path                                                             | State                          | Why                                                                                                                                                                                                         |
+| ---------------------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/engine/src/queue/rebase-pending.ts`                    | Fully tested, **zero callers** | Re-routing is Phase 2. The queue's shape was chosen for it, so the test IS the deliverable (ADR 0011 §3). Wiring is one line when re-routing lands.                                                         |
+| `packages/engine/src/migrate/migrations.ts`                      | **Empty array**                | `SAVE_VERSION` is 1; no save format has been superseded. Inventing a fake migration would put a lie in the ladder (ADR 0012). Machinery is proven against a synthetic list.                                 |
+| `effects/modifier-source.ts` · `director/complication-source.ts` | Seams ship **empty**           | Phase 2 registries plug in with no call-site change. Each has a test appending a stub and asserting it reaches the output. **← the prediction in this cell was wrong; see the correction under session 5.** |
 
 **Not started** (still `.gitkeep` only): `packages/content/{events,geo,i18n,images}`,
 `packages/content/schema/`, `packages/tools/{content-lint,imagegen,i18n-check}`.
