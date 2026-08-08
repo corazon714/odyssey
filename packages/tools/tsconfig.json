@@ -7,6 +7,7 @@
     "shared/**/*.ts",
     "sim/**/*.ts",
     "content-lint/**/*.ts",
+    "content-stats/**/*.ts",
     "imagegen/**/*.ts",
     "i18n-check/**/*.ts",
     "vitest.config.ts"

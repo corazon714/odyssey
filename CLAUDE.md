@@ -275,7 +275,7 @@ pnpm test:engine              # engine unit + golden-run tests only (fast)      
 
 pnpm content:lint             # validate events, refs, orphan flags, tags, i18n, safety   ✅
 pnpm content:lint -- --fix    # sort registries by id, dedupe list fields (nothing else)  ✅
-pnpm content:stats            # counts by category/region/tag, coverage gaps            (planned)
+pnpm content:stats            # counts by category/tag/check-tag + a 4-axis coverage report  ✅
 pnpm sim -- --runs=20000      # headless balance simulation                                 ✅
 pnpm sim:diff                 # compare latest sim to docs/sim-baseline.md                ✅
 pnpm golden:update            # regenerate golden-runs.json from the engine — REVIEW the diff ✅
