@@ -1,6 +1,7 @@
 import { type ChoiceId, type EventId } from '../ids/content-ids.ts';
 import { type Effect } from '../effects/effect.ts';
 import { type CheckModifier, type SkillCheckSpec } from '../effects/modifier-source.ts';
+import { type CheckTag } from '../modifiers/check-tag.ts';
 import { type SkillKey } from '../state/skills.ts';
 import { type Predicate } from '../predicate/predicate.ts';
 import { type TimeOfDay } from '../state/clock-state.ts';
@@ -65,6 +66,7 @@ export type CheckVisibility = (typeof CHECK_VISIBILITIES)[number];
 export type SkillCheck = {
   readonly skill: SkillKey;
   readonly dc: number;
+  readonly tags: readonly CheckTag[];
   readonly modifiers: readonly CheckModifier[];
   readonly visibility: CheckVisibility;
 };

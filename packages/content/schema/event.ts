@@ -9,6 +9,7 @@ import {
 import { z } from 'zod';
 import {
   beatTypeSchema,
+  checkTagSchema,
   checkVisibilitySchema,
   eventIdSchema,
   eventPrioritySchema,
@@ -83,6 +84,15 @@ const checkModifierSchema = z.strictObject({
 const skillCheckSchema = z.strictObject({
   skill: skillKeySchema,
   dc: intSchema,
+  /**
+   * REQUIRED, with no default and a minimum of one.
+   *
+   * It is the only thing the modifier registry can key on, and the failure mode of forgetting
+   * it is silent: the check still rolls, it just draws no registry modifiers at all. Making
+   * the schema reject the file is the only point at which that is cheap to catch. Per the
+   * pairing rule in `modifiers/check-tag.ts`, tag the broad tag AND the flavour.
+   */
+  tags: z.array(checkTagSchema).min(1, 'a check with no tags draws no registry modifiers'),
   visibility: checkVisibilitySchema.nullish().transform((v) => v ?? 'partial'),
   modifiers: list(checkModifierSchema),
 });
@@ -169,6 +179,7 @@ function buildCheck(raw: NonNullable<RawChoice['check']>): SkillCheck {
   return {
     skill: raw.skill,
     dc: raw.dc,
+    tags: raw.tags,
     visibility: raw.visibility,
     // `why` is authoring metadata for the linter; it must not reach the engine's type.
     modifiers: raw.modifiers.map((m) => ({ labelKey: m.labelKey, delta: m.delta, when: m.when })),

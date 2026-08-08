@@ -99,6 +99,7 @@ function traceOf(predicate: Predicate, ctx: PredicateContext, path: string): Rea
       return evaluateMemoryLeaf(predicate, ctx);
 
     case 'weather':
+    case 'locationType':
     case 'timeOfDay':
     case 'routeProfile':
     case 'status':

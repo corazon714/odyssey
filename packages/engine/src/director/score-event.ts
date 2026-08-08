@@ -9,7 +9,7 @@ import { tagSaturation } from './tag-saturation.ts';
  *
  * Float multiplication is not associative. Reordering these six changes the last bits of the
  * product, which changes `Math.round`, which changes the integer weight, which changes the
- * pick — and every golden run with it. `scoring-order.test.ts` pins the sequence against
+ * pick — and every golden run with it. `director/__tests__/scoring.test.ts` pins the sequence against
  * `SCORING_FACTORS` so a well-meaning reorder fails a test instead of silently invalidating
  * the fixtures.
  *

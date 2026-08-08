@@ -1,3 +1,4 @@
+import { type LocationType } from '../content/location-type.ts';
 import { type TimeOfDay } from '../state/clock-state.ts';
 import {
   type EventId,
@@ -79,6 +80,19 @@ export type Predicate =
   // ── world ──────────────────────────────────────────────────────────────────
   | { readonly kind: 'weather'; readonly anyOf: readonly string[] }
   | { readonly kind: 'timeOfDay'; readonly anyOf: readonly TimeOfDay[] }
+  /**
+   * Where the player is THIS leg, read from `route.legLocations`.
+   *
+   * Added in Phase 2A M2A.3 for the modifier registry, whose `when` needs to say "at a
+   * checkpoint, a uniform matters" without a location being a check TAG — location is state,
+   * not a kind of test. It also closes a spec gap: `docs/engine-spec.md:143` writes
+   * `requires: { context: { locationTypes: [...] } }` inside a `scheduleEvent`, and there was
+   * no predicate kind that could express it.
+   *
+   * Distinct from `EventContext.locationTypes`, which is a director FILTER the relaxation
+   * ladder can drop (rung 5). This never relaxes — it is an ordinary predicate.
+   */
+  | { readonly kind: 'locationType'; readonly anyOf: readonly LocationType[] }
   | { readonly kind: 'routeProfile'; readonly anyOf: readonly RouteProfile[] }
   | { readonly kind: 'status'; readonly anyOf: readonly RunStatus[] }
   | { readonly kind: 'leg'; readonly cmp: NumberCmp }
@@ -129,6 +143,7 @@ export const PREDICATE_KINDS = [
   'vehicleLegal',
   'weather',
   'timeOfDay',
+  'locationType',
   'routeProfile',
   'status',
   'leg',

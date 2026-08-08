@@ -1,3 +1,4 @@
+import { type CheckTag } from '../modifiers/check-tag.ts';
 import { evaluatePredicate } from '../predicate/evaluate-predicate.ts';
 import { type PredicateContext } from '../predicate/predicate-context.ts';
 import { type Predicate } from '../predicate/predicate.ts';
@@ -28,6 +29,12 @@ export type CheckModifier = {
 export type SkillCheckSpec = {
   readonly skill: SkillKey;
   readonly dc: number;
+  /**
+   * What KIND of contest this is. Required, with no default, because it is the only thing the
+   * modifier registry can key on — a check with no tags draws no registry modifiers at all
+   * and the author would never notice, since the check still rolls. See `modifiers/check-tag.ts`.
+   */
+  readonly tags: readonly CheckTag[];
   readonly modifiers: readonly CheckModifier[];
 };
 
@@ -41,10 +48,18 @@ export const choiceModifierSource: ModifierSource = Object.freeze({
   id: 'choice',
   modifiersFor(check: SkillCheckSpec, ctx: PredicateContext): readonly RollModifier[] {
     const out: RollModifier[] = [];
-    for (const modifier of check.modifiers) {
-      if (modifier.when !== null && !evaluatePredicate(modifier.when, ctx).value) continue;
+    check.modifiers.forEach((modifier, index) => {
+      // The path is REQUIRED, not decoration. `evaluatePredicate` defaults it to the root
+      // `'r'`, and the chance address is derived from (scope, path) — so calling it without
+      // one made every `{chance}` gate in every modifier, on one event on one leg, share a
+      // single address and return a single answer. Harmless with one hand-authored modifier
+      // per choice; catastrophic once a registry can put the same gate on twenty rows.
+      // Addressed by the modifier's own labelKey, which is unique within a choice, rather
+      // than by index alone — an index-only address shifts when a modifier is inserted.
+      const path = `c${String(index)}:${modifier.labelKey}`;
+      if (modifier.when !== null && !evaluatePredicate(modifier.when, ctx, path).value) return;
       out.push({ labelKey: modifier.labelKey, delta: modifier.delta });
-    }
+    });
     return out;
   },
 });

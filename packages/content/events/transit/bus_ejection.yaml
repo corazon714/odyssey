@@ -19,6 +19,7 @@ choices:
     check:
       skill: negotiation
       dc: 14
+      tags: [social, intimidate]
       visibility: hidden
       modifiers:
         - labelKey: check.modifier.seen_before

@@ -7,9 +7,19 @@
  * diff is stable, and the headline numbers all live on their own lines.
  *
  * The comparison ignores the two lines that legitimately change on every run — the wall clock
- * and the header's seed/run count — so a diff shows engine and content changes only.
+ * and its extrapolation — so a diff shows engine and content changes only.
+ *
+ * The HEADER is normalised rather than ignored. It used to be volatile in full, which meant a
+ * changed `contentVersion` was invisible: the pack could move under the baseline and
+ * `sim:diff` would still say "no change". That is the one thing on that line worth diffing —
+ * it is the value `replayRun` refuses a mismatch on — so `seed=` and `runs=` are blanked and
+ * the version is compared. Found in Phase 2A M2A.3, when a real version change reported clean.
  */
-const VOLATILE = [/^Wall clock/, /^Extrapolated to 20,000/, /^# Sim Report/];
+const VOLATILE = [/^Wall clock/, /^Extrapolated to 20,000/];
+
+function normalise(line: string): string {
+  return line.replace(/seed=\S+/, 'seed=*').replace(/runs=\d+/, 'runs=*');
+}
 
 export type ReportDiff = {
   readonly changed: boolean;
@@ -44,8 +54,8 @@ export function diffReports(baseline: string, latest: string): ReportDiff {
   const length = Math.max(before.length, after.length);
 
   for (let i = 0; i < length; i += 1) {
-    const a = before[i] ?? '';
-    const b = after[i] ?? '';
+    const a = normalise(before[i] ?? '');
+    const b = normalise(after[i] ?? '');
     if (a === b) continue;
     if (VOLATILE.some((re) => re.test(a) || re.test(b))) continue;
 

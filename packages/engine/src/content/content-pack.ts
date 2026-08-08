@@ -1,4 +1,5 @@
 import { type EventId, type ItemId, type NpcId, type TraitId } from '../ids/content-ids.ts';
+import { EMPTY_MODIFIER_REGISTRY, type ModifierRegistry } from '../modifiers/registry-modifier.ts';
 import { type ContentRefs } from '../predicate/predicate-context.ts';
 import { canonicalJson } from '../state/canonical-json.ts';
 import { digestOf } from '../state/state-digest.ts';
@@ -26,12 +27,26 @@ export type ContentRegistries = {
   readonly npcs: readonly NpcId[];
   readonly items: readonly ItemId[];
   readonly traits: readonly TraitId[];
+  /**
+   * The global modifier registry, and it lives INSIDE `ContentRegistries` rather than beside
+   * it on `ContentPack` for one specific reason.
+   *
+   * `contentVersion()` hashes `canonicalJson({ events, registries })`. A registry hung off
+   * `ContentPack` as a sibling field would not be in that hash — so `pack.version` would not
+   * move when `modifiers.yaml` changed, `replayRun`'s contentVersion refusal would never
+   * fire, `reconcileContent` would report `changed: false`, and every golden run would
+   * silently replay against different modifier maths with a green suite. Being in here makes
+   * that impossible by construction; `content-pack.test.ts` asserts the version moves when
+   * one modifier's delta changes by 1.
+   */
+  readonly modifiers: ModifierRegistry;
 };
 
 export const EMPTY_REGISTRIES: ContentRegistries = Object.freeze({
   npcs: [],
   items: [],
   traits: [],
+  modifiers: EMPTY_MODIFIER_REGISTRY,
 });
 
 export type ContentPack = {
@@ -42,6 +57,8 @@ export type ContentPack = {
   readonly byBeatType: ReadonlyMap<BeatType, readonly GameEvent[]>;
   readonly fillers: readonly GameEvent[];
   readonly refs: ContentRefs;
+  /** Surfaced from the registries so `resolveChoice` reaches it without a new parameter. */
+  readonly modifiers: ModifierRegistry;
   /**
    * References to content ids absent from the registries. Empty in a healthy pack; the sim
    * and the future content linter both report it, because ADR 0001's silent-content-bug
@@ -86,7 +103,8 @@ export function createContentPack(
     hasTrait: (id) => knownTraits.has(id),
   };
 
-  const danglingRefs = collectRefs(sorted).filter((ref) => {
+  // The registry is walked too, or a modifier naming a deleted npc never appears here.
+  const danglingRefs = collectRefs(sorted, registries.modifiers).filter((ref) => {
     switch (ref.kind) {
       case 'event':
         return !byId.has(ref.id as EventId);
@@ -109,6 +127,7 @@ export function createContentPack(
     byBeatType,
     fillers: byPriority.get('filler') ?? [],
     refs,
+    modifiers: registries.modifiers,
     danglingRefs,
     duplicateIds,
     unfillableBeatTypes: BEAT_TYPES.filter((type) => !byBeatType.has(type)),

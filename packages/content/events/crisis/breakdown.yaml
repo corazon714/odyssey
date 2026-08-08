@@ -21,6 +21,7 @@ choices:
     check:
       skill: mechanics
       dc: 15
+      tags: [mechanics, physical]
       visibility: full
       modifiers:
         - labelKey: check.modifier.has_spare

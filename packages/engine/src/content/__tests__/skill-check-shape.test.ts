@@ -26,6 +26,7 @@ describe('SkillCheck / SkillCheckSpec (flattened, M2A.1)', () => {
     const check: SkillCheck = {
       skill: 'negotiation',
       dc: 12,
+      tags: ['social'],
       modifiers: [],
       visibility: 'partial',
     };

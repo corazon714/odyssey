@@ -41,6 +41,7 @@ choices:
     check:
       skill: negotiation
       dc: 12
+      tags: [social, bribery, authority, crime]
       modifiers:
         - labelKey: check.modifier.smooth_talker
           delta: 2

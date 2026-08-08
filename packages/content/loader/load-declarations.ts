@@ -3,6 +3,12 @@ import { join } from 'node:path';
 import { parseDocument } from 'yaml';
 import { z } from 'zod';
 import {
+  EMPTY_MODIFIER_REGISTRY,
+  createModifierRegistry,
+  type ModifierRegistry,
+} from '@odyssey/engine';
+import { modifierRegistrySchema } from '../schema/modifier.ts';
+import {
   REGISTRY_FILES,
   type EndingDeclaration,
   type FlagDeclaration,
@@ -123,6 +129,83 @@ export function loadDeclarations(dir: string): LoadDeclarationsResult {
     },
     issues,
   };
+}
+
+/**
+ * `modifiers.yaml` — the global check-modifier registry.
+ *
+ * Loaded separately from the five declaration registries because its rows are not
+ * declarations: they parse to `RegistryModifier`, which the ENGINE consumes, rather than to a
+ * description the linter reads. Sorted by `createModifierRegistry`, which is also what makes
+ * iteration order — and therefore chip order and conflict tiebreaks — independent of file
+ * order.
+ */
+export function loadModifiers(dir: string): {
+  readonly modifiers: ModifierRegistry;
+  readonly issues: readonly ContentIssue[];
+} {
+  const file = 'modifiers.yaml';
+  const full = join(dir, file);
+
+  if (!existsSync(full)) {
+    return {
+      modifiers: EMPTY_MODIFIER_REGISTRY,
+      issues: [
+        {
+          file,
+          line: 1,
+          column: 1,
+          message: 'missing modifier registry: every check would resolve with no modifiers',
+          path: [],
+        },
+      ],
+    };
+  }
+
+  const source = readFileSync(full, 'utf8');
+  const doc = parseDocument(source, { prettyErrors: false });
+  if (doc.errors.length > 0) {
+    return {
+      modifiers: EMPTY_MODIFIER_REGISTRY,
+      issues: doc.errors.map((e) => issueAt(file, source, e.pos[0], e.message, [])),
+    };
+  }
+
+  const parsed = modifierRegistrySchema.safeParse(doc.toJS() as unknown);
+  if (!parsed.success) {
+    return {
+      modifiers: EMPTY_MODIFIER_REGISTRY,
+      issues: parsed.error.issues.map((i) => issueAt(file, source, doc, i.message, i.path)),
+    };
+  }
+
+  const issues: ContentIssue[] = [];
+  const seen = new Set<string>();
+  parsed.data.forEach((row, index) => {
+    if (seen.has(row.id)) {
+      issues.push(issueAt(file, source, doc, `duplicate modifier id \`${row.id}\``, [index, 'id']));
+    }
+    seen.add(row.id);
+  });
+
+  // A conflict naming a row that does not exist is silently inert — the row it was meant to
+  // suppress just applies. Exactly the class of bug ADR 0001 says content has no other
+  // instrument for.
+  parsed.data.forEach((row, index) => {
+    row.conflictsWith.forEach((other, position) => {
+      if (!seen.has(other) && !parsed.data.some((r) => r.id === other)) {
+        issues.push(
+          issueAt(file, source, doc, `\`${row.id}\` conflicts with unknown \`${other}\``, [
+            index,
+            'conflictsWith',
+            position,
+          ]),
+        );
+      }
+    });
+  });
+
+  return { modifiers: createModifierRegistry(parsed.data), issues };
 }
 
 /** Just the ids, which is what `createContentPack` wants. */

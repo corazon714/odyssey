@@ -19,6 +19,7 @@ export {
   ID_PATTERN,
   I18N_KEY_PATTERN,
   beatTypeSchema,
+  checkTagSchema,
   checkVisibilitySchema,
   endingIdSchema,
   eventIdSchema,

@@ -36,6 +36,7 @@ const ALL_PREDICATES: readonly Predicate[] = [
   { kind: 'vehicleLegal', legal: true },
   { kind: 'weather', anyOf: ['clear'] },
   { kind: 'timeOfDay', anyOf: ['morning'] },
+  { kind: 'locationType', anyOf: ['checkpoint'] },
   { kind: 'routeProfile', anyOf: ['cheapest'] },
   { kind: 'status', anyOf: ['travelling'] },
   { kind: 'leg', cmp: { op: 'gte', value: 0 } },

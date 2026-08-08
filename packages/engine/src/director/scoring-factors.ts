@@ -105,7 +105,7 @@ export function priorityBoost(event: GameEvent): number {
 /**
  * The factor list, in the order `scoreEvent` multiplies them.
  *
- * Exported so `scoring-order.test.ts` can pin it AND verify that `scoreEvent`'s hand-written
+ * Exported so `director/__tests__/scoring.test.ts` can pin it AND verify that `scoreEvent`'s hand-written
  * multiplication agrees with a loop over this array. The hand-written form stays because it
  * is the hot path; the array is what makes the order an asserted contract rather than a
  * comment.

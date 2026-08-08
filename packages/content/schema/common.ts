@@ -1,5 +1,6 @@
 import {
   BEAT_TYPES,
+  CHECK_TAGS,
   CHECK_VISIBILITIES,
   EVENT_PRIORITIES,
   LOCATION_TYPES,
@@ -50,6 +51,7 @@ export const locationTypeSchema = z.enum(LOCATION_TYPES);
 export const beatTypeSchema = z.enum(BEAT_TYPES);
 export const eventPrioritySchema = z.enum(EVENT_PRIORITIES);
 export const checkVisibilitySchema = z.enum(CHECK_VISIBILITIES);
+export const checkTagSchema = z.enum(CHECK_TAGS);
 
 /**
  * Ids are `snake_case`, optionally namespaced by category with dots — `border.bribe_attempt`,

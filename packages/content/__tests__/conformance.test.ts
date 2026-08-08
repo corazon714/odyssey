@@ -81,6 +81,7 @@ const SCHEMA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'schema')
 /** Engine vocabulary export -> the schema that must mirror it. */
 const VOCABULARIES: Readonly<Record<string, z.ZodType>> = {
   BEAT_TYPES: schema.beatTypeSchema,
+  CHECK_TAGS: schema.checkTagSchema,
   CHECK_VISIBILITIES: schema.checkVisibilitySchema,
   EVENT_PRIORITIES: schema.eventPrioritySchema,
   LOCATION_TYPES: schema.locationTypeSchema,
@@ -103,6 +104,7 @@ const NOT_CONTENT: Readonly<Record<string, string>> = {
   RNG_STREAMS: 'runtime randomness, never authored',
   BEAT_SLOT_STATUSES: 'route state, set by the director; reachable only via a route effect',
   EFFECT_OPS: 'checked structurally by the effect discriminated union, not as an enum',
+  MODIFIER_SOURCE_KINDS: 'checked by the modifiers.yaml schema in modifier-registry.test.ts',
   PREDICATE_KINDS: 'checked by predicate-schema.test.ts, which round-trips every kind',
   ENGINE_ERROR_CODES: 'engine output, never authored',
   PENDING_DROP_REASONS: 'engine output, never authored',
@@ -112,6 +114,7 @@ const NOT_CONTENT: Readonly<Record<string, string>> = {
   PHASE_1_MODIFIER_SOURCES: 'engine wiring, not content',
   PHASE_1_COMPLICATION_SOURCES: 'engine wiring, not content',
   EMPTY_COMPLICATIONS: 'empty constant',
+  EMPTY_MODIFIER_REGISTRY: 'empty constant',
   EMPTY_REASONS: 'empty constant',
   NO_CLAMPS: 'empty constant',
   NO_DROPS: 'empty constant',

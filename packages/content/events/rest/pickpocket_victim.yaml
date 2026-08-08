@@ -21,6 +21,7 @@ choices:
     check:
       skill: endurance
       dc: 13
+      tags: [physical, endurance, crime]
       modifiers:
         - labelKey: check.modifier.exhausted
           delta: -3

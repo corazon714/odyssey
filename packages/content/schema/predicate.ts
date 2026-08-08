@@ -6,6 +6,7 @@ import {
   intSchema,
   itemIdSchema,
   languageIdSchema,
+  locationTypeSchema,
   npcIdSchema,
   numberOpSchema,
   regionIdSchema,
@@ -77,6 +78,7 @@ export type TersePredicate =
   | { readonly vehicleLegal: boolean }
   | { readonly weather: readonly string[] }
   | { readonly timeOfDay: readonly string[] }
+  | { readonly locationType: readonly string[] }
   | { readonly routeProfile: readonly string[] }
   | { readonly status: readonly string[] }
   | ({ readonly leg: true } & TerseCmp)
@@ -240,6 +242,9 @@ export const predicateSchema = z.union([
   z
     .strictObject({ timeOfDay: z.array(timeOfDaySchema).min(1).readonly() })
     .transform((v): Predicate => ({ kind: 'timeOfDay', anyOf: v.timeOfDay })),
+  z
+    .strictObject({ locationType: z.array(locationTypeSchema).min(1).readonly() })
+    .transform((v): Predicate => ({ kind: 'locationType', anyOf: v.locationType })),
   z
     .strictObject({ routeProfile: z.array(routeProfileSchema).min(1).readonly() })
     .transform((v): Predicate => ({ kind: 'routeProfile', anyOf: v.routeProfile })),

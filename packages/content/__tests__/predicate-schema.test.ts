@@ -105,6 +105,10 @@ const CASES: readonly { readonly terse: TersePredicate; readonly canonical: Pred
   { terse: { weather: ['rain'] }, canonical: { kind: 'weather', anyOf: ['rain'] } },
   { terse: { timeOfDay: ['night'] }, canonical: { kind: 'timeOfDay', anyOf: ['night'] } },
   {
+    terse: { locationType: ['checkpoint', 'border_crossing'] },
+    canonical: { kind: 'locationType', anyOf: ['checkpoint', 'border_crossing'] },
+  },
+  {
     terse: { routeProfile: ['illicit'] },
     canonical: { kind: 'routeProfile', anyOf: ['illicit'] },
   },
