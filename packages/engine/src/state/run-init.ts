@@ -1,6 +1,6 @@
 import { type LanguageId, type TraitId } from '../ids/content-ids.ts';
 import { type Weekday } from './clock-state.ts';
-import { type InventoryEntry } from './memory-entries.ts';
+import { type InventoryState } from './container-state.ts';
 import { type DocumentsState } from './documents-state.ts';
 import { type Resources } from './resources.ts';
 import { type RouteState } from './route-state.ts';
@@ -33,7 +33,7 @@ export type RunInit = {
   readonly skills: Skills | null;
   readonly languages: readonly LanguageId[] | null;
   readonly traits: readonly TraitId[] | null;
-  readonly inventory: readonly InventoryEntry[] | null;
+  readonly inventory: InventoryState | null;
   readonly documents: DocumentsState | null;
 };
 

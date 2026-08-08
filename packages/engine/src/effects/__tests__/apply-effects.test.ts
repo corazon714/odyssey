@@ -201,28 +201,36 @@ describe('relationship, schedule and ending effects', () => {
 
 describe('item and document effects', () => {
   it('adds, stacks and removes items', () => {
-    const added = apply({ op: 'item', id: itemId('ration'), countDelta: 2, condition: null });
-    expect(added.state.inventory).toEqual([{ id: 'ration', count: 2, condition: null }]);
+    const added = apply({
+      op: 'item',
+      id: itemId('ration'),
+      countDelta: 2,
+      condition: null,
+      container: null,
+    });
+    expect(added.state.inventory.person.items).toEqual([
+      { id: 'ration', count: 2, condition: null },
+    ]);
 
     const more = applyEffect(
       added.state,
-      { op: 'item', id: itemId('ration'), countDelta: 1, condition: null },
+      { op: 'item', id: itemId('ration'), countDelta: 1, condition: null, container: null },
       CTX,
     );
-    expect(more.state.inventory[0]?.count).toBe(3);
+    expect(more.state.inventory.person.items[0]?.count).toBe(3);
 
     const gone = applyEffect(
       more.state,
-      { op: 'item', id: itemId('ration'), countDelta: -9, condition: null },
+      { op: 'item', id: itemId('ration'), countDelta: -9, condition: null, container: null },
       CTX,
     );
-    expect(gone.state.inventory).toEqual([]);
+    expect(gone.state.inventory.person.items).toEqual([]);
   });
 
   it('is a noop removing an item that is not carried', () => {
     const state = makeState();
     const { state: next, applied } = apply(
-      { op: 'item', id: itemId('nothing'), countDelta: -1, condition: null },
+      { op: 'item', id: itemId('nothing'), countDelta: -1, condition: null, container: null },
       state,
     );
     expect(next).toBe(state);
@@ -249,7 +257,12 @@ describe('item and document effects', () => {
       { op: 'document', change: { field: 'losePassport' } },
       CTX,
     );
-    expect(lost.state.documents.passport).toEqual({ present: false, valid: true, flagged: false });
+    expect(lost.state.documents.passport).toEqual({
+      present: false,
+      valid: true,
+      flagged: false,
+      container: 'person',
+    });
   });
 
   it('grants and expires a visa', () => {
@@ -373,10 +386,17 @@ describe('applyEffects', () => {
         payload: null,
       },
       unlockEnding: { op: 'unlockEnding', id: endingId('x') },
-      item: { op: 'item', id: itemId('i'), countDelta: 1, condition: null },
+      item: { op: 'item', id: itemId('i'), countDelta: 1, condition: null, container: null },
       transport: { op: 'transport', change: { field: 'legal', legal: false } },
       document: { op: 'document', change: { field: 'grantPassport', valid: true } },
       route: { op: 'route', change: { field: 'progressKm', delta: 10 } },
+      // Order matters here and nowhere else in this map: the container ops act on each
+      // other's output. Grant a bag, move the item `item` just added into it, then lose the
+      // bag — so all three report `changed`, and the sequence is also the memory chain in
+      // miniature.
+      grantContainer: { op: 'grantContainer', container: 'bag', slots: null, searchDC: null },
+      moveItem: { op: 'moveItem', id: itemId('i'), count: 1, from: 'person', to: 'bag' },
+      loseContainer: { op: 'loseContainer', container: 'bag' },
     };
 
     expect(Object.keys(byOp).sort()).toEqual([...EFFECT_OPS].sort());

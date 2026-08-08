@@ -5,6 +5,7 @@ import {
   eventIdSchema,
   flagIdSchema,
   intSchema,
+  containerKindSchema,
   itemIdSchema,
   list,
   npcIdSchema,
@@ -126,6 +127,26 @@ export const effectSchema = z
       countDelta: intSchema,
       // null PRESERVES the existing condition rather than clearing it — see applyItem.
       condition: nullable(intSchema),
+      // null = wherever there is room, filling in DRAIN_ORDER.
+      container: nullable(containerKindSchema),
+    }),
+
+    z.strictObject({
+      op: z.literal('moveItem'),
+      id: itemIdSchema,
+      count: intSchema.positive(),
+      from: containerKindSchema,
+      to: containerKindSchema,
+    }),
+    z.strictObject({
+      op: z.literal('loseContainer'),
+      container: z.enum(['bag', 'vehicle', 'stash']),
+    }),
+    z.strictObject({
+      op: z.literal('grantContainer'),
+      container: z.enum(['bag', 'vehicle', 'stash']),
+      slots: nullable(intSchema.positive()),
+      searchDC: nullable(intSchema.nonnegative()),
     }),
 
     z.strictObject({ op: z.literal('transport'), change: transportChangeSchema }),

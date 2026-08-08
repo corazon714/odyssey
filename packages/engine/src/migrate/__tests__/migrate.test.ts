@@ -91,17 +91,40 @@ describe('migrateSave', () => {
     const result = migrateSave(raw);
     if (!result.ok) throw new Error('expected ok');
     expect(stateDigest(result.state)).not.toBe(stateDigest(raw as unknown as RunState));
-    expect(result.applied).toHaveLength(1);
+    expect(result.applied).toHaveLength(MIGRATIONS.length);
   });
 
-  it('migrates a LOADED v1 save to exactly the checked-in v2 fixture', () => {
+  it('climbs one rung at a time — v1 -> v2 alone matches the v2 fixture', () => {
+    // Called on the RUNG rather than through migrateSave, because migrateSave validates its
+    // output against the CURRENT shape: once v3 changed what an inventory is, stopping at v2
+    // can never pass that guard. That is correct — the guard describes today's RunState, not
+    // an arbitrary historical one — but it means the intermediate step has to be checked here.
+    //
+    // This is also what keeps save-v2-loaded.json honest now that v3 exists.
+    const rung = MIGRATIONS.find((m) => m.from === 1);
+    expect(rung).toBeDefined();
+    if (rung === undefined) return;
+
+    const stepped = { ...rung.migrate(readSave('save-v1-loaded.json')), version: 2 };
+    expect(stepped).toEqual(readSave('save-v2-loaded.json'));
+  });
+
+  it('refuses to stop at a superseded version, because the shape guard is about TODAY', () => {
+    // The consequence of the note above, asserted rather than left as a surprise.
+    const result = migrateSave(readSave('save-v1-loaded.json'), MIGRATIONS, 2);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe('save/shape-invalid');
+  });
+
+  it('migrates a LOADED v1 save to exactly the checked-in current fixture', () => {
     // The migration's actual golden. The plain v1 fixture has an empty inventory, no passport
     // and a null `requires`, so a test against it exercises almost nothing — including, and
     // especially, the recursive predicate rewrite.
     const loaded = readSave('save-v1-loaded.json');
     const result = migrateSave(loaded);
     if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
-    expect(result.state).toEqual(readSave('save-v2-loaded.json'));
+    expect(result.state).toEqual(readSave('save-v3-loaded.json'));
   });
 
   it('rewrites `money` inside a PERSISTED predicate tree, not just in resources', () => {
@@ -121,6 +144,49 @@ describe('migrateSave', () => {
     // ...and a FLAG whose id happens to be `money` is a different thing entirely. Renaming it
     // would silently retarget a gate at a flag that does not exist.
     expect(json).toContain('"id":"money"');
+  });
+
+  it('v2->v3 never drops a player item, even when the person overflows', () => {
+    // A migration that loses property is a bug. W3's "items are lost, never silently
+    // relocated" is a rule about EFFECTS in play, not about a schema change between launches.
+    const v2 = readSave('save-v2.json');
+    const loaded = {
+      ...v2,
+      inventory: [
+        { id: 'ration', count: 5, condition: null },
+        { id: 'spare_tyre', count: 4, condition: 7 },
+        { id: 'cash_belt', count: 1, condition: null },
+      ],
+    };
+    const result = migrateSave(loaded);
+    if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
+
+    const total = (c: { items: readonly { count: number }[] } | null): number =>
+      c === null ? 0 : c.items.reduce((sum, i) => sum + i.count, 0);
+    expect(total(result.state.inventory.person) + total(result.state.inventory.bag)).toBe(10);
+
+    // A bag is granted ONLY because something did not fit; the bag is allowed to overflow
+    // rather than dropping the excess, which is why isRunStateShape does not check capacity.
+    expect(result.state.inventory.bag).not.toBeNull();
+  });
+
+  it('v2->v3 grants NO bag when everything fits, so a light run keeps its topology', () => {
+    const light = { ...readSave('save-v2.json'), inventory: [{ id: 'ration', count: 2 }] };
+    const result = migrateSave(light);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.state.inventory.bag).toBeNull();
+    expect(result.state.inventory.person.items).toHaveLength(1);
+  });
+
+  it('v2->v3 puts every document on the person', () => {
+    // Any other default would retroactively change a live run's risk profile: a save that
+    // survived twenty legs with a passport would suddenly be one loseContainer from losing it.
+    const result = migrateSave(readSave('save-v1-loaded.json'));
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.state.documents.passport?.container).toBe('person');
+    for (const ticket of result.state.documents.tickets) {
+      expect(ticket.container).toBe('person');
+    }
   });
 
   it('REFUSES a future version rather than guessing', () => {

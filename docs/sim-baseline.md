@@ -8,11 +8,11 @@
   Regenerate deliberately:  pnpm sim -- --runs=2000  &&  cp reports/sim-latest.md docs/sim-baseline.md
   Compare without writing:  pnpm sim:diff -- --runs=2000
 
-  Regenerated at Phase 2A M2A.4 (ADR 0016) against the nine-event FIXTURE pack. The open
+  Regenerated at Phase 2A M2A.5 (ADR 0017) against the nine-event FIXTURE pack. The open
   findings below are fixture gaps, not engine faults — see docs/PROGRESS.md.
 -->
 
-# Sim Report — seed=base contentVersion=f25d740f runs=2000
+# Sim Report — seed=base contentVersion=a24547ef runs=2000
 
 Completion rate             31.2%   (target band 30-50%)
 Median legs                    10
@@ -25,8 +25,8 @@ Beat fill rate              51.8%
 Repeat-event rate           58.4%
 Unresolved threads              0
 
-Wall clock                 484 ms   (0.24 ms/run)
-Extrapolated to 20,000     4.8 s   (target <30 s)
+Wall clock                 468 ms   (0.23 ms/run)
+Extrapolated to 20,000     4.7 s   (target <30 s)
 
 ## Endings
   ending.failure_collapsed            35.6%

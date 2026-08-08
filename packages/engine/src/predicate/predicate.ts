@@ -1,4 +1,5 @@
 import { type LocationType } from '../content/location-type.ts';
+import { type ContainerKind } from '../state/container-state.ts';
 import { type TimeOfDay } from '../state/clock-state.ts';
 import {
   type EventId,
@@ -46,7 +47,13 @@ export type Predicate =
   | { readonly kind: 'skill'; readonly key: SkillKey; readonly cmp: NumberCmp }
   | { readonly kind: 'language'; readonly id: LanguageId }
   | { readonly kind: 'trait'; readonly id: TraitId }
-  | { readonly kind: 'item'; readonly id: ItemId; readonly cmp: NumberCmp }
+  /** `in: null` sums across every container; naming one asks about that container alone. */
+  | {
+      readonly kind: 'item';
+      readonly id: ItemId;
+      readonly cmp: NumberCmp;
+      readonly in: ContainerKind | null;
+    }
 
   // ── documents ──────────────────────────────────────────────────────────────
   | {

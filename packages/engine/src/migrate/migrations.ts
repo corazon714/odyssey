@@ -81,4 +81,75 @@ function asArray(value: unknown): readonly unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-export const MIGRATIONS: readonly Migration[] = [migrate_1_to_2];
+/**
+ * v2 -> v3: the flat inventory array becomes four containers, and documents record which
+ * container carries them.
+ *
+ * NEVER DROP, NEVER ERROR. A migration that loses a player's property is a bug, and W3's
+ * "items are lost, never silently relocated" is a rule about EFFECTS in play, not about a
+ * schema change that happens between one launch and the next.
+ *
+ * Entries are sorted by id first. A v1/v2 inventory's order is `applyItem` push order —
+ * deterministic within a run but arbitrary as data — and sorting makes the migration a pure
+ * function of the SET, so the same save always produces the same containers.
+ *
+ * A bag is granted only if the person cannot hold everything, so a light run keeps the
+ * container topology it had. The bag is allowed to OVERFLOW rather than dropping the excess;
+ * `isRunStateShape` deliberately does not check capacity for exactly this reason.
+ *
+ * Every document defaults to `person`. Any other default would retroactively change a live
+ * run's risk profile — a save that survived twenty legs with a passport would suddenly be one
+ * `loseContainer` away from losing it, for a reason that predates the mechanic.
+ */
+const migrate_2_to_3: Migration = {
+  from: 2,
+  describe: 'v2->v3: flat inventory becomes containers; documents record their container',
+  migrate(save) {
+    const flat = asArray(save['inventory'])
+      .map(asRecord)
+      .filter((entry) => typeof entry['id'] === 'string')
+      .sort((a, b) => (String(a['id']) < String(b['id']) ? -1 : 1));
+
+    const PERSON_SLOTS = 6;
+    const person: Record<string, unknown>[] = [];
+    const bag: Record<string, unknown>[] = [];
+    let used = 0;
+
+    for (const entry of flat) {
+      const count = typeof entry['count'] === 'number' ? entry['count'] : 1;
+      if (used + count <= PERSON_SLOTS) {
+        person.push(entry);
+        used += count;
+      } else {
+        bag.push(entry);
+      }
+    }
+
+    const documents = asRecord(save['documents']);
+    const passport = documents['passport'];
+
+    return {
+      ...save,
+      inventory: {
+        person: { slots: PERSON_SLOTS, searchDC: 2, items: person },
+        // Granted ONLY if something did not fit, so a light run's topology is unchanged.
+        bag: bag.length > 0 ? { slots: 10, searchDC: 4, items: bag } : null,
+        vehicle: null,
+        stash: null,
+      },
+      documents: {
+        ...documents,
+        passport:
+          passport === null || passport === undefined
+            ? null
+            : { ...asRecord(passport), container: 'person' },
+        tickets: asArray(documents['tickets']).map((ticket) => ({
+          ...asRecord(ticket),
+          container: 'person',
+        })),
+      },
+    };
+  },
+};
+
+export const MIGRATIONS: readonly Migration[] = [migrate_1_to_2, migrate_2_to_3];

@@ -790,7 +790,8 @@
                   "op": "item",
                   "id": "cash_belt",
                   "countDelta": -1,
-                  "condition": null
+                  "condition": null,
+                  "container": null
                 }
               ]
             }
@@ -944,7 +945,8 @@
                   "cmp": {
                     "op": "gte",
                     "value": 1
-                  }
+                  },
+                  "in": null
                 }
               }
             ]

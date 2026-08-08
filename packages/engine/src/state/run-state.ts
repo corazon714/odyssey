@@ -9,12 +9,8 @@ import { type RngCursors } from '../rng/rng-cursors.ts';
 import { type ClockState } from './clock-state.ts';
 import { type DocumentsState } from './documents-state.ts';
 import { type HistoryEntry } from './history-entry.ts';
-import {
-  type EventMemoryEntry,
-  type FlagEntry,
-  type InventoryEntry,
-  type RelationshipEntry,
-} from './memory-entries.ts';
+import { type EventMemoryEntry, type FlagEntry, type RelationshipEntry } from './memory-entries.ts';
+import { type InventoryState } from './container-state.ts';
 import { type PendingEvent } from './pending-event.ts';
 import { type Presentation } from './presentation.ts';
 import { type Resources } from './resources.ts';
@@ -59,7 +55,7 @@ export type RunState = {
   readonly skills: Skills;
 
   readonly traits: readonly TraitId[];
-  readonly inventory: readonly InventoryEntry[];
+  readonly inventory: InventoryState;
   readonly documents: DocumentsState;
 
   // ── memory: four mechanisms, deliberately not one (ADR 0001) ──────────────

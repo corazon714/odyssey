@@ -4,6 +4,7 @@ import {
   eventIdSchema,
   flagIdSchema,
   intSchema,
+  containerKindSchema,
   itemIdSchema,
   languageIdSchema,
   locationTypeSchema,
@@ -52,7 +53,7 @@ export type TersePredicate =
   | ({ readonly skill: string } & TerseCmp)
   | { readonly language: string }
   | { readonly trait: string }
-  | ({ readonly item: string } & TerseCmp)
+  | ({ readonly item: string; readonly in?: string | null | undefined } & TerseCmp)
   | {
       readonly passport: {
         readonly present?: boolean | null | undefined;
@@ -161,8 +162,13 @@ export const predicateSchema = z.union([
     .strictObject({ trait: traitIdSchema })
     .transform((v): Predicate => ({ kind: 'trait', id: v.trait })),
   z
-    .strictObject({ item: itemIdSchema, ...cmpFields })
-    .transform((v, ctx): Predicate => ({ kind: 'item', id: v.item, cmp: toCmp(v, ctx) })),
+    .strictObject({ item: itemIdSchema, in: containerKindSchema.nullish(), ...cmpFields })
+    .transform((v, ctx): Predicate => ({
+      kind: 'item',
+      id: v.item,
+      cmp: toCmp(v, ctx),
+      in: v.in ?? null,
+    })),
 
   // All three passport fields are tri-state: `null` means "don't care", NOT false. The engine
   // has no optional properties, so an omitted sub-key must materialise as an explicit null.

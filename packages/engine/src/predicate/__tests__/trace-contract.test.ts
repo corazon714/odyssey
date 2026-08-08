@@ -24,7 +24,7 @@ const ALL_PREDICATES: readonly Predicate[] = [
   { kind: 'skill', key: 'negotiation', cmp: { op: 'gte', value: 2 } },
   { kind: 'language', id: 'ru' as never },
   { kind: 'trait', id: traitId('smooth_talker') },
-  { kind: 'item', id: itemId('ration'), cmp: { op: 'gte', value: 1 } },
+  { kind: 'item', id: itemId('ration'), cmp: { op: 'gte', value: 1 }, in: null },
   { kind: 'passport', present: true, valid: null, flagged: null },
   { kind: 'visa', region: 'schengen' as never, valid: true },
   { kind: 'flag', id: flagId('wanted'), cmp: { op: 'isSet' } },

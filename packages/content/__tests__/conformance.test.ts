@@ -82,6 +82,7 @@ const SCHEMA_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'schema')
 const VOCABULARIES: Readonly<Record<string, z.ZodType>> = {
   BEAT_TYPES: schema.beatTypeSchema,
   CHECK_TAGS: schema.checkTagSchema,
+  CONTAINER_KINDS: schema.containerKindSchema,
   CHECK_VISIBILITIES: schema.checkVisibilitySchema,
   EVENT_PRIORITIES: schema.eventPrioritySchema,
   LOCATION_TYPES: schema.locationTypeSchema,
@@ -113,6 +114,8 @@ const NOT_CONTENT: Readonly<Record<string, string>> = {
   MIGRATIONS: 'save-schema ladder, not content',
   PHASE_1_MODIFIER_SOURCES: 'engine wiring, not content',
   PHASE_1_COMPLICATION_SOURCES: 'engine wiring, not content',
+  DRAIN_ORDER:
+    'engine ordering policy, not an authored vocabulary — same members as CONTAINER_KINDS',
   EMPTY_COMPLICATIONS: 'empty constant',
   EMPTY_MODIFIER_REGISTRY: 'empty constant',
   EMPTY_REASONS: 'empty constant',

@@ -62,7 +62,7 @@ const CASES: readonly { readonly terse: TersePredicate; readonly canonical: Pred
   },
   {
     terse: { item: 'ration', gte: 1 },
-    canonical: { kind: 'item', id: itemId('ration'), cmp: { op: 'gte', value: 1 } },
+    canonical: { kind: 'item', id: itemId('ration'), cmp: { op: 'gte', value: 1 }, in: null },
   },
   {
     terse: { passport: { present: true, valid: true } },

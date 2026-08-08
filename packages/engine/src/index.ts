@@ -27,6 +27,21 @@ export * from './ids/content-ids.ts';
 
 export { CHECK_TAGS, SKILL_IMPLIES_TAG, type CheckTag } from './modifiers/check-tag.ts';
 export {
+  CONTAINER_KINDS,
+  CONTAINER_SPECS,
+  DRAIN_ORDER,
+  countEverywhere,
+  countIn,
+  createContainer,
+  createInventory,
+  freeSlots,
+  presentContainers,
+  usedSlots,
+  type Container,
+  type ContainerKind,
+  type InventoryState,
+} from './state/container-state.ts';
+export {
   DEFAULT_TUNABLES,
   mulDivRound,
   type ModifierTunables,
