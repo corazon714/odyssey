@@ -23,11 +23,16 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status (planned).** None of the seven loop steps above is implemented. As of 2026-08-07
-> the repo contains the Phase 0 toolchain and its guardrails, plus a placeholder screen.
-> `packages/engine/src/index.ts` is an empty barrel by design. This section describes the
-> product to be built, and is the reference for _what_ to build — not a description of what
-> runs. `docs/PROGRESS.md` is the authority on current state.
+> **Status as of 2026-08-08 — Phase 1 complete.** Steps 5, 6 and 7 RUN: the leg loop, event
+> selection from a filtered and scored pool, choices resolving to weighted outcomes, and all
+> four memory mechanisms. `pnpm sim -- --runs=20000` completes twenty thousand journeys.
+>
+> Steps 1-4 do NOT: no map, no route generation, no preparation screen. The route is
+> caller-supplied via `RunInit.route`. There is no content — the nine events under
+> `packages/engine/src/__tests__/__fixtures__/` are test fixtures, not the seed corpus.
+>
+> `docs/PROGRESS.md` is the authority on current state; `docs/engine-spec.md` Part II is the
+> authority on what the engine actually does, written from the code.
 
 ---
 
@@ -45,8 +50,10 @@ These have caused real damage in similar projects when broken. Do not "improve" 
    state) and a `weight`. The director picks from the eligible pool. If you find yourself wanting
    `nextEventId`, use a **flag** plus a `requires` on the target event, or the **consequence queue**.
    The single exception is `scheduleEvent`, which is a _soft_ pointer resolved by the director.
-   _Enforcement: **(planned)** — the content linter must reject `nextEventId`. No events, no
-   schema and no linter exist yet, so nothing catches this today. Rationale: `docs/adr/0001`._
+   _Enforcement: **partial.** The content linter (which must reject `nextEventId`) is still
+   Phase 2. But the engine now has NO field an event could point with: `GameEvent` has no
+   successor, and `scheduleEvent` is a queue entry the director may decline. The sim reports
+   scheduled-vs-fired, so a soft pointer that never resolves is visible. Rationale: `adr/0001`._
 
 2. **`packages/engine` must never import React, React Native, Expo, or any DOM/native API.**
    It is pure TypeScript. It must run under plain Node so it can be simulated 20,000 times.
@@ -68,8 +75,11 @@ These have caused real damage in similar projects when broken. Do not "improve" 
    Everything about a run must be reproducible from `(seed, choiceSequence, contentVersion)`.
    _Enforcement: **live** — verified catching `Math.random()`, `Math['random']`,
    `const { random } = Math`, `Date.now()`, `Date['now']`, `new Date()` and `Date()`.
-   The `Rng` service, the `Clock` port and golden-run replay are **(planned)** for Phase 1;
-   until replay exists, obfuscated nondeterminism is not detectable._
+   The `Rng` service and golden-run replay are now **live** — `replayRun` reproduces a run
+   byte-for-byte from `(seed, choiceSequence, contentVersion)`, which is the backstop that
+   catches obfuscated nondeterminism. `purity.test.ts` additionally bans implementation-
+   approximated and locale-dependent APIs. **Proven on V8 only; Hermes is untested — ADR 0012.**
+   The `Clock` port remains **(planned)**: the engine takes no clock, it advances its own._
 
 4. **No user-visible string literals in code or content data.** Only i18n keys.
    `title: "You lost your passport"` is a bug. `titleKey: "events.passport_lost.title"` is correct.
@@ -85,16 +95,23 @@ These have caused real damage in similar projects when broken. Do not "improve" 
 6. **Content is data, not code.** Events live in `packages/content/events/**.yaml`, validated by Zod
    at build time and in tests. Never hardcode an event in a `.ts` file.
    _Enforcement: **(planned)** — `packages/content/events/` is empty, `schema/index.ts` is an
-   empty barrel, and Zod is installed but unused. The rule binds from the first event written._
+   empty barrel, and Zod is installed but unused (Phase 2). But `createContentPack` DOES
+   validate: it reports `danglingRefs`, `duplicateIds` and `unfillableBeatTypes`, and the
+   Phase 1 fixtures are JSON DATA files, never `.ts`. See ADR 0009 for who owns the types._
 
 7. **Every state mutation goes through an `Effect`.** No direct mutation of `RunState` from UI code.
    The UI dispatches a choice; the engine returns a new state plus a list of applied effects.
-   _Enforcement: **(planned)** — neither `RunState` nor `Effect` exists yet (Phase 1)._
+   _Enforcement: **live.** `applyEffects` is the only writer; `RunState` is deeply readonly,
+   and `effects/__tests__/purity-and-sharing.test.ts` deep-freezes the input and applies all
+   12 ops. Module code is strict, so an in-place write throws. The freeze is itself guarded._
 
-8. **The engine is deterministic and pure.** `resolve(state, input) -> { state, log }`.
-   Side effects (persistence, audio, haptics, analytics) happen in the app layer by observing the log.
-   _Enforcement: purity of the **package** is live (see rule 2). The `resolve` signature
-   itself is **(planned)** — no engine function exists yet._
+8. **The engine is deterministic and pure.** Shipped as two functions rather than one
+   `resolve`: `advanceLeg(state, pack)` and `resolveChoice(state, pack, choiceId)`, each
+   returning a new state plus a log. Side effects (persistence, audio, haptics, analytics)
+   happen in the app layer by observing the log.
+   _Enforcement: **live.** Package purity per rule 2; both entry points RETURN a typed
+   `EngineError` and never throw; the RNG is derived from state and drained back, never
+   injected, so a caller cannot desynchronise replay. See `docs/engine-spec.md` Part II._
 
 9. **Animation is presentation, never mechanics.** The engine resolves the outcome and the
    state is persisted _before_ any animation starts. A die is shown landing on a number the
@@ -128,13 +145,19 @@ apps/mobile/                Expo app (UI only — no game rules here)
   src/design/               tokens, theme, mood system, primitives         (planned)
   src/audio/                ambience + sfx manager                         (planned)
 packages/engine/            Pure TS game engine                         ✅ package exists
-  src/index.ts              public barrel                               ✅ empty by design
-  src/state/                RunState, reducers, effects                    (planned)
-  src/director/             event selection, pacing, tension curve         (planned)
-  src/rng/                  seeded PRNG + named substreams                 (planned)
-  src/predicate/            requires-DSL evaluator                         (planned)
-  src/effects/              effect-DSL applier                             (planned)
-  src/route/                route graph traversal, k-shortest paths        (planned)
+  src/index.ts              public barrel, 159 exports                  ✅ Phase 1 complete
+  src/ids/                  Brand<> + 12 branded content id types       ✅
+  src/errors/               EngineError — RETURNED, never thrown        ✅ (not in original layout)
+  src/rng/                  counter-based PRNG + 8 named substreams     ✅
+  src/state/                RunState, clamping, digest, flag access     ✅
+  src/predicate/            requires-DSL, 27 kinds + reason trace       ✅
+  src/effects/              effect-DSL applier, 12 ops, ModifierSource  ✅
+  src/content/              GameEvent types + ContentPack               ✅ (not in original layout)
+  src/director/             filters, scoring, ladder, beats, tension    ✅
+  src/queue/                consequence queue: caps, eviction, rebase   ✅ (not in original layout)
+  src/loop/                 advanceLeg · resolveChoice · replayRun      ✅ (not in original layout)
+  src/migrate/              save migration ladder + content reconcile   ✅ (not in original layout)
+  src/route/                route graph traversal, k-shortest paths        (planned — Phase 2)
 packages/content/                                                       ✅ package exists
   events/                   *.yaml event definitions (grouped by category) (empty)
   geo/                      nodes.json, edges.json, world.simplified.geojson (empty)
@@ -144,7 +167,7 @@ packages/content/                                                       ✅ pack
   schema/                   Zod schemas (single source of truth)        ✅ empty barrel, no schemas yet
 packages/tools/                                                         ✅ package exists
   shared/                   cross-tool helpers (findWorkspaceRoot)      ✅ (not in original layout)
-  sim/                      headless simulation harness + balance reports  (empty)
+  sim/                      headless sim harness + engine-spec 6 report  ✅ 11 files
   content-lint/             structural + semantic content validation       (empty)
   imagegen/                 build-time AI image pipeline                   (empty)
   i18n-check/               key coverage, pseudo-loc, length audit         (empty)
