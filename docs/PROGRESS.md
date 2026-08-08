@@ -62,30 +62,9 @@ design, but a fresh agent will find them and should not "fix" them:
 **Not started** (still `.gitkeep` only): `packages/content/{events,geo,i18n,images}`,
 `packages/content/schema/`, `packages/tools/{content-lint,imagegen,i18n-check}`.
 
-**M11 moved no sim numbers, which is the point** — versioning is machinery around the loop,
-not inside it. `pnpm sim:diff` reports no change.
+---
 
-### What Phase 1 built
-
-| Milestone | Delivers                                                           |
-| --------- | ------------------------------------------------------------------ |
-| M0        | `.ts` module specifiers; cross-engine purity guard                 |
-| M1        | Counter-based RNG, eight substreams                                |
-| M2        | `RunState`, `createRunState`, `stateDigest`                        |
-| M3        | 27 predicate kinds + the frozen reason trace                       |
-| M4        | 12 effect ops, pure applier, `ModifierSource` seam                 |
-| M5        | Content model, `createContentPack`, fixtures                       |
-| M6        | The walking skeleton — a run that runs                             |
-| M7        | Six scoring factors, seven-rung ladder, tension, complication seam |
-| M8        | Consequence queue: caps, eviction, expiry, rebasing                |
-| M9        | Beat consumption: fill, slide, expire                              |
-| M10       | Golden-run replay, full engine-spec §6 report, `sim:diff`          |
-| M11       | Save migration ladder, shape guard, content reconciliation         |
-
-**Both Phase 2 seams ship empty and tested as seams:** `ModifierSource` (M4) and the
-complication hook (M7). Each has a test that appends a stub and asserts it reaches the output.
-
-### What M10's instruments found, all at once
+### What the sim's instruments found — open findings
 
 Every one of these is a FIXTURE gap, not an engine fault — and none of them errored:
 
