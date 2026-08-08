@@ -17,13 +17,23 @@ describe('parseArgs', () => {
   it('parses runs, seed and repeated policies', () => {
     const parsed = parseArgs(['--runs=50', '--seed=x', '--policy=random', '--policy=risk-taker']);
     if (!parsed.ok) throw new Error(parsed.message);
-    expect(parsed.options).toEqual({ runs: 50, seed: 'x', policies: ['random', 'risk-taker'] });
+    expect(parsed.options).toEqual({
+      runs: 50,
+      seed: 'x',
+      policies: ['random', 'risk-taker'],
+      diff: false,
+    });
   });
 
   it('swallows the bare -- that pnpm forwards', () => {
     // CLAUDE.md 5 documents `pnpm sim -- --runs=20000`, and pnpm passes the separator through.
     const parsed = parseArgs(['--', '--runs=7']);
     expect(parsed.ok && parsed.options.runs).toBe(7);
+  });
+
+  it('accepts the valueless --diff flag', () => {
+    const parsed = parseArgs(['--diff']);
+    expect(parsed.ok && parsed.options.diff).toBe(true);
   });
 
   it('rejects a typo rather than silently using the default', () => {
@@ -75,7 +85,7 @@ describe('runOne', () => {
 });
 
 describe('runMany — the M6 gate criteria', () => {
-  const summary = runMany(PACK, SCENARIOS, { runs: 300, seed: 'gate', policies: [] });
+  const summary = runMany(PACK, SCENARIOS, { runs: 300, seed: 'gate', policies: [], diff: false });
 
   it('completes every run without an engine error', () => {
     expect(summary.errors).toEqual([]);
@@ -107,6 +117,8 @@ describe('runMany — the M6 gate criteria', () => {
   });
 
   it('never throws for any policy over a fuzzed corpus', () => {
-    expect(() => runMany(PACK, SCENARIOS, { runs: 200, seed: 'fuzz', policies: [] })).not.toThrow();
+    expect(() =>
+      runMany(PACK, SCENARIOS, { runs: 200, seed: 'fuzz', policies: [], diff: false }),
+    ).not.toThrow();
   });
 });

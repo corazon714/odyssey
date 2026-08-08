@@ -1,98 +1,78 @@
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { findWorkspaceRoot } from '../shared/workspace-root.ts';
+import { diffReports } from './diff-report.ts';
+import { formatReport } from './format-report.ts';
 import { loadFixturePack, loadFixtureScenarios } from './load-pack.ts';
 import { parseArgs } from './parse-args.ts';
-import { runMany, type SimSummary } from './run-many.ts';
+import { runMany } from './run-many.ts';
 
 /**
- * `pnpm sim -- --runs=1000`.
+ * `pnpm sim -- --runs=20000` and `pnpm sim:diff`.
  *
- * M6 prints the handful of counts the walking-skeleton gate is judged on. The full
- * engine-spec 6 report — endings distribution, choices picked under 2%, resource
- * trajectories, flags never set or read — lands in M10, once there is a director worth
- * measuring.
+ * The report goes to stdout AND to `reports/sim-latest.md`. `reports/` is git-ignored and
+ * write-protected by `guard-protected-paths.mjs`, which is right — generated output should
+ * never be committed.
+ *
+ * The BASELINE therefore lives at `docs/sim-baseline.md`, where it is reviewable in a pull
+ * request. That placement is the point: a balance change should be visible as a diff somebody
+ * signed off on, not as a number that quietly moved between releases.
  */
-function pct(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
-}
-
-function format(
-  summary: SimSummary,
-  ms: number,
-  runs: number,
-  seed: string,
-  version: string,
-): string {
-  const lines = [
-    `# Sim Report — seed=${seed} contentVersion=${version.slice(0, 8)} runs=${String(runs)}`,
-    '',
-    `Completion rate           ${pct(summary.completionRate).padStart(7)}`,
-    `Median legs               ${String(summary.medianLegs).padStart(7)}`,
-    `Median in-game days       ${String(summary.medianDays).padStart(7)}`,
-    `Uneventful legs           ${pct(summary.uneventfulRate).padStart(7)}   (target <2%)`,
-    `Fallback legs             ${pct(summary.fallbackRate).padStart(7)}   (target <2%)`,
-    `Long-range payoff rate    ${pct(summary.payoffRate).padStart(7)}   (${String(summary.queueFires)}/${String(summary.scheduled)} scheduled)`,
-    `Never-fired events        ${String(summary.neverFired.length).padStart(7)}   of ${String(summary.runs.length > 0 ? summary.neverFired.length + firedCount(summary) : 0)}`,
-    `Unresolved threads        ${String(summary.unresolvedThreads).padStart(7)}   (promises a run ended owing)`,
-    `Beat fill rate            ${pct(summary.beatFillRate).padStart(7)}   (${String(summary.beatsFilled)} filled, ${String(summary.beatsExpired)} missed)`,
-    `Queue departures          ${String(summary.queueDrops).padStart(7)}   (fired / expired / evicted)`,
-    '',
-    `Wall clock                ${String(ms)} ms   (${(ms / runs).toFixed(2)} ms/run)`,
-    `Extrapolated to 20,000    ${(((ms / runs) * 20000) / 1000).toFixed(1)} s   (target <30 s)`,
-  ];
-
-  if (summary.neverFired.length > 0) {
-    lines.push('', '## Never-fired events');
-    for (const id of summary.neverFired) lines.push(`  ${id}`);
-  }
-  if (summary.unfillableBeatTypes.length > 0) {
-    lines.push(
-      '',
-      '## Beat types no event in this pack can fill',
-      '   Every slot scheduled for one of these can only expire, so the fill rate above is',
-      '   bounded well below 100%. A content gap, not an engine fault.',
-    );
-    for (const type of summary.unfillableBeatTypes) lines.push(`  ${type}`);
-  }
-  if (summary.turnCapHits > 0) {
-    lines.push('', `## Turn cap hit by ${String(summary.turnCapHits)} run(s) — investigate`);
-  }
-  if (summary.errors.length > 0) {
-    lines.push('', '## Errors');
-    for (const error of summary.errors) lines.push(`  ${error}`);
-  }
-
-  return lines.join('\n');
-}
-
-function firedCount(summary: SimSummary): number {
-  const fired = new Set<string>();
-  for (const run of summary.runs) for (const id of run.firedEvents) fired.add(id);
-  return fired.size;
-}
+const ROOT = findWorkspaceRoot(dirname(fileURLToPath(import.meta.url)));
+const LATEST_PATH = join(ROOT, 'reports', 'sim-latest.md');
+const BASELINE_PATH = join(ROOT, 'docs', 'sim-baseline.md');
 
 const parsed = parseArgs(process.argv.slice(2));
 if (!parsed.ok) {
   console.error(`sim: ${parsed.message}`);
-  console.error('usage: pnpm sim -- --runs=1000 [--seed=base] [--policy=random ...]');
+  console.error('usage: pnpm sim -- --runs=1000 [--seed=base] [--policy=random ...] [--diff]');
   process.exit(1);
 }
 
 const pack = loadFixturePack();
 const scenarios = loadFixtureScenarios();
 
-if (pack.danglingRefs.length > 0) {
-  console.warn(`sim: ${String(pack.danglingRefs.length)} dangling content reference(s)`);
-}
-
 // The one sanctioned wall-clock read outside the app's system-clock adapter is here, in a
 // build-time tool that is not the engine — it measures the harness, never the run.
 const startedAt = performance.now();
 const summary = runMany(pack, scenarios, parsed.options);
-const elapsed = Math.round(performance.now() - startedAt);
+const elapsedMs = Math.round(performance.now() - startedAt);
 
-// The report IS this command's output, so stdout is the point — console.warn/error would
-// send a successful run's result to the wrong stream. The disable must sit on the line
-// directly above the statement: a second comment line in between silently defuses it.
-// eslint-disable-next-line no-console -- see above
-console.log(format(summary, elapsed, parsed.options.runs, parsed.options.seed, pack.version));
+const report = formatReport(summary, pack, {
+  seed: parsed.options.seed,
+  runs: parsed.options.runs,
+  elapsedMs,
+});
+
+mkdirSync(dirname(LATEST_PATH), { recursive: true });
+writeFileSync(LATEST_PATH, `${report}\n`);
+
+// eslint-disable-next-line no-console -- the report IS this command's output; stdout is the point.
+console.log(report);
+
+if (parsed.options.diff) {
+  const baseline = readBaseline();
+  if (baseline === null) {
+    console.error(`sim: no baseline at ${BASELINE_PATH} — copy reports/sim-latest.md there.`);
+    process.exit(1);
+  }
+
+  const diff = diffReports(baseline, report);
+  const rendered = diff.changed
+    ? ['', '## Diff vs docs/sim-baseline.md', ...diff.lines].join('\n')
+    : '\nNo change vs docs/sim-baseline.md.';
+
+  // eslint-disable-next-line no-console -- the diff IS this command's output.
+  console.log(rendered);
+}
 
 if (summary.errors.length > 0 || summary.turnCapHits > 0) process.exit(1);
+
+function readBaseline(): string | null {
+  try {
+    return readFileSync(BASELINE_PATH, 'utf8');
+  } catch {
+    return null;
+  }
+}

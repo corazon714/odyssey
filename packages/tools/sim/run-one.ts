@@ -43,6 +43,16 @@ export type SimRun = {
   readonly queueDrops: number;
   readonly beatsFilled: number;
   readonly beatsExpired: number;
+  /** `eventId/choiceId` for every decision taken — the input to the choices-picked report. */
+  readonly choicesPicked: readonly string[];
+  /** Resource snapshots at the legs engine-spec 6 asks for. */
+  readonly checkpoints: readonly {
+    readonly leg: number;
+    readonly money: number;
+    readonly health: number;
+    readonly morale: number;
+    readonly energy: number;
+  }[];
   readonly turnCapHit: boolean;
   readonly error: string | null;
   readonly digest: string;
@@ -82,6 +92,15 @@ export function runOne(
   let queueDrops = 0;
   let beatsFilled = 0;
   let beatsExpired = 0;
+  const choicesPicked: string[] = [];
+  const checkpoints: {
+    leg: number;
+    money: number;
+    health: number;
+    morale: number;
+    energy: number;
+  }[] = [];
+  const CHECKPOINT_LEGS = new Set([5, 15, 25]);
   let turns = 0;
 
   while (state.status !== 'ended' && turns < MAX_TURNS) {
@@ -93,6 +112,16 @@ export function runOne(
     queueDrops += advanced.queueDrops.length;
     beatsFilled += advanced.beatsFilled;
     beatsExpired += advanced.beatsExpired;
+
+    if (CHECKPOINT_LEGS.has(state.route.legIndex)) {
+      checkpoints.push({
+        leg: state.route.legIndex,
+        money: state.resources.money,
+        health: state.resources.health,
+        morale: state.resources.morale,
+        energy: state.resources.energy,
+      });
+    }
 
     const selection = advanced.selection;
     if (selection === null) continue;
@@ -113,6 +142,8 @@ export function runOne(
       // proceed — report it rather than looping.
       return blank(seed, route, policyName, `no selectable choice in ${selection.event.id}`);
     }
+
+    choicesPicked.push(`${selection.event.id}/${choice.id}`);
 
     const resolved = resolveChoice(state, pack, choice.id);
     if (!resolved.ok) {
@@ -145,6 +176,8 @@ export function runOne(
     queueDrops,
     beatsFilled,
     beatsExpired,
+    choicesPicked,
+    checkpoints,
     turnCapHit: turns >= MAX_TURNS,
     error: null,
     digest: stateDigest(state),
@@ -176,6 +209,8 @@ function blank(
     queueDrops: 0,
     beatsFilled: 0,
     beatsExpired: 0,
+    choicesPicked: [],
+    checkpoints: [],
     turnCapHit: false,
     error,
     digest: '',

@@ -11,12 +11,13 @@ export type ParseResult =
   | { readonly ok: true; readonly options: SimOptions }
   | { readonly ok: false; readonly message: string };
 
-const DEFAULTS: SimOptions = { runs: 100, seed: 'base', policies: [] };
+const DEFAULTS: SimOptions = { runs: 100, seed: 'base', policies: [], diff: false };
 
 export function parseArgs(argv: readonly string[]): ParseResult {
   let runs = DEFAULTS.runs;
   let seed = DEFAULTS.seed;
   const policies: PolicyName[] = [];
+  let diff = false;
 
   for (const arg of argv) {
     // `pnpm sim -- --runs=1000` forwards the bare `--` to us verbatim. CLAUDE.md 5 documents
@@ -25,6 +26,11 @@ export function parseArgs(argv: readonly string[]): ParseResult {
 
     const [rawKey, rawValue] = splitFlag(arg);
     if (rawKey === null) return { ok: false, message: `not a flag: ${arg}` };
+    // --diff is the one valueless flag.
+    if (rawKey === '--diff') {
+      diff = true;
+      continue;
+    }
     if (rawValue === null) return { ok: false, message: `${rawKey} needs a value` };
 
     switch (rawKey) {
@@ -51,7 +57,7 @@ export function parseArgs(argv: readonly string[]): ParseResult {
     }
   }
 
-  return { ok: true, options: { runs, seed, policies } };
+  return { ok: true, options: { runs, seed, policies, diff } };
 }
 
 /** Accepts both `--runs=10` and `--runs 10` is NOT supported — one form, no ambiguity. */

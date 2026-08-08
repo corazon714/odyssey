@@ -7,6 +7,7 @@ export type SimOptions = {
   readonly runs: number;
   readonly seed: string;
   readonly policies: readonly PolicyName[];
+  readonly diff: boolean;
 };
 
 export type SimSummary = {

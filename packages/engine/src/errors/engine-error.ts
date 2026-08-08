@@ -17,6 +17,7 @@ export const ENGINE_ERROR_CODES = [
   'save/version-too-new',
   'save/version-unsupported',
   'save/shape-invalid',
+  'replay/content-version-mismatch',
   'loop/wrong-status',
   'loop/no-presented-event',
   'loop/unknown-choice',

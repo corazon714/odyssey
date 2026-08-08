@@ -38,7 +38,13 @@ export {
   type Outcome,
   type SkillCheck,
 } from './content/game-event.ts';
-export { collectRefs, type ContentRef, type ContentRefKind } from './content/collect-refs.ts';
+export {
+  collectFlagUsage,
+  collectRefs,
+  type ContentRef,
+  type ContentRefKind,
+  type FlagUsage,
+} from './content/collect-refs.ts';
 export {
   contentVersion,
   createContentPack,
@@ -229,3 +235,5 @@ export {
   unfillableBeats,
   type BeatScheduleUpdate,
 } from './director/beat-slots.ts';
+
+export { replayRun, type ReplayResult } from './loop/replay-run.ts';

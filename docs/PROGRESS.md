@@ -5,7 +5,31 @@
 
 ---
 
-## Current state: Phase 1 — M0–M9 shipped. M10 next.
+## Current state: Phase 1 — M0–M10 shipped. M11 (versioning) is the last milestone.
+
+**Golden-run replay is live.** 814 Vitest + 3 Jest. `pnpm sim` writes the full engine-spec §6
+report; `pnpm sim:diff` compares it against `docs/sim-baseline.md`.
+
+### What M10's instruments found, all at once
+
+Every one of these is a FIXTURE gap, not an engine fault — and none of them errored:
+
+| Finding                                | Detail                                                                                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **`wanted` is read but never written** | Three gates reference it, nothing sets it. Those branches are unreachable.                                               |
+| 3 flags written but never read         | `bribe_on_record`, `detained`, `took_the_long_way` — dead writes.                                                        |
+| 2 choices never picked                 | `bribe_attempt/present_documents` (needs a passport the fixture never grants) and `/turn_back` (`hiddenUnless heat>=6`). |
+| Repeat-event rate 62.4%                | Nine events, two of them universal fillers.                                                                              |
+| health p50 = 0 by leg 15               | 69.9% of runs end in failure (`gave_up` 39.1%, `collapsed` 30.8%).                                                       |
+| Beat fill rate 47.9%                   | Routes schedule three beat types the pack cannot fill.                                                                   |
+
+They are recorded rather than tuned away: the fixture pack exists to exercise the engine, and
+balancing against nine events would be fitting to a fixture. Revisit with the Phase 2 seed
+corpus.
+
+---
+
+## Superseded — current state before M10
 
 **The game runs, the director paces it, consequences survive, and beats are consumed.**
 776 engine tests; 799 Vitest + 3 Jest total.
@@ -14,7 +38,7 @@
 
 ## Next step (ONE task, start here)
 
-**M10 — the full sim report and golden runs.**
+**M11 — save versioning and content reconciliation. The last Phase 1 milestone.**
 
 The last measurement milestone. M11 (versioning) is all that follows.
 

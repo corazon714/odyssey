@@ -101,3 +101,77 @@ function walkEffect(effect: Effect, push: Push): void {
       return;
   }
 }
+
+/**
+ * Flags a pack writes and flags a pack reads.
+ *
+ * The asymmetry between the two sets is the whole point, and engine-spec 6 asks for both:
+ *
+ *   written but never read — a dead write. The author thought something downstream cared.
+ *   read but never written — an unsatisfiable condition. The gate can never open, so the
+ *                            event behind it never fires and nothing errors.
+ *
+ * The second is the more dangerous, and is precisely ADR 0001's silent-content-bug class:
+ * `flags.yaml` does not exist yet, so this static walk is the only thing that can see it.
+ */
+export type FlagUsage = {
+  readonly written: readonly string[];
+  readonly read: readonly string[];
+  readonly writtenNeverRead: readonly string[];
+  readonly readNeverWritten: readonly string[];
+};
+
+export function collectFlagUsage(events: readonly GameEvent[]): FlagUsage {
+  const written = new Set<string>();
+  const read = new Set<string>();
+
+  const walkP = (predicate: Predicate): void => {
+    switch (predicate.kind) {
+      case 'all':
+      case 'any':
+        for (const child of predicate.of) walkP(child);
+        return;
+      case 'not':
+        walkP(predicate.of);
+        return;
+      case 'flag':
+        read.add(predicate.id);
+        return;
+      default:
+        return;
+    }
+  };
+
+  const walkE = (effect: Effect): void => {
+    if (effect.op === 'flag' || effect.op === 'clearFlag') written.add(effect.id);
+    if (effect.op === 'scheduleEvent' && effect.requires !== null) walkP(effect.requires);
+  };
+
+  for (const event of events) {
+    walkP(event.requires);
+    for (const choice of event.choices) {
+      walkP(choice.requires);
+      if (choice.hiddenUnless !== null) walkP(choice.hiddenUnless);
+      for (const cost of choice.costs) walkE(cost);
+      if (choice.skillCheck !== null) {
+        for (const modifier of choice.skillCheck.modifiers) {
+          if (modifier.when !== null) walkP(modifier.when);
+        }
+      }
+      for (const outcome of choice.outcomes) {
+        walkP(outcome.requires);
+        for (const effect of outcome.effects) walkE(effect);
+      }
+    }
+  }
+
+  const sorted = (set: ReadonlySet<string>): string[] =>
+    [...set].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+
+  return {
+    written: sorted(written),
+    read: sorted(read),
+    writtenNeverRead: sorted(written).filter((id) => !read.has(id)),
+    readNeverWritten: sorted(read).filter((id) => !written.has(id)),
+  };
+}
