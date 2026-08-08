@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Odyssey",
+    "slug": "odyssey",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "scheme": "odyssey",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.odyssey.game"
+    },
+    "android": {
+      "package": "com.odyssey.game",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": ["expo-router", "expo-splash-screen"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
