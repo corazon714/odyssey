@@ -95,5 +95,55 @@ export type Predicate =
 
 export type PredicateKind = Predicate['kind'];
 
+/**
+ * Every predicate kind, as data.
+ *
+ * A union cannot be enumerated at runtime, and two things need to enumerate this one:
+ * `packages/content`'s schema-completeness test (a kind with no schema must fail the build,
+ * not ship silently) and the trace-contract sweep, which until now asserted a hard-coded 27.
+ *
+ * `satisfies` catches an entry that is not a real kind. The other direction — a kind missing
+ * from this array — is caught by `PredicateKindsAreExhaustive` below, and that pair is the
+ * one genuinely non-vacuous conformance assertion in the repo: both sides are independently
+ * hand-written, so neither can be derived from the other and quietly agree.
+ */
+export const PREDICATE_KINDS = [
+  'always',
+  'never',
+  'all',
+  'any',
+  'not',
+  'resource',
+  'skill',
+  'language',
+  'trait',
+  'item',
+  'passport',
+  'visa',
+  'flag',
+  'relationship',
+  'npcMet',
+  'eventMemory',
+  'transportMode',
+  'transportStat',
+  'vehicleLegal',
+  'weather',
+  'timeOfDay',
+  'routeProfile',
+  'status',
+  'leg',
+  'day',
+  'tension',
+  'chance',
+] as const satisfies readonly PredicateKind[];
+
+/**
+ * `true` only if `PREDICATE_KINDS` covers the union exactly. Asserted in
+ * `__tests__/trace-contract.test.ts`; a missing kind makes this `never` and fails there.
+ */
+export type PredicateKindsAreExhaustive = PredicateKind extends (typeof PREDICATE_KINDS)[number]
+  ? true
+  : never;
+
 export const ALWAYS: Predicate = Object.freeze({ kind: 'always' });
 export const NEVER: Predicate = Object.freeze({ kind: 'never' });

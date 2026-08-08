@@ -1,6 +1,7 @@
 import { type ChoiceId, type EventId } from '../ids/content-ids.ts';
 import { type Effect } from '../effects/effect.ts';
-import { type SkillCheckSpec } from '../effects/modifier-source.ts';
+import { type CheckModifier, type SkillCheckSpec } from '../effects/modifier-source.ts';
+import { type SkillKey } from '../state/skills.ts';
 import { type Predicate } from '../predicate/predicate.ts';
 import { type TimeOfDay } from '../state/clock-state.ts';
 import { type RouteProfile } from '../state/route-state.ts';
@@ -48,12 +49,37 @@ export const CHECK_VISIBILITIES = ['hidden', 'partial', 'full'] as const;
 export type CheckVisibility = (typeof CHECK_VISIBILITIES)[number];
 
 /**
- * Extends M4's `SkillCheckSpec` rather than redeclaring it, so the ModifierSource seam and
- * the content model cannot drift apart.
+ * FLATTENED, not `SkillCheckSpec & { visibility }`, and the reason is the schema layer.
+ *
+ * Zod's `z.intersection` does infer an identity-equal intersection, so ADR 0009's assertion
+ * would have held either way — that was checked, not assumed
+ * (`packages/content/__tests__/zod-idioms.test.ts`). The problem is strictness: a
+ * `.strictObject` on either half of an intersection rejects the OTHER half's keys, so an
+ * intersection schema can never be sealed, and a misspelled `visibilty:` would parse clean,
+ * default, and satisfy every type assertion.
+ *
+ * `SkillCheckSpec` survives independently — `ModifierSource` consumes it, and a check is
+ * structurally assignable to it. `SkillCheckCoversSpec` below is what stops the two drifting:
+ * it is stronger than `extends`, failing on a widened spec as well as a narrowed one.
  */
-export type SkillCheck = SkillCheckSpec & {
+export type SkillCheck = {
+  readonly skill: SkillKey;
+  readonly dc: number;
+  readonly modifiers: readonly CheckModifier[];
   readonly visibility: CheckVisibility;
 };
+
+type Identical<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+
+/**
+ * `never` if `SkillCheck` minus its presentation field stops matching `SkillCheckSpec`.
+ * Asserted in `__tests__/skill-check-shape.test.ts`. It lives in THIS file rather than in
+ * `effects/modifier-source.ts` because that direction would cycle — this module already
+ * imports from there.
+ */
+export type SkillCheckCoversSpec =
+  Identical<Omit<SkillCheck, 'visibility'>, SkillCheckSpec> extends true ? true : never;
 
 export type Outcome = {
   readonly weight: number;

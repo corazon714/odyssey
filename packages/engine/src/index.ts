@@ -37,6 +37,7 @@ export {
   type GameEvent,
   type Outcome,
   type SkillCheck,
+  type SkillCheckCoversSpec,
 } from './content/game-event.ts';
 export {
   collectFlagUsage,
@@ -52,7 +53,14 @@ export {
   type ContentPack,
   type ContentRegistries,
 } from './content/content-pack.ts';
-export { ALWAYS, NEVER, type Predicate, type PredicateKind } from './predicate/predicate.ts';
+export {
+  ALWAYS,
+  NEVER,
+  PREDICATE_KINDS,
+  type Predicate,
+  type PredicateKind,
+  type PredicateKindsAreExhaustive,
+} from './predicate/predicate.ts';
 export {
   compareNumber,
   NUMBER_OPS,
