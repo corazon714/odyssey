@@ -40,24 +40,29 @@ corpus.
 
 **M11 — save versioning and content reconciliation. The last Phase 1 milestone.**
 
-The last measurement milestone. M11 (versioning) is all that follows.
+The two version axes from ADR 0006 §Consequences, with opposite policies:
 
-1. **The engine-spec §6 report in full**: endings distribution, choices picked under 2%,
-   resource trajectories (p10/p50/p90 by leg), flags never set, flags never read. Percentiles
-   use an integer index — no float arithmetic decides a reported statistic.
-2. **`reports/sim-latest.md`** and **`pnpm sim:diff`** against a checked-in
-   `reports/sim-baseline.md`. Note `reports/` is git-ignored AND blocked by
-   `guard-protected-paths.mjs`, so the baseline needs a home outside it — `docs/sim-baseline.md`
-   is the obvious one.
-3. **Golden runs.** `__fixtures__/golden-runs.json` holding
-   `{ seed, contentVersion, choiceSequence, expectedDigest, expectedHistoryKeys }`. Replay must
-   reproduce the digest AND the history-key sequence — a digest alone can be too coarse.
-   **Regeneration behind `ODYSSEY_UPDATE_GOLDEN=1`, never automatic.**
-4. **`it('the digest changes when one resource changes by 1')`** already exists in
-   `state-digest.test.ts` — the golden test needs its own guard that a `contentVersion`
-   mismatch is refused with a typed error rather than tolerated.
+1. **`migrate/` — the save-schema axis.** An ordered list of pure
+   `migrate_N_to_N+1(unknown) -> unknown` functions. **Never edit a shipped migration.** Every
+   new `SAVE_VERSION` adds one function AND one checked-in fixture save.
+2. **The meta-test that makes it work**: `it('has a fixture for every version below
+SAVE_VERSION')`. It is the only thing that makes writing a migration without a fixture
+   impossible, and it fails the moment someone bumps the constant and forgets.
+3. **`isRunStateShape`** — a shallow hand-written guard, not Zod. Deep save validation belongs
+   with the persistence layer in Phase 2; the engine needs enough to refuse a corrupt save.
+   A future `version` returns a typed `save/version-too-new`, never a throw.
+4. **`reconcileContent` — the content axis, which CANNOT migrate.** Tolerant read:
+   - dangling `pendingEvents` dropped and each drop reported
+   - `eventMemory` for removed events **kept** — dropping loses "seen" if the event returns
+   - `history` retained verbatim (i18n keys; `i18n-check` catches the rest)
+   - flags with unrecognised ids evaluate normally — flags are runtime data, not content
+   - a predicate over a missing CONTENT id resolves false with `unknown-ref` (already true)
 
-The M9 numbers below are the baseline to diff against.
+Note the asymmetry M10 made concrete: **replay refuses a `contentVersion` mismatch, while
+reconciliation tolerates one.** Both are correct — a content update must not delete an
+in-progress run, and a tolerant replay would prove nothing.
+
+Diff the sim against `docs/sim-baseline.md`; M11 should not move a single number.
 
 ---
 
