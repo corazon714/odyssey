@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm typecheck *)",
+      "Bash(pnpm lint *)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm test:engine *)",
+      "Bash(pnpm format:check *)",
+      "Bash(pnpm -r run typecheck *)",
+      "Bash(pnpm --filter * run typecheck *)",
+      "Bash(pnpm --filter * run test *)",
+      "Bash(pnpm exec eslint *)",
+      "Bash(pnpm exec tsc *)",
+      "Bash(pnpm exec vitest run *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git restore --staged *)",
+      "Bash(git stash list *)",
+      "Read(./**)",
+      "Glob(./**)",
+      "Grep(./**)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm i *)",
+      "Bash(npx expo install *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)",
+      "Bash(git rebase *)"
+    ],
+    "deny": [
+      "Bash(rm *)",
+      "Bash(rmdir *)",
+      "Bash(del *)",
+      "Bash(pnpm add *)",
+      "Bash(pnpm remove *)",
+      "Bash(pnpm up *)",
+      "Bash(pnpm update *)",
+      "Bash(npm install *)",
+      "Bash(npm i *)",
+      "Bash(npm add *)",
+      "Bash(yarn add *)",
+      "Bash(eas *)",
+      "Bash(npx eas-cli *)",
+      "Bash(npx eas *)",
+      "Bash(curl * | sh)",
+      "Bash(curl * | bash)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Write(./.env)",
+      "Write(./.env.*)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.npmrc)",
+      "Write(~/.claude/**)",
+      "Edit(~/.claude/**)",
+      "Write(~/.ssh/**)",
+      "Edit(~/.ssh/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-protected-paths.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking protected paths"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-git-push.mjs\"",
+            "timeout": 10,
+            "statusMessage": "Checking push safety"
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/gate-commit.mjs\"",
+            "timeout": 300,
+            "statusMessage": "Running the commit quality gate"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/warn-new-dependency.mjs\"",
+            "timeout": 15,
+            "statusMessage": "Checking for new dependencies"
+          }
+        ]
+      }
+    ]
+  }
+}
