@@ -5,11 +5,13 @@
 
 ---
 
-## Current state: Phase 1 in progress — M0 and M1 shipped, M2 next.
+## Current state: Phase 1 in progress — M0, M1 and M2 shipped, M3 next.
 
-The engine is no longer empty. `packages/engine/src/rng/` holds the seeded RNG and
-`src/index.ts` exports it; 224 of the repo's 237 tests are engine tests. Nothing else in the
-game loop exists yet — no `RunState`, no predicate, no effects, no director, no content.
+The engine has randomness and state. `packages/engine/src/rng/` holds the seeded RNG and
+`src/state/` holds `RunState`, `createRunState` and `stateDigest`; 350 of the repo's 363 tests
+are engine tests. Still missing: the predicate evaluator, effects, the director, the turn
+loop and all content. `predicate/predicate.ts` exists but holds only `always`/`never`, which
+M3 expands.
 
 The Phase 1 plan is approved, with review gates after **M0** (done) and **M6** (the walking
 skeleton, where `pnpm sim -- --runs=1000` first runs end to end). Milestones: M0 prerequisites
@@ -240,7 +242,77 @@ The honest gaps are _unverified_, not _broken_:
 
 ## Next step (ONE task, start here)
 
-**M2 — build `packages/engine/src/state/`: `RunState`, `RunInit` and `createRunState`.**
+**M3 — build `packages/engine/src/predicate/`: the `requires` DSL and its evaluator.**
+
+M2 shipped (below), so state exists to evaluate predicates against. `predicate/predicate.ts`
+currently holds a two-member placeholder union; M3 expands it. Growing a union is additive,
+so nothing written against it needs rework.
+
+Deliver:
+
+1. **~20 kind-tagged node types**: `all` · `any` · `not` · `always` · `never` · `flag` ·
+   `resource` · `skill` · `trait` · `item` · `document` · `visa` · `relationship` ·
+   `eventMemory` · `transport` · `weather` · `timeOfDay` · `leg` · `tension` · `chance` ·
+   plus `unknown-ref` as an evaluation _result_, not an authored node.
+2. **`evaluatePredicate(p, ctx): { value, trace }`.** The trace is not debug output — Phase 7
+   (MOTION MO2) renders it as the dice modifier chips, and design pillar 2 requires the
+   player be able to reconstruct why. **`ReasonNode` and `ReasonLine` are contract-frozen
+   from M3; changing either needs an ADR.** Shape:
+
+   ```ts
+   type ReasonNode = {
+     readonly kind: PredicateKind | 'unknown-ref';
+     readonly value: boolean;
+     readonly labelKey: string; // i18n key, never prose
+     readonly params: Readonly<Record<string, string | number | boolean>>;
+     readonly children: readonly ReasonNode[]; // EMPTY_REASONS for leaves
+   };
+   ```
+
+3. **`describeReason(node): readonly ReasonLine[]`** — flattens to
+   `{ labelKey, params, polarity: 'pro' | 'con' }`, the chip list the result screen renders.
+4. **`{ chance: p }` draws from `chanceGate` and advances NO cursor.** It is addressed by
+   `deriveKey(keys.chanceGate, '<eventId>:<legIndex>:<nodePath>')`. Drawing from `eventPick`
+   would make the draw _count_ depend on pool size, so adding one event would shift every
+   later draw. See ADR 0005 §2. This also makes re-evaluation within a leg idempotent, which
+   the director needs to explain itself.
+5. **A missing content id resolves to `false` with a distinct `{ kind: 'unknown-ref' }`
+   reason node**, so the sim can count them instead of them vanishing into a generic false.
+   A missing _flag_ is not this case — an unset flag is ordinary runtime data.
+
+Tests that matter: every kind exercised; `reason-trace-consistency` (`reason.value` matches
+the evaluator at every node, recursively); `i18n-keys-only` (rule 2.4, mechanised);
+exhaustiveness (adding a kind must fail to compile at every site that must handle it).
+
+---
+
+## M2 shipped — RunState, the serialisable core
+
+23 files under `src/state/`, `src/ids/`, `src/errors/`, plus placeholder `src/content/` and
+`src/predicate/`. Engine tests 224 → 350. `docs/adr/0006` records the six decisions; the ones
+that will bite if forgotten:
+
+- **No optional properties in engine state — `| null` instead.** `exactOptionalPropertyTypes`
+  makes `{ ...state, x: maybeUndefined }` an error wherever `x?: T`, which is exactly what a
+  structural-sharing effect applier does every leg; and `undefined` does not survive
+  `JSON.stringify` while `null` does. Authored content types keep `?`.
+- **Clamps are recorded, not silent.** `clampResources`/`clampSkills` return the clamp events
+  so the sim can count them. A silent `Math.min` hides a balance finding.
+- **`stateDigest` canonicalises first.** `JSON.stringify` emits string keys in insertion
+  order, so two `toEqual` states can serialise differently depending on the order their flags
+  were set. 128 bits (4 murmur passes), because 32 collides by birthday inside a 20k-run sim.
+- **`RunState.presentation` was added** — not in engine-spec §1. Without it `resolveChoice`
+  needs the caller to pass the event id back, putting engine state in the app layer.
+- **The route is validated, not generated**, and `legIndex`/`progressKm` are normalised so a
+  reused `RunInit` cannot start a run halfway along.
+
+`json-serializable.test.ts` is the load-bearing one: it round-trips a _fully populated_ state
+— every memory mechanism, every branded id — and compares digests, because `toEqual` alone
+would not notice a `Map` collapsing to `{}` on both sides.
+
+---
+
+## M2 brief (delivered) — `RunState`, `RunInit` and `createRunState`
 
 M1 shipped (see below), so randomness is settled and every later subsystem can draw from it.
 

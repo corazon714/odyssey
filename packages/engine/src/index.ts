@@ -15,6 +15,83 @@
  * which is how CI proves rule 2.2 executably (`node packages/engine/src/index.ts`).
  */
 
+export {
+  engineError,
+  ENGINE_ERROR_CODES,
+  type EngineError,
+  type EngineErrorCode,
+} from './errors/engine-error.ts';
+
+export { type Brand } from './ids/brand.ts';
+export * from './ids/content-ids.ts';
+
+export { BEAT_TYPES, type BeatType } from './content/beat-type.ts';
+export { ALWAYS, NEVER, type Predicate } from './predicate/predicate.ts';
+
+export { BEAT_SLOT_STATUSES, type BeatSlot, type BeatSlotStatus } from './state/beat-slot.ts';
+export { clampValue, NO_CLAMPS, type ClampEvent } from './state/clamp-event.ts';
+export {
+  advanceClock,
+  createClock,
+  timeOfDayFor,
+  TIMES_OF_DAY,
+  type ClockState,
+  type TimeOfDay,
+  type Weekday,
+} from './state/clock-state.ts';
+export {
+  createDocuments,
+  type DocumentsState,
+  type PassportState,
+  type TicketState,
+  type VisaState,
+} from './state/documents-state.ts';
+export { type HistoryEntry } from './state/history-entry.ts';
+export {
+  type EventMemoryEntry,
+  type FlagEntry,
+  type FlagValue,
+  type InventoryEntry,
+  type RelationshipEntry,
+} from './state/memory-entries.ts';
+export { type PendingEvent } from './state/pending-event.ts';
+export { NO_PRESENTATION, type Presentation } from './state/presentation.ts';
+export {
+  clampResources,
+  createResources,
+  RESOURCE_BOUNDS,
+  RESOURCE_KEYS,
+  type ResourceKey,
+  type Resources,
+} from './state/resources.ts';
+export { ROUTE_PROFILES, type RouteProfile, type RouteState } from './state/route-state.ts';
+export { RUN_STATUSES, type RunStatus } from './state/run-status.ts';
+export {
+  clampSkills,
+  createSkills,
+  SKILL_KEYS,
+  SKILL_MAX,
+  SKILL_MIN,
+  type SkillKey,
+  type Skills,
+} from './state/skills.ts';
+export {
+  createTransport,
+  TRANSPORT_MODES,
+  type TransportMode,
+  type TransportState,
+} from './state/transport-state.ts';
+export { createRunInit, type RunInit } from './state/run-init.ts';
+export { type RunState } from './state/run-state.ts';
+export {
+  createRunState,
+  SAVE_VERSION,
+  type CreateRunStateResult,
+} from './state/create-run-state.ts';
+export { validateRoute } from './state/validate-route.ts';
+export { canonicalJson } from './state/canonical-json.ts';
+export { digestOf, stateDigest } from './state/state-digest.ts';
+
 export { createRng, type Rng } from './rng/rng.ts';
 export { createRngCursors, ALL_RNG_STREAMS, type RngCursors } from './rng/rng-cursors.ts';
 export { RNG_STREAMS, type RngStream } from './rng/rng-stream.ts';
