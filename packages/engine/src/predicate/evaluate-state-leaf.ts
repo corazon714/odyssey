@@ -117,12 +117,30 @@ export function evaluateStateLeaf(predicate: StateLeaf, ctx: PredicateContext): 
       const visa = state.documents.visas[predicate.region];
       const notExpired =
         visa !== undefined && (visa.expiresDay === null || state.clock.day < visa.expiresDay);
-      const held = visa !== undefined && visa.valid && notExpired;
+      /**
+       * A VISA READ INHERITS THE PASSPORT (ADR 0017, `documents-state.ts` on `VisaState`).
+       *
+       * That is the entire reason `VisaState` has no container of its own: a visa is a stamp
+       * IN the passport, and two independently-losable records for one physical object is the
+       * content-bug generator the design set out to remove — an author writes "your bag is
+       * stolen" and the visa in the passport in the bag keeps working.
+       *
+       * The inheritance was specified in ADR 0017 and never implemented here; this read
+       * consulted only `visas[region]` until 2026-08-08. Regression test:
+       * `effects/__tests__/containers.test.ts`, "a visa does not outlive the passport".
+       *
+       * The RECORD deliberately survives in state — a recovered passport still carries its
+       * stamps. It is the READ that must not.
+       */
+      const passportInHand = state.documents.passport?.present === true;
+      const held = passportInHand && visa !== undefined && visa.valid && notExpired;
 
       return leafReason('visa', held === predicate.valid, 'reason.visa', {
         region: predicate.region,
         held,
         expired: visa !== undefined && !notExpired,
+        // Pillar 2: "no visa" and "no passport to show it in" are different sentences.
+        noPassport: !passportInHand,
       });
     }
 

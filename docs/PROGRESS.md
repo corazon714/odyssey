@@ -5,13 +5,186 @@
 
 ---
 
-## Shipped this session (2026-08-08, session 4) — Phase 2A M2A.0
+## Shipped this session (2026-08-08, session 5) — Phase 2A under adversarial verification
 
-**Phase 2A is planned and approved** — 8 milestones, plan at
-`~/.claude/plans/phase-2a-plan-mode-precious-elephant.md`. Review gates after M2A.2 and M2A.5.
+**No new features. The deliverable is knowing which of Phase 2A's guarantees are real.** Six
+checks against what session 4 claimed. Four confirmed it; **two did not, and both produced a
+fix.** Every number below came from running something, not from reading the code.
+
+What is different in the repo afterwards: one engine bug fixed, three documents that asserted
+things the code contradicted corrected, and two new tests.
+
+**Prove it, from a clean checkout:**
+
+```bash
+pnpm i && pnpm typecheck && pnpm lint && pnpm test && pnpm format:check
+```
+
+```bash
+pnpm content:lint              # exit 0 — 0 errors, 29 warnings
+pnpm sim -- --runs=5000        # 31.2% completion, contentVersion 4c57cd5c
+pnpm sim:diff -- --runs=2000   # "No change vs docs/sim-baseline.md."
+```
+
+```bash
+pnpm vitest run --project engine src/effects/__tests__/containers.test.ts
+```
+
+That last one is the session in miniature: 13 tests, of which the two added here are the
+`loseContainer` contract in full and the visa bug it exposed. Totals moved 1053 → **1055
+Vitest + 3 Jest across 47 files**.
+
+### What was verified, and how
+
+| #   | Claim                                                                      | Verdict                                                            |
+| --- | -------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 1   | `content:lint`'s rules all fire                                            | **33 of 33 rule IDs fired**, one break at a time                   |
+| 2   | Schema/engine drift fails the build                                        | **8 kinds proven to fail**; one kind does not, characterised below |
+| 3   | The registry plugs into the `ModifierSource` seam with no call-site change | **FALSE.** Corrected in three places                               |
+| 4   | Losing a bag takes the passport in it                                      | **True** — and writing the full test found a live bug              |
+| 5   | The sim is unmoved                                                         | `pnpm sim:diff -- --runs=2000` → "No change"                       |
+
+### 1. Every linter rule fires — 33 rule IDs, not 13
+
+The 13 entries in `RULES` emit **33 distinct rule IDs** (the four `UNDECLARED_*` are
+template-constructed from `ContentRefKind`, so they never appear as string literals in the
+source). Each was fired individually against a throwaway copy of `packages/content`, diffed
+against the pristine 29-warning baseline so corpus-global rules could be told apart from
+pre-existing findings.
+
+**`ZERO_WEIGHT_CHOICE` is unreachable through the YAML loader.** Both routes to it are closed
+earlier by a strictly stronger schema: `weight: intSchema.positive()` rejects `weight: 0`
+("Too small: expected number to be >0") and `outcomes: z.array(...).min(1)` rejects an empty
+list. Handed a zero-weight event directly, the rule fires correctly — so it is dead code with
+respect to authored content, not a broken rule. Leave it: it guards `runLint`'s actual input
+type, which is `GameEvent[]` and does permit weight 0.
+
+### 2. The drift guard works — but not by the mechanism the comment claimed
+
+Eight kinds of disagreement were each made to fail the build: engine gains a field (TS2741),
+schema gains a field (TS2353), optional-vs-null (TS2322), engine drops a `readonly` (TS2322),
+a new engine vocabulary with no schema (L2 names it), the vacuity annotation (L1' **and** the
+source scan, independently), a schema enum narrower than the engine's (the `_beatType`
+`Equals`), and a semantic-only transform flip (0 type errors, 13 test failures).
+
+**The finding: most of the `Equals` assertions are tautologies, and the real work is done
+elsewhere.** `buildEvent` is declared `: GameEvent` and every predicate/effect arm is
+`.transform((v): Predicate => …)`, so `z.infer` of those schemas IS the engine type by
+declaration. `_event`, `_choice`, `_outcome`, `_check`, `_modifier`, `_context`, `_predicate`
+and `_effect` cannot go red. That is **not a hole** — the annotation moves the check to the
+builder body, where assignability catches everything above with better error messages than
+`Equals` gives. `_beatType` proves L1 is genuinely load-bearing where no transform annotates
+the output.
+
+**The one uncaught kind: the schema widening `readonly T[]` to `T[]`.** A mutable array is
+assignable to a readonly one, so the builder accepts it. Harmless — same object at runtime,
+and the dangerous direction (the _engine_ going mutable) is caught. Recorded as an open
+question rather than fixed, because closing it means dropping the builder annotations and
+taking worse errors in exchange.
+
+Also worth knowing: **an engine vocabulary growing a member cannot drift at all.** The schemas
+are built from the engine arrays (`z.enum(BEAT_TYPES)`), so adding a beat type propagates
+automatically. Derivation beats assertion.
+
+### 3. The `ModifierSource` seam claim was false — corrected in three places
+
+ADR 0008 promised "Phase 2 appends `registryModifierSource` and `quirkModifierSource` **with no
+change at the call site**." Neither function exists in any source file. `git grep` returns only
+the ADR line and a code comment repeating it. `PHASE_1_MODIFIER_SOURCES` still holds exactly one
+entry. M2A.3 **bypassed the seam**: it threaded the registry as a fifth parameter to
+`runSkillCheck` and resolved it in `modifiers/resolve-modifiers.ts`.
+
+And the call site did change: `runSkillCheck` went 4 params → 5 and `RollResult` →
+`CheckOutcome` (it is a public barrel export, so that is a published-API break);
+`SkillCheckSpec` gained a required `tags`; `resolve-choice.ts` changed across 24 lines.
+
+**Why the bypass was right, which is the part nobody wrote down:** a `ModifierSource` returns a
+flat `RollModifier[]` of `{ labelKey, delta }`. The registry's output is not flat — pillar 2
+needs `rawDelta`, which rows a conflict deleted, and each row's share of the clamp. Widening the
+seam would have made every source pay for the registry's needs.
+
+**What is actually true, and is the claim to make instead:** `resolveChoice(state, pack,
+choiceId)` never changed, because the registry rides on the `pack` argument that already
+existed. `advanceLeg`, `replayRun` and `sim/run-one.ts` were untouched by `8013aac`.
+
+Corrected in `effects/modifier-source.ts`, `docs/adr/0008` (amended, prediction left standing
+so the miss stays legible) and the stale cell in this file's session-3 table.
+
+_One claim NOT repeated:_ the golden digests did move at `8013aac`, but in exactly the 18 lines
+`contentVersion` moved, with `choiceSequence` and `expectedHistoryKeys` untouched — and
+`stateDigest` hashes the whole state including `contentVersion`. Fully explained; not evidence
+of behavioural change.
+
+### 4. A live bug: a visa outlived the passport it is stamped in
+
+`documents-state.ts` and ADR 0017 both state "**visa reads inherit the passport**" — that is the
+stated reason `VisaState` has no container of its own, so that one physical object cannot become
+two independently-losable records. `evaluate-state-leaf.ts` never implemented it: the `visa` arm
+read only `documents.visas[region]`.
+
+So the exact scenario the design ruled out was live. Bag stolen → passport in it marked
+`present: false` → **`visa` still reports `held: true`**. Fixed; the read now requires
+`passport.present === true`, and the trace carries `noPassport` so pillar 2 can distinguish "no
+visa" from "no passport to show it in". The visa RECORD still survives in state, deliberately —
+a recovered passport keeps its stamps.
+
+**Nothing could have caught this.** The state shape was right, the ADR was right, and no test
+tied them together; no event in the corpus uses a `visa` predicate, which is also why the fix is
+sim-neutral. It was found by writing the test the design implied.
+
+The same test pins the three other things losing a bag does, because they disagree with each
+other: items go, the passport is **marked**, tickets are **hard-deleted**, and
+`passport.container` still reads `'bag'` after the bag is null.
+
+### What changed in the repo
+
+| File                                    | Why                                                                  |
+| --------------------------------------- | -------------------------------------------------------------------- |
+| `predicate/evaluate-state-leaf.ts`      | the visa fix                                                         |
+| `effects/__tests__/containers.test.ts`  | +2 tests: the full `loseContainer` contract, and the visa regression |
+| `effects/modifier-source.ts`            | the seam comment promised something that never happened              |
+| `docs/adr/0008`                         | same promise, amended with the prediction left standing              |
+| `docs/adr/0017`                         | records that the visa inheritance it specified was never implemented |
+| `docs/adr/0019`                         | **new** — conformance is enforced by annotation, not identity        |
+| `content/__tests__/conformance.test.ts` | the L1 comment overstated what L1 catches                            |
+| `CLAUDE.md` §9                          | "bidirectional (mutual-extends)" was wrong twice over                |
+
+**Half-done, the next step and the open questions are unchanged in shape and live below** —
+this session added no features, so gap 1 (`searchContainer`) is still the next task. Two new
+entries: open question 5, and a design question under Half-done 4.
+
+---
+
+## Shipped in session 4 (2026-08-08) — **PHASE 2A COMPLETE**, M2A.0–M2A.7
+
+`packages/content` is now a real content pipeline: YAML in, validated `GameEvent[]` out, with a
+compiler-enforced conformance harness holding the Zod schemas identical to the engine's types,
+five declaration registries, a global modifier registry with a 6-step resolution pipeline,
+container inventory, three-tier money, and two tools — `content:lint` and `content:stats`.
+
+**Prove it, from a clean checkout:**
+
+```bash
+pnpm i && pnpm typecheck && pnpm lint && pnpm test && pnpm format:check
+```
+
+```bash
+pnpm content:lint          # exit 0 — 0 errors, 29 warnings (tabulated below)
+pnpm content:stats         # 9 events, 8 modifiers, 1400-cell coverage pass
+pnpm sim:diff -- --runs=2000   # "No change" against docs/sim-baseline.md
+pnpm sim -- --runs=20000   # the full balance report
+```
+
+Totals: **1053 Vitest + 3 Jest across 47 files**, up from 851 at Phase 1. Eight milestones,
+~20 commits. Review gates after M2A.2 and M2A.5 were both passed.
+
+**Every behavioural sim number is unchanged since M2A.0's deliberate retune**, except two 0.1pp
+ending shifts M2A.6 caused by fixing `wanted`. M2A.3/4/5 moved `contentVersion` only.
+
 Three questions were settled by the human before planning: rename `money` → `cash` and add
 `bank`; skill bypasses the modifier clamp (`d20 + skill + clamp(mods, −8..+6)`); fix `worldTick`
-first as its own milestone.
+first as its own milestone. The plan is at
+`~/.claude/plans/phase-2a-plan-mode-precious-elephant.md`.
 
 ### M2A.0 — the drift curve. `docs/adr/0014`. Two commits.
 
@@ -170,15 +343,40 @@ no region field, `geo/` is empty, and region-gating events is what §11 warns ag
 
 ---
 
-## Phase 2A is complete — 8 milestones, ~20 commits
+## Half-done
 
-`pnpm typecheck` · `pnpm lint` · `pnpm test` (**1053** Vitest + 3 Jest) · `pnpm format:check` ·
-`pnpm content:lint` (0 errors, 29 warnings) · `pnpm content:stats` · `pnpm sim:diff` — all green.
+Nothing is broken and nothing is stubbed to make a check pass. What follows is **live data with
+no consumer** — shapes that parse, validate and persist, but that no code path reads yet. Each
+one is a real gap, not a placeholder, and each has the file that closes it.
 
-**Every behavioural sim number is unchanged since M2A.0's deliberate retune**, except the two
-0.1pp ending shifts M2A.6 caused by fixing `wanted`. M2A.3/4/5 moved `contentVersion` only.
+### 1. `searchContainer` — the largest one. Data live, no caller.
 
-### The 29 lint warnings are the honest to-do list for Phase 2B
+`packages/engine/src/state/container-state.ts` gives every container a `searchDC` (person 2 /
+bag 4 / vehicle 6 / stash 9) and every item a `concealability`. `CHECK_TAGS` includes `search`
+and `packages/content/modifiers.yaml` has four rows keyed to it. **No event performs a search**,
+so all of it is inert — `pnpm content:lint` reports `UNUSED_TAG: search`, correctly.
+
+ADR 0017 explains why this is not an effect op: an effect applier has no `Rng` by contract
+(`packages/engine/src/effects/effect-context.ts:6-11`), and a search writes, so two searches in
+one effect list would address identically. The design is settled — `Outcome.search: SearchSpec |
+null`, resolved through the existing `runSkillCheck` on the existing `skillCheck` stream, so no
+new RNG stream and no `RngCursors` change. It is **not built**. Files it would touch:
+`packages/engine/src/content/game-event.ts`, `packages/engine/src/loop/resolve-choice.ts`,
+`packages/content/schema/outcome.ts`.
+
+### 2. The nine events are still fixtures, not a corpus.
+
+`packages/content/events/**.yaml` is nine events re-expressed from the Phase 1 JSON. They exist
+to exercise the tooling, and per ADR 0009 §5 they **must not become the seed corpus**. Two
+consequences that read as balance problems but are content gaps:
+
+- **No food anywhere in the pack.** Nothing reduces hunger; one effect grants energy. Health
+  decline is therefore irreversible and every long run converges to 0 — M2A.0 widened _which
+  leg it starts_ (distinct 1 → 9) but cannot widen the endpoint. ADR 0014.
+- **Fillers are 75% of everything that fires**, which `content:stats` shows from the other end
+  as filler-only coverage cells.
+
+### 3. The 29 lint warnings, which are the 2B to-do list
 
 | Warning                                 | Count | Closes when                                                           |
 | --------------------------------------- | ----- | --------------------------------------------------------------------- |
@@ -188,53 +386,122 @@ no region field, `geo/` is empty, and region-gating events is what §11 warns ag
 | `LIABILITY_UNBACKED`                    | 2     | events actually read `cash_belt` / `spare_tyre`                       |
 | `FLAG_WRITTEN_NEVER_READ`               | 3     | something gates on `bribe_on_record`, `detained`, `took_the_long_way` |
 
-### Named gaps carried into 2B
+They are honest fixture gaps, all warnings, none suppressed. **They should go to zero as 2B
+lands, not be silenced.** Reproduce with `pnpm content:lint`.
 
-1. **`searchContainer` is not implemented.** ADR 0017 explains why it is not an effect op. The
-   data is live and inert — `searchDC`, `concealability`, the `search` tag, four registry rows —
-   but no event performs a search, so `content:lint` reports `UNUSED_TAG: search`.
-2. **Hermes is still unproven** (ADR 0012 §3). Every cross-engine defence is preventive.
-3. **`CHECK_DIE_SIDES = 20` is still a placeholder.** The modifier clamp is ±6/−8 and skill
-   bypasses it, so a d20 still swamps a single modifier at 5% each. Needs the seed corpus.
-4. **`worldTick`'s spread is bounded by content**: the fixture pack has no food, so health
-   decline is irreversible and only its START leg varies (ADR 0014).
+### 4. Three things that are pinned by tests but not decided (added session 5)
 
-### Next: Phase 2B — the seed corpus
+Not broken — each has a passing test asserting current behaviour. What is missing is a decision
+that the behaviour is _right_. All three live in
+`packages/engine/src/effects/__tests__/containers.test.ts`.
 
-`pnpm content:stats` and `pnpm content:lint` are now the instruments for writing it. Author
-against `docs/engine-spec.md` Part II and the content bible; the 12 seed events, 160 modifiers,
-complications, universal choices and quirks are all 2B.
+- **Losing a container DELETES its tickets but MARKS its passport.** `apply-container-effects.ts`
+  filters tickets out of the array and sets `passport.present = false`. Defensible — a lost
+  passport opens a recovery storyline and a lost ferry ticket leaves nothing to write against —
+  but the asymmetry is unargued in the code, and an author reasoning about "your bag is stolen"
+  has to know it. Pinned so a change is noticed; see open question 6.
+- **`passport.container` still reads `'bag'` after `inventory.bag` is null.** A dangling name.
+  Harmless today because every read guards on `present` first, and arguably useful — it records
+  _where_ the passport was lost, which a recovery event would want.
+- **The `readonly`-widening gap in the conformance harness** (ADR 0019). Accepted, not fixed;
+  the reasoning and the rejected alternatives are in the ADR. Open question 5 is whether to
+  revisit it.
 
-**⚠ This is the first milestone that moves sim numbers.** M2A.0–M2A.2 were all
-`sim:diff`-neutral; from here the baseline is regenerated per milestone, one reason each.
+---
 
-The plan is at `~/.claude/plans/phase-2a-plan-mode-precious-elephant.md`. The parts that will
-bite, in order:
+## Next step (ONE task, start here)
 
-1. **A correlated-randomness bug is live today.** `effects/modifier-source.ts:45` calls
-   `evaluatePredicate(modifier.when, ctx)` with no `path`, so every `when` evaluates at the
-   default root `'r'` — meaning **every `{chance}` gate in every modifier, in one event on one
-   leg, shares one address and returns one answer**. Harmless with Phase 1's single source;
-   catastrophic with a registry. Fix with a content-addressed path (`m:<source>:<modifier>`),
-   never positional — positional resurrects ADR 0005 §2.
-2. **`contentVersion` must cover the registry**, so put it INSIDE `ContentRegistries` rather
-   than as a sibling field on `ContentPack`. `contentVersion()` hashes
-   `canonicalJson({ events, registries })`; a sibling field would leave `pack.version` unmoved
-   when `modifiers.yaml` changes, `replayRun`'s refusal would never fire, and every golden run
-   would silently replay against different modifier maths with a green suite. Add the test that
-   asserts the version moves when one `delta` changes by 1.
-3. **DR must be computed once over the tail sum**, not per entry: `trunc(delta*3/5)` per entry
-   makes four `+1`s cost `+3` — every modifier past the third is free in exactly the
-   many-small-modifiers case DR exists for.
-4. **Clamp attribution by largest remainder** so the chips always sum to the shown total
-   (pillar 2). Reject float-proportional and trim-smallest-first; the latter deletes chips, and
-   a modifier that vanished is unreconstructable.
-5. **Widen `collectFlagUsage` and `collectRefs` to walk the registry.** Both walk `events` only,
-   so a flag read only by a registry modifier reports as `writtenNeverRead` — a false positive
-   on the most valuable line in the sim report.
-6. Fix the three phantom `scoring-order.test.ts` references (`director/score-event.ts:12`,
-   `director/scoring-factors.ts:108`, this file above) — the pinning actually lives in
-   `director/__tests__/scoring.test.ts`.
+**Implement `Outcome.search` — the search check — closing gap 1 above.**
+
+_Carried over unchanged from session 4: session 5 was verification and added no features._
+
+This is deliberately NOT "start the seed corpus". Authoring 12 events against an engine that
+cannot resolve a search means writing around the hole and then rewriting; and it is the one
+piece of 2A that shipped as data without a consumer. It is small, fully specified, and
+`content:lint` already tells you when it is done (`UNUSED_TAG: search` disappears).
+
+A fresh agent can start with no other context:
+
+1. Read **`docs/adr/0017-container-inventory.md`, section "What is deferred, and why it is not
+   a gap"** — it states the design and, more importantly, why a `searchContainer` effect op is
+   forbidden.
+2. Add `SearchSpec { container: ContainerKind, dc: number, tags: readonly CheckTag[] }` and
+   `readonly search: SearchSpec | null` to `Outcome` in
+   `packages/engine/src/content/game-event.ts`. `Outcome` already carries `onCheck`, which is
+   the branching mechanism — a search reuses it.
+3. Mirror it in the event schema (`packages/content/schema/event.ts` — there is no
+   `outcome.ts`; `outcomeSchema` lives inside it). `z.strictObject`, `.nullish()`-defaulted per
+   ADR 0009 §2. Then run `pnpm --filter @odyssey/content run typecheck`. **It will fail before
+   you have written the schema, with `TS2741: Property 'search' is missing … but required in
+type 'Outcome'` pointing at `buildOutcome`** — that is the guard working, not a problem to
+   route around. Note per ADR 0019 that the error comes from the builder's return annotation,
+   not from the `Equals` assertions, so `conformance.test.ts` is not where you will see it.
+4. Resolve it in `packages/engine/src/loop/resolve-choice.ts` alongside the existing
+   `runSkillCheck` call. Use the **`skillCheck` RNG stream** — do not add a stream, that is an
+   `RngCursors` change and a save migration for nothing. The effective DC is the container's
+   `searchDC` from `CONTAINER_SPECS` adjusted by the spec's `dc`; the searched item's
+   `concealability` is a modifier input.
+5. Give the fixture event `border.bribe_attempt` its `hide_the_cash` choice a real search (the
+   authoring shape is already written out in the plan file, Part 1 §1).
+6. `pnpm sim -- --runs=20000`, regenerate `docs/sim-baseline.md`, explain the delta. **This
+   moves numbers** — it is the first thing since M2A.0 that will.
+
+DoD: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm content:lint` (item 4 is real now), a
+regression test, the sim delta, and an ADR if anything non-obvious comes up.
+
+After that, Phase 2B proper — the seed corpus. `content:stats` and `content:lint` are the
+instruments for writing it; author against `docs/engine-spec.md` Part II. The 12 seed events,
+160 modifiers, complications, universal choices and quirks are all 2B.
+
+---
+
+## Open questions for the human
+
+1. **`CLAUDE.md` is now 491 lines against its own stated ~400-line cap** (it was 481 last
+   session; §9's conformance correction added the rest) — and it is a cap the file argues for
+   ("this is a constitution, not documentation"). It grew because every rule in §2 now carries
+   an `_Enforcement:_` note, which is genuinely the most useful thing in the file and also ~90
+   lines of it. **Proposal: move the enforcement notes to `docs/enforcement.md` and leave each
+   rule with a one-line pointer.** Raised five sessions running without an answer; I have not
+   acted on it because reorganising the constitution unasked is not my call. **It is getting
+   worse, not better — each session that corrects a claim adds lines.**
+
+2. **`CHECK_DIE_SIDES = 20` is still the Phase 1 placeholder**, and 2A made the question sharp
+   rather than answering it. With the clamp at +6/−8 and skill bypassing it, one point of
+   modifier is worth 5% on a d20 — so the entire registry moves a check by at most 30/40
+   percentage points, and a single skill point is worth as much as a modifier. A 3d6 (or 2d10)
+   would make the middle of the curve dense and modifiers matter more where checks are close.
+   **This wants the seed corpus before deciding**, but flagging it now: changing it later
+   invalidates every DC an author has written.
+
+3. **Hermes is still unproven** (ADR 0012 §3). Every cross-engine determinism defence in the
+   engine is preventive and verified on V8 only. The engine has never executed on the runtime
+   it will ship on. **Proposal: a one-off harness run in the Expo dev client that replays the
+   golden runs and compares digests.** Cheap, and it either confirms the defences or finds the
+   problem while there are 9 events instead of 200.
+
+4. **Is `docs/engine-spec.md` Part I still worth keeping?** Part II is written from the code and
+   is authoritative. Part I is the pre-Phase-1 design document, and several of its statements
+   are now simply wrong (`requires: { context: { locationTypes: [...] } }` at `:143` was
+   unimplementable and is superseded by the `locationType` predicate kind). Options: delete it,
+   or mark it `# Superseded` in place as a design record. I would delete.
+
+5. **Should the conformance harness trade error quality for real identity?** (New — ADR 0019.)
+   Dropping the `: GameEvent` return annotations and asserting
+   `Equals<ReturnType<typeof buildEvent>, GameEvent>` would make all thirteen L1 assertions
+   load-bearing and close the `readonly`-widening gap. It would also turn
+   `Property 'mood' is missing in type … but required in type 'GameEvent'` into
+   `Type 'false' is not assignable to type 'true'` at a line naming no field. **I decided no
+   and wrote the reasoning into ADR 0019** — the missed direction is harmless, the dangerous
+   direction is caught, and the message is worth more than the coverage. Flagging it because it
+   is a guarantee you were told you had in a stronger form than you actually have, and that is
+   your call to accept, not mine.
+
+6. **Should losing a container mark tickets rather than delete them?** (New.) A lost passport
+   becomes `present: false` so a recovery storyline can exist; a lost ticket is removed from the
+   array outright. If tickets are ever meant to be recoverable — "the driver remembers you paid"
+   — the state has to keep them. Cheap to change now while the corpus is nine events and no
+   content depends on either behaviour; expensive after 2B. Both are pinned by tests either way.
 
 ---
 
@@ -286,11 +553,11 @@ a queue that never released fired promises (M8), beat slots re-fillable forever 
 Three things are **deliberately inert** — built, tested, and called by nothing. That is by
 design, but a fresh agent will find them and should not "fix" them:
 
-| Path                                                             | State                          | Why                                                                                                                                                                         |
-| ---------------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/engine/src/queue/rebase-pending.ts`                    | Fully tested, **zero callers** | Re-routing is Phase 2. The queue's shape was chosen for it, so the test IS the deliverable (ADR 0011 §3). Wiring is one line when re-routing lands.                         |
-| `packages/engine/src/migrate/migrations.ts`                      | **Empty array**                | `SAVE_VERSION` is 1; no save format has been superseded. Inventing a fake migration would put a lie in the ladder (ADR 0012). Machinery is proven against a synthetic list. |
-| `effects/modifier-source.ts` · `director/complication-source.ts` | Seams ship **empty**           | Phase 2 registries plug in with no call-site change. Each has a test appending a stub and asserting it reaches the output.                                                  |
+| Path                                                             | State                          | Why                                                                                                                                                                                                         |
+| ---------------------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/engine/src/queue/rebase-pending.ts`                    | Fully tested, **zero callers** | Re-routing is Phase 2. The queue's shape was chosen for it, so the test IS the deliverable (ADR 0011 §3). Wiring is one line when re-routing lands.                                                         |
+| `packages/engine/src/migrate/migrations.ts`                      | **Empty array**                | `SAVE_VERSION` is 1; no save format has been superseded. Inventing a fake migration would put a lie in the ladder (ADR 0012). Machinery is proven against a synthetic list.                                 |
+| `effects/modifier-source.ts` · `director/complication-source.ts` | Seams ship **empty**           | Phase 2 registries plug in with no call-site change. Each has a test appending a stub and asserting it reaches the output. **← the prediction in this cell was wrong; see the correction under session 5.** |
 
 **Not started** (still `.gitkeep` only): `packages/content/{events,geo,i18n,images}`,
 `packages/content/schema/`, `packages/tools/{content-lint,imagegen,i18n-check}`.

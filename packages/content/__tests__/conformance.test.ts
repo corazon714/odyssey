@@ -25,6 +25,28 @@ import * as schema from '../schema/index.ts';
  *
  *   L1  `Equals<z.infer<S>, T>` per type. Identity, so it catches `readonly`, `?` vs `| null`
  *       and nominal brands, none of which `extends` would.
+ *
+ *       BUT IT IS ONLY LOAD-BEARING FOR THE SCHEMAS THAT DO NOT END IN AN ANNOTATED
+ *       TRANSFORM. Measured 2026-08-08, one break at a time. `beatTypeSchema` is a bare
+ *       `z.enum`, so narrowing it turns `_beatType` red — L1 doing exactly its job. But
+ *       `buildEvent` is declared `: GameEvent` and every predicate/effect arm is
+ *       `.transform((v): Predicate => …)`, which makes `z.infer` of those schemas the engine
+ *       type BY DECLARATION. `_event`, `_choice`, `_outcome`, `_check`, `_modifier`,
+ *       `_context`, `_predicate` and `_effect` are therefore tautologies.
+ *
+ *       That is not a hole, because the annotation moves the check rather than removing it:
+ *       the builder body is checked against the engine type by ASSIGNABILITY, with better
+ *       errors than `Equals` gives. Verified failing on a missing field (TS2741), an extra
+ *       field (TS2353), `?: T | undefined` where the engine says `: T | null` (TS2322), and
+ *       the engine dropping a `readonly` (TS2322).
+ *
+ *       THE ONE THING NEITHER LAYER CATCHES: the schema widening `readonly T[]` to `T[]`.
+ *       A mutable array is assignable to a readonly one, so the builder accepts it and
+ *       `z.infer` is annotated past it. Harmless at runtime — the value is the same object
+ *       and the engine treats content as readonly — and the dangerous direction (the ENGINE
+ *       going mutable) IS caught. Closing it means dropping the builder annotations and
+ *       asserting `Equals<ReturnType<typeof buildEvent>, GameEvent>` instead, which trades
+ *       precise errors for identity. Recorded in docs/PROGRESS.md as an open question.
  *   L1' `Equals<z.input<S>, unknown> = false`. An annotated `z.ZodType<Out>` defaults its
  *       INPUT to `unknown`, and that annotation makes L1 a tautology. This is what stops
  *       someone silencing a recursion error and taking five assertions offline with it. See

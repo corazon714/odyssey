@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { itemId } from '../../ids/content-ids.ts';
+import { edgeId, itemId, regionId } from '../../ids/content-ids.ts';
 import { ALL_REFS_KNOWN, createPredicateContext } from '../../predicate/predicate-context.ts';
 import { evaluatePredicate } from '../../predicate/evaluate-predicate.ts';
 import { countEverywhere, createContainer } from '../../state/container-state.ts';
@@ -180,6 +180,101 @@ describe('THE MEMORY CHAIN — losing a container takes what was in it', () => {
     expect(packed.state.documents.passport).not.toBeNull();
     expect(packed.applied.params['passport']).toBe(true);
     expect(packed.applied.params['items']).toBe(2);
+  });
+
+  /**
+   * The whole effect of one stolen bag, in one place.
+   *
+   * The two tests above prove the passport half. This one exists because the other three
+   * things that happen to a bag's contents are each surprising in a different direction, and
+   * an author reasoning about "you lose your bag" has to know all four.
+   */
+  it('takes the items, marks the passport lost, DELETES the tickets, and strands the container name', () => {
+    const granted = applyEffects(
+      base(),
+      [
+        { op: 'grantContainer', container: 'bag', slots: null, searchDC: null },
+        { op: 'document', change: { field: 'grantPassport', valid: true } },
+        { op: 'item', id: itemId('ration'), countDelta: 2, condition: null, container: 'bag' },
+      ],
+      CTX,
+    ).state;
+
+    const packed: RunState = {
+      ...granted,
+      documents: {
+        ...granted.documents,
+        passport: { ...granted.documents.passport!, container: 'bag' },
+        tickets: [
+          { id: 'ferry-1', forEdge: edgeId('e1'), used: false, container: 'bag' },
+          { id: 'bus-2', forEdge: edgeId('e2'), used: false, container: 'person' },
+        ],
+      },
+    };
+
+    const after = applyEffect(packed, { op: 'loseContainer', container: 'bag' }, CTX).state;
+
+    // 1. The container is destroyed, not emptied. `null` and an empty container are different
+    //    states: one means you have no bag, the other means you have an empty bag.
+    expect(after.inventory.bag).toBeNull();
+    expect(countEverywhere(after.inventory, itemId('ration'))).toBe(0);
+
+    // 2. The passport is marked, not deleted — the recoverable case.
+    expect(after.documents.passport).not.toBeNull();
+    expect(after.documents.passport?.present).toBe(false);
+
+    // 3. TICKETS ARE DELETED OUTRIGHT, which is the asymmetry. A lost passport opens a
+    //    recovery storyline; a lost ticket leaves no trace to write one against. Pinned here
+    //    rather than argued: if it is ever made symmetric, this test is where it is noticed.
+    expect(after.documents.tickets.map((t) => t.id)).toEqual(['bus-2']);
+
+    // 4. `container` still says 'bag' after the bag is gone. Harmless today because every
+    //    read guards on `present` first, and deliberate in that it records WHERE it was lost.
+    expect(after.documents.passport?.container).toBe('bag');
+  });
+
+  it('a visa does not outlive the passport it is stamped in', () => {
+    // ADR 0017: "Visa reads inherit the passport." That is the reason VisaState has no
+    // container of its own — two independently-losable records for one physical object is
+    // the content-bug generator the design set out to remove.
+    const state = applyEffects(
+      base(),
+      [
+        { op: 'grantContainer', container: 'bag', slots: null, searchDC: null },
+        { op: 'document', change: { field: 'grantPassport', valid: true } },
+        {
+          op: 'document',
+          change: { field: 'visa', region: regionId('northern'), valid: true, expiresDay: null },
+        },
+      ],
+      CTX,
+    ).state;
+
+    const held = (from: RunState): boolean =>
+      evaluatePredicate(
+        { kind: 'visa', region: regionId('northern'), valid: true },
+        createPredicateContext(from, ALL_REFS_KNOWN, 'test:0'),
+      ).value;
+
+    expect(held(state)).toBe(true);
+
+    const stolen = applyEffect(
+      {
+        ...state,
+        documents: {
+          ...state.documents,
+          passport: { ...state.documents.passport!, container: 'bag' },
+        },
+      },
+      { op: 'loseContainer', container: 'bag' },
+      CTX,
+    ).state;
+
+    expect(stolen.documents.passport?.present).toBe(false);
+    // The visa RECORD survives — it is a stamp, and the state keeps it so a recovered passport
+    // still carries it. What must not survive is the visa READ.
+    expect(stolen.documents.visas[regionId('northern')]).toBeDefined();
+    expect(held(stolen)).toBe(false);
   });
 
   it('leaves a passport carried elsewhere alone', () => {

@@ -14,10 +14,25 @@ import { type SkillKey } from '../state/skills.ts';
  * Phase 2 rewrites the check resolver instead of plugging into it.
  *
  * So `runSkillCheck` (M6) never reads `check.modifiers` directly. It collects from an
- * ordered list of sources. Phase 1 passes exactly one — `choiceModifierSource`. Phase 2
- * appends `registryModifierSource` (modifiers.yaml, auto-injected by check tag) and
- * `quirkModifierSource` (an NPC's personality traits registering as modifiers) with NO
- * change at the call site.
+ * ordered list of sources. Phase 1 passes exactly one — `choiceModifierSource`.
+ *
+ * THE PLAN WAS THAT PHASE 2 WOULD APPEND `registryModifierSource` AND `quirkModifierSource`
+ * HERE. IT DID NOT. Corrected 2026-08-08 after the claim was checked against the diff.
+ * M2A.3 (`8013aac`) instead threaded the registry as a fifth parameter to `runSkillCheck`
+ * and resolved it in `modifiers/resolve-modifiers.ts`, because the registry needs the
+ * six-step pipeline — conflicts, non-stacking collapse, diminishing returns, both clamps —
+ * and a `ModifierSource` returns a flat `RollModifier[]` with nowhere to carry `rawDelta`,
+ * the diminished flag or the clamp share that pillar 2 needs on the result screen.
+ * `PHASE_1_MODIFIER_SOURCES` still holds exactly one entry, and quirks are still Phase 2B.
+ *
+ * What DID survive is the weaker and genuinely useful property: `resolveChoice`'s own
+ * signature never moved, because the registry rides on the `pack` argument that was already
+ * there. Callers of `resolveChoice` — `advanceLeg`, `replayRun`, the sim harness, the future
+ * app layer — were untouched. That is the claim to make; "no change at the call site" is not,
+ * and does not survive `git diff 8013aac^ 8013aac -- loop/resolve-choice.ts`.
+ *
+ * The seam is still live and still tested, so a genuinely flat per-choice source (a quirk,
+ * most likely) can still be appended without touching the resolver.
  */
 export type CheckModifier = {
   readonly labelKey: string;

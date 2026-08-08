@@ -27,6 +27,20 @@ independently-losable records for one physical object is a content-bug generator
 writes "you lose your passport" and the visa survives. Visa reads inherit the passport, which
 is also what the fiction says.
 
+> **This paragraph described the design and the code did not implement it. Fixed 2026-08-08.**
+> `evaluate-state-leaf.ts`'s `visa` arm read only `documents.visas[region]` and never consulted
+> the passport, so the exact scenario the sentence above rules out — bag stolen, passport in
+> the bag marked `present: false`, visa still reporting `held: true` — was live. Found by
+> writing the test the design implied rather than by any check: the state shape was right, the
+> ADR was right, and nothing tied them together. The read now requires
+> `passport.present === true`, and the reason trace carries `noPassport` so pillar 2 can say
+> which of the two sentences applies. The visa RECORD still survives in state, deliberately: a
+> recovered passport keeps its stamps.
+>
+> Sim-neutral — no event in the corpus uses a `visa` predicate, which is also why nothing
+> caught it. Regression test: `effects/__tests__/containers.test.ts`, "a visa does not outlive
+> the passport it is stamped in", verified failing before the fix.
+
 **Three new ops, not four.** `moveItem`, `loseContainer`, `grantContainer`. The brief listed
 `searchContainer` as a fourth; see "What is deferred" below.
 

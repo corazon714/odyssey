@@ -105,6 +105,29 @@ ordered list of `ModifierSource`. Phase 1 passes exactly one — `choiceModifier
 filtering each modifier by its `when` predicate. Phase 2 appends `registryModifierSource` and
 `quirkModifierSource` **with no change at the call site**.
 
+> **Amended 2026-08-08 — the last sentence did not hold, and the prediction is left standing
+> above so the miss is legible.** Phase 2A M2A.3 (`8013aac`) did NOT append a
+> `registryModifierSource`; neither it nor `quirkModifierSource` exists in any source file.
+> The registry is threaded as a fifth parameter to `runSkillCheck` and resolved by
+> `modifiers/resolve-modifiers.ts`. `PHASE_1_MODIFIER_SOURCES` still holds one entry.
+>
+> **Why the seam was bypassed rather than used:** a `ModifierSource` returns a flat
+> `readonly RollModifier[]` — `{ labelKey, delta }`. The registry's output is not flat. Its
+> six-step pipeline has to report `rawDelta` alongside the post-diminishing delta, which rows
+> a conflict deleted, and each row's share of the clamp, because pillar 2 requires the chips
+> on the result screen to sum to the number shown. Widening `ModifierSource` to carry that
+> would have made every source pay for the registry's needs. See ADR 0015.
+>
+> **What actually held, and is worth keeping:** `resolveChoice(state, pack, choiceId)` never
+> changed, because the registry rides on the `pack` argument that already existed. Every
+> caller — `advanceLeg`, `replayRun`, `sim/run-one.ts` — was untouched by `8013aac`. That is
+> the property the seam was really buying. `runSkillCheck` itself is a published barrel export
+> and its signature DID break (4 params → 5, `RollResult` → `CheckOutcome`), as did the
+> `SkillCheckSpec` the seam takes, which gained a required `tags` field.
+>
+> The seam remains live and tested, and a genuinely flat per-choice source — a quirk — can
+> still be appended to it without touching the resolver.
+
 The seam is tested as a seam: an empty source list is inert, and a stub source appended after
 the built-in one reaches the output. If it were decorative, that second test could not be
 written.
