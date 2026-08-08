@@ -142,7 +142,68 @@ than `out.onward.v2`) and explicit `labelKey` (a choice with id `fix_it_yourself
 1029 Vitest + 3 Jest. Sim delta for M2A.3/4/5 is `contentVersion` only — no behavioural number
 has moved since M2A.0.
 
-### Next: M2A.6 — `pnpm content:lint`
+### M2A.6 — `pnpm content:lint`. 13 rules, wired into CI.
+
+**It found three errors on its first run, all genuine.** Two `LOCAL_MODIFIER` (the bribe event
+kept choice-local `unwashed`/`wanted` after M2A.3 declared them in the registry — the D1 decay
+the rule exists to catch, introduced two milestones earlier) and
+**`FLAG_READ_NEVER_WRITTEN: wanted`** — the finding the sim printed every run since Phase 1 and
+that PROGRESS carried as an untested engine surface. Being detained now sets it; the sim line
+went from `wanted <- gate can never open` to `(none)`.
+
+Rules are scoped honestly: `CONTRADICTORY_REQUIRES_NUMERIC` names its own fragment because only
+numeric intervals inside an `all` are decidable, and the orphan check documents that it is
+static. An absent locale gives ONE finding, not a hundred. `--fix` will not touch i18n (a
+placeholder is a user-visible string) or hoist a modifier (id/priority/sourceKind are not
+derivable). **CLAUDE.md rules 1, 4 and 6 moved to live; DoD item 4 is no longer N/A.**
+
+### M2A.7 — `pnpm content:stats`. Phase 2A complete.
+
+Counts plus a 4-axis coverage pass (1,400 combinations). The rule it turns on: an empty
+constraint means NO constraint, so empty expands to the full axis. The number worth reading is
+**filler-only cells**, not empty ones — a cell covered by two universal fillers is a hole with a
+rug over it, and it is the sim's 75%-filler finding seen from the other end.
+
+Reports zero holes today, which is honest for nine loosely-constrained events — so three tests
+construct narrow corpora and prove it _can_ find 1,399. **No region axis**: `EventContext` has
+no region field, `geo/` is empty, and region-gating events is what §11 warns against.
+
+---
+
+## Phase 2A is complete — 8 milestones, ~20 commits
+
+`pnpm typecheck` · `pnpm lint` · `pnpm test` (**1053** Vitest + 3 Jest) · `pnpm format:check` ·
+`pnpm content:lint` (0 errors, 29 warnings) · `pnpm content:stats` · `pnpm sim:diff` — all green.
+
+**Every behavioural sim number is unchanged since M2A.0's deliberate retune**, except the two
+0.1pp ending shifts M2A.6 caused by fixing `wanted`. M2A.3/4/5 moved `contentVersion` only.
+
+### The 29 lint warnings are the honest to-do list for Phase 2B
+
+| Warning                                 | Count | Closes when                                                           |
+| --------------------------------------- | ----- | --------------------------------------------------------------------- |
+| `MISSING_LOCALE` / `SAFETY_NOT_SCANNED` | 2     | `i18n/en/*.json` exists                                               |
+| `MISSING_IMAGE_MANIFEST`                | 1     | `images/manifest.json` exists                                         |
+| `THIN_TAG` / `UNUSED_TAG`               | 22    | the seed corpus gives every tag ≥3 events and ≥5 modifiers            |
+| `LIABILITY_UNBACKED`                    | 2     | events actually read `cash_belt` / `spare_tyre`                       |
+| `FLAG_WRITTEN_NEVER_READ`               | 3     | something gates on `bribe_on_record`, `detained`, `took_the_long_way` |
+
+### Named gaps carried into 2B
+
+1. **`searchContainer` is not implemented.** ADR 0017 explains why it is not an effect op. The
+   data is live and inert — `searchDC`, `concealability`, the `search` tag, four registry rows —
+   but no event performs a search, so `content:lint` reports `UNUSED_TAG: search`.
+2. **Hermes is still unproven** (ADR 0012 §3). Every cross-engine defence is preventive.
+3. **`CHECK_DIE_SIDES = 20` is still a placeholder.** The modifier clamp is ±6/−8 and skill
+   bypasses it, so a d20 still swamps a single modifier at 5% each. Needs the seed corpus.
+4. **`worldTick`'s spread is bounded by content**: the fixture pack has no food, so health
+   decline is irreversible and only its START leg varies (ADR 0014).
+
+### Next: Phase 2B — the seed corpus
+
+`pnpm content:stats` and `pnpm content:lint` are now the instruments for writing it. Author
+against `docs/engine-spec.md` Part II and the content bible; the 12 seed events, 160 modifiers,
+complications, universal choices and quirks are all 2B.
 
 **⚠ This is the first milestone that moves sim numbers.** M2A.0–M2A.2 were all
 `sim:diff`-neutral; from here the baseline is regenerated per milestone, one reason each.
