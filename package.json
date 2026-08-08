@@ -17,6 +17,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run && pnpm --filter @odyssey/mobile run test",
     "test:engine": "vitest run --project engine",
+    "content:lint": "node packages/tools/content-lint/cli.ts",
     "sim": "node packages/tools/sim/cli.ts",
     "sim:diff": "node packages/tools/sim/cli.ts --diff",
     "golden:update": "node packages/tools/sim/regenerate-goldens.ts",

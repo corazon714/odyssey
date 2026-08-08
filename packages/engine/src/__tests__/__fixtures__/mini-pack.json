@@ -245,29 +245,6 @@
                   "kind": "trait",
                   "id": "smooth_talker"
                 }
-              },
-              {
-                "labelKey": "check.modifier.unwashed",
-                "delta": -2,
-                "when": {
-                  "kind": "resource",
-                  "key": "hygiene",
-                  "cmp": {
-                    "op": "lte",
-                    "value": 3
-                  }
-                }
-              },
-              {
-                "labelKey": "check.modifier.wanted",
-                "delta": -3,
-                "when": {
-                  "kind": "flag",
-                  "id": "wanted",
-                  "cmp": {
-                    "op": "isSet"
-                  }
-                }
               }
             ]
           },
@@ -346,6 +323,12 @@
                 {
                   "op": "flag",
                   "id": "detained",
+                  "value": true,
+                  "ttlLegs": null
+                },
+                {
+                  "op": "flag",
+                  "id": "wanted",
                   "value": true,
                   "ttlLegs": null
                 },

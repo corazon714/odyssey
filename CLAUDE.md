@@ -50,8 +50,9 @@ These have caused real damage in similar projects when broken. Do not "improve" 
    state) and a `weight`. The director picks from the eligible pool. If you find yourself wanting
    `nextEventId`, use a **flag** plus a `requires` on the target event, or the **consequence queue**.
    The single exception is `scheduleEvent`, which is a _soft_ pointer resolved by the director.
-   _Enforcement: **partial.** The content linter (which must reject `nextEventId`) is still
-   Phase 2. But the engine now has NO field an event could point with: `GameEvent` has no
+   _Enforcement: **live.** The event schema is `z.strictObject`, so `nextEventId` is not a
+   rule the linter has to know about — it is an unknown key and the file fails to parse. The
+   engine also has NO field an event could point with: `GameEvent` has no
    successor, and `scheduleEvent` is a queue entry the director may decline. The sim reports
    scheduled-vs-fired, so a soft pointer that never resolves is visible. Rationale: `adr/0001`._
 
@@ -83,10 +84,11 @@ These have caused real damage in similar projects when broken. Do not "improve" 
 
 4. **No user-visible string literals in code or content data.** Only i18n keys.
    `title: "You lost your passport"` is a bug. `titleKey: "events.passport_lost.title"` is correct.
-   _Enforcement: **(planned)** — "enforced by the content linter" describes an intent, not a
-   fact: `packages/tools/content-lint/` is empty. Today this rests on review. The rule is
-   already being honoured in app code — `apps/mobile/app/index.tsx` renders the key
-   `app.placeholder.title` rather than copy._
+   _Enforcement: **live, and by construction.** An event file has NO text fields at all —
+   `titleKey`, `labelKey` and `textKey` are DERIVED from ids by the schema transform, so there
+   is nowhere to type prose. Explicit keys are accepted as an escape hatch and must still match
+   the i18n-key shape. `pnpm content:lint` additionally checks every derived key resolves in
+   `en/`, and scans the locale for §11 patterns. ADR 0015/0017._
 
 5. **No text rendered inside generated images.** Ever. The game ships in 4 languages.
    _Enforcement: **(planned)** — `packages/tools/imagegen/` is empty and no images exist.
@@ -94,10 +96,11 @@ These have caused real damage in similar projects when broken. Do not "improve" 
 
 6. **Content is data, not code.** Events live in `packages/content/events/**.yaml`, validated by Zod
    at build time and in tests. Never hardcode an event in a `.ts` file.
-   _Enforcement: **(planned)** — `packages/content/events/` is empty, `schema/index.ts` is an
-   empty barrel, and Zod is installed but unused (Phase 2). But `createContentPack` DOES
-   validate: it reports `danglingRefs`, `duplicateIds` and `unfillableBeatTypes`, and the
-   Phase 1 fixtures are JSON DATA files, never `.ts`. See ADR 0009 for who owns the types._
+   _Enforcement: **live.** Nine YAML events under `packages/content/events/`, validated by Zod
+   and held identical to the engine types by the conformance harness in
+   `packages/content/__tests__/conformance.test.ts` (ADR 0009). `pnpm content:lint` is the
+   build-time gate and runs in CI. The engine fixture is JSON DATA, never `.ts`, and a
+   round-trip test proves the YAML produces it byte-for-byte._
 
 7. **Every state mutation goes through an `Effect`.** No direct mutation of `RunState` from UI code.
    The UI dispatches a choice; the engine returns a new state plus a list of applied effects.
@@ -270,7 +273,8 @@ pnpm format / format:check    # prettier write / check                          
 pnpm test                     # vitest (packages) + jest (apps/mobile)             ✅
 pnpm test:engine              # engine unit + golden-run tests only (fast)         ✅
 
-pnpm content:lint             # validate all events, predicates, i18n keys, image refs  (planned)
+pnpm content:lint             # validate events, refs, orphan flags, tags, i18n, safety   ✅
+pnpm content:lint -- --fix    # sort registries by id, dedupe list fields (nothing else)  ✅
 pnpm content:stats            # counts by category/region/tag, coverage gaps            (planned)
 pnpm sim -- --runs=20000      # headless balance simulation                                 ✅
 pnpm sim:diff                 # compare latest sim to docs/sim-baseline.md                ✅
@@ -311,8 +315,8 @@ A change is not done until all of these pass:
 1. `pnpm typecheck` clean
 2. `pnpm lint` clean
 3. `pnpm test` green
-4. `pnpm content:lint` clean (if content or schema touched) — **(planned)**: the command does
-   not exist yet. Until it does, report this item as **N/A**, never as passing.
+4. `pnpm content:lint` clean (if content or schema touched) ✅ **exists since Phase 2A M2A.6**.
+   Exits 1 on an error, 0 with warnings — the warnings are real findings, so read them.
 5. New behavior has a test. Bug fixes have a **regression test that fails before the fix**.
 6. If engine behavior changed: `pnpm sim -- --runs=5000` run and the report delta explained.
    — **(planned)**: same as 4. Report **N/A** while the harness does not exist.

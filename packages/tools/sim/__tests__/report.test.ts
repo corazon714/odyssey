@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { collectFlagUsage } from '@odyssey/engine';
+import { createContentPack, collectFlagUsage } from '@odyssey/engine';
 import { diffReports } from '../diff-report.ts';
 import { formatReport } from '../format-report.ts';
 import { loadFixturePack, loadFixtureScenarios } from '../load-pack.ts';
@@ -55,11 +55,27 @@ describe('formatReport — the engine-spec 6 shape', () => {
 
   it('surfaces a flag that is read but never written', () => {
     // The gate can never open, so the branch behind it is unreachable — ADR 0001's silent
-    // content bug, and the fixture pack really does have one.
+    // content bug. The fixture pack HAD one (`wanted`) from Phase 1 until M2A.6, when
+    // content:lint promoted the same finding to a build error and it was fixed in the
+    // fixture. So this now proves the INSTRUMENT works rather than that the corpus is broken:
+    // an assertion about a specific broken flag would have to be deleted the moment anyone
+    // fixed it, which makes it a test of the content, not of the report.
     const usage = collectFlagUsage(PACK.events);
-    expect(usage.readNeverWritten).toContain('wanted');
-    expect(REPORT).toContain('read but NEVER WRITTEN');
-    expect(REPORT).toContain('wanted');
+    expect(usage.readNeverWritten).toEqual([]);
+
+    // A synthetic pack with the gap, so the instrument is exercised without the corpus
+    // having to stay broken for it.
+    const gated = PACK.events[0];
+    if (gated === undefined) throw new Error('no fixture events');
+    const ghostPack = createContentPack([
+      {
+        ...gated,
+        requires: { kind: 'flag', id: 'ghost_flag' as never, cmp: { op: 'isSet' } },
+      },
+    ]);
+    const withGap = formatReport(SUMMARY, ghostPack, { seed: 'report', runs: 200, elapsedMs: 42 });
+    expect(withGap).toContain('read but NEVER WRITTEN');
+    expect(withGap).toContain('ghost_flag');
   });
 
   it('surfaces choices that are never picked', () => {

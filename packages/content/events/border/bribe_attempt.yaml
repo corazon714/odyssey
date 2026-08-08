@@ -43,22 +43,14 @@ choices:
       dc: 12
       tags: [social, bribery, authority, crime]
       modifiers:
+        # The only local modifier left. `unwashed` and `wanted` used to sit here too and were
+        # deleted once modifiers.yaml declared them — content:lint's LOCAL_MODIFIER rule found
+        # the duplication, which is exactly the D1 decay it exists to catch.
         - labelKey: check.modifier.smooth_talker
           delta: 2
           when:
             trait: smooth_talker
-          why: 'fixture: exercises the choice-local modifier path before the registry exists'
-        - labelKey: check.modifier.unwashed
-          delta: -2
-          when:
-            resource: hygiene
-            lte: 3
-          why: 'fixture: exercises the choice-local modifier path before the registry exists'
-        - labelKey: check.modifier.wanted
-          delta: -3
-          when:
-            flag: wanted
-          why: 'fixture: exercises the choice-local modifier path before the registry exists'
+          why: 'fixture: keeps the choice-local path exercised now that the registry covers the rest'
     outcomes:
       - id: success
         weight: 1
@@ -98,6 +90,12 @@ choices:
         effects:
           - op: flag
             id: detained
+          # Closes a gap Phase 1 carried deliberately: `wanted` was READ by three gates and
+          # written by nothing, so those branches could never open. The sim reported it every
+          # run and content:lint now errors on it. Being detained at a crossing is the natural
+          # place for it — you are in the system now.
+          - op: flag
+            id: wanted
           - op: advanceTime
             hours: 14
           - op: resource

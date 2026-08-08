@@ -8,11 +8,11 @@
   Regenerate deliberately:  pnpm sim -- --runs=2000  &&  cp reports/sim-latest.md docs/sim-baseline.md
   Compare without writing:  pnpm sim:diff -- --runs=2000
 
-  Regenerated at Phase 2A M2A.5 (ADR 0017) against the nine-event FIXTURE pack. The open
+  Regenerated at Phase 2A M2A.6 (content:lint) against the nine-event FIXTURE pack. The open
   findings below are fixture gaps, not engine faults — see docs/PROGRESS.md.
 -->
 
-# Sim Report — seed=base contentVersion=a24547ef runs=2000
+# Sim Report — seed=base contentVersion=4c57cd5c runs=2000
 
 Completion rate             31.2%   (target band 30-50%)
 Median legs                    10
@@ -25,12 +25,12 @@ Beat fill rate              51.8%
 Repeat-event rate           58.4%
 Unresolved threads              0
 
-Wall clock                 468 ms   (0.23 ms/run)
-Extrapolated to 20,000     4.7 s   (target <30 s)
+Wall clock                 496 ms   (0.25 ms/run)
+Extrapolated to 20,000     5.0 s   (target <30 s)
 
 ## Endings
-  ending.failure_collapsed            35.6%
-  ending.failure_gave_up              33.2%
+  ending.failure_collapsed            35.5%
+  ending.failure_gave_up              33.3%
   ending.arrival_hollow               22.1%
   ending.arrival_triumphant            8.8%
   ending.arrival_quiet                 0.3%
@@ -41,16 +41,16 @@ Extrapolated to 20,000     4.7 s   (target <30 s)
 ## Choices picked <2%
   border.bribe_attempt/present_documents               0.0%   <- never picked
   border.bribe_attempt/turn_back                       0.0%   <- never picked
-  border.guard_remembers/acknowledge                   0.1%
+  border.guard_remembers/acknowledge                   0.2%
   border.bribe_attempt/offer_bribe                     0.4%
   crisis.breakdown/find_help                           1.4%
   transit.bus_ejection/get_off                         1.6%
   transit.bus_ejection/plead_with_driver               2.0%
 
 ## Flags
-  written: 4   read: 2
+  written: 5   read: 2
   written but NEVER READ:   bribe_on_record, detained, took_the_long_way
-  read but NEVER WRITTEN:   wanted   <- gate can never open
+  read but NEVER WRITTEN:   (none)   <- gate can never open
 
 ## Resource trajectories (p10/p50/p90 by leg)
   cash     leg5: 220/280/540   leg15: 400/460/500   leg25: —
