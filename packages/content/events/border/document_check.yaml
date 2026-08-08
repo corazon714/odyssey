@@ -1,0 +1,38 @@
+id: border.document_check
+category: border
+tags:
+  - authority
+  - documents
+priority: beat
+beatType: border_crossing
+weight: 120
+context:
+  locationTypes:
+    - border_crossing
+    - checkpoint
+cooldownLegs: 6
+exclusiveGroup: border_resolution
+choices:
+  - id: hand_them_over
+    labelKey: events.border.document_check.choice.hand_over
+    outcomes:
+      - id: clear
+        weight: 3
+        requires:
+          passport:
+            present: true
+            valid: true
+        effects:
+          - op: advanceTime
+            hours: 1
+      - id: no_papers
+        weight: 2
+        requires:
+          passport:
+            present: false
+        effects:
+          - op: resource
+            key: heat
+            delta: 3
+          - op: advanceTime
+            hours: 6

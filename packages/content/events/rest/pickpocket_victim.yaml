@@ -1,0 +1,68 @@
+id: rest.pickpocket_victim
+category: rest
+tags:
+  - theft
+  - money
+  - crowd
+weight: 70
+context:
+  locationTypes:
+    - rest_stop
+    - station
+    - city
+    - town
+cooldownLegs: 10
+maxOccurrences: 2
+requires:
+  resource: money
+  gte: 10
+choices:
+  - id: chase
+    check:
+      skill: endurance
+      dc: 13
+      modifiers:
+        - labelKey: check.modifier.exhausted
+          delta: -3
+          when:
+            resource: energy
+            lte: 3
+          why: 'fixture: exercises the choice-local modifier path before the registry exists'
+    outcomes:
+      - id: recovered
+        weight: 1
+        onCheck: success
+        effects:
+          - op: resource
+            key: energy
+            delta: -2
+          - op: relationship
+            npc: pickpocket
+            trustDelta: -2
+            meet: true
+            addTags:
+              - thief
+      - id: lost
+        weight: 2
+        onCheck: failure
+        effects:
+          - op: resource
+            key: money
+            delta: -40
+          - op: resource
+            key: energy
+            delta: -2
+          - op: item
+            id: cash_belt
+            countDelta: -1
+  - id: let_it_go
+    outcomes:
+      - id: shrug
+        weight: 1
+        effects:
+          - op: resource
+            key: money
+            delta: -40
+          - op: resource
+            key: morale
+            delta: -1

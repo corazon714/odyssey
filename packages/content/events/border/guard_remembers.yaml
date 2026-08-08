@@ -1,0 +1,26 @@
+id: border.guard_remembers
+category: border
+tags:
+  - authority
+  - corruption
+  - memory
+weight: 150
+context:
+  locationTypes:
+    - border_crossing
+    - checkpoint
+cooldownLegs: 999
+maxOccurrences: 1
+requires:
+  npcMet: border_guard
+choices:
+  - id: acknowledge
+    outcomes:
+      - id: waved
+        weight: 1
+        effects:
+          - op: relationship
+            npc: border_guard
+            trustDelta: 1
+          - op: advanceTime
+            hours: 1

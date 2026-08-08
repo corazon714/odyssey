@@ -1,0 +1,25 @@
+id: arrival.final_stretch
+category: arrival
+tags:
+  - arrival
+  - relief
+priority: beat
+beatType: finale
+cooldownLegs: 999
+maxOccurrences: 1
+choices:
+  - id: walk_in
+    outcomes:
+      - id: triumphant
+        weight: 3
+        requires:
+          resource: morale
+          gte: 5
+        effects:
+          - op: unlockEnding
+            id: ending.arrival_triumphant
+      - id: hollow
+        weight: 2
+        effects:
+          - op: unlockEnding
+            id: ending.arrival_hollow

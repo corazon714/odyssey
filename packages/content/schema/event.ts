@@ -92,11 +92,17 @@ const outcomeSchema = z.strictObject({
   weight: intSchema.positive(),
   onCheck: nullable(z.enum(['success', 'failure'])),
   requires: nullable(predicateSchema),
-  /** Count of "you have been here before" alternates; keys are derived, not listed. */
+  /**
+   * "You have been here before" alternates. `variants: 2` derives `<base>.v1` and `<base>.v2`
+   * and is the ergonomic default. `textVariants` names them instead, for when the alternate
+   * deserves a readable key of its own (`out.onward_again` beats `out.onward.v2` in a
+   * translator's file). Giving both is an error rather than a precedence puzzle.
+   */
   variants: intSchema
     .nonnegative()
     .nullish()
     .transform((v) => v ?? 0),
+  textVariants: list(i18nKeySchema),
   textKey: z.string().nullish(),
   effects: list(effectSchema),
 });
@@ -151,7 +157,10 @@ function buildOutcome(eventKey: string, raw: RawOutcome): Outcome {
     onCheck: raw.onCheck,
     requires: raw.requires ?? { kind: 'always' },
     textKey: raw.textKey ?? base,
-    textVariants: Array.from({ length: raw.variants }, (_, i) => `${base}.v${String(i + 1)}`),
+    textVariants:
+      raw.textVariants.length > 0
+        ? raw.textVariants
+        : Array.from({ length: raw.variants }, (_, i) => `${base}.v${String(i + 1)}`),
     effects: raw.effects,
   };
 }
@@ -226,6 +235,14 @@ export const gameEventSchema = rawEventSchema
           code: 'custom',
           message: `choice \`${choice.id}\` has no \`check\`, so \`onCheck\` can never match`,
         });
+      }
+      for (const outcome of choice.outcomes) {
+        if (outcome.variants > 0 && outcome.textVariants.length > 0) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `outcome \`${outcome.id}\` sets both \`variants\` and \`textVariants\`; use one`,
+          });
+        }
       }
     }
   })
