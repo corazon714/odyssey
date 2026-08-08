@@ -17,3 +17,7 @@ apps/mobile/expo-env.d.ts
 # Hand-authored reference doc. Excluded so Prettier does not rewrite prose and table
 # layout nobody asked it to touch. Remove this line to opt it in.
 docs/engine-spec.md
+
+# Generated sim output, pinned for review. Prettier would reflow the fixed-width report and
+# make `pnpm sim:diff` permanently noisy against freshly generated output.
+docs/sim-baseline.md

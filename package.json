@@ -17,6 +17,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run && pnpm --filter @odyssey/mobile run test",
     "test:engine": "vitest run --project engine",
+    "sim": "node packages/tools/sim/cli.ts",
+    "sim:diff": "node packages/tools/sim/cli.ts --diff",
     "prepare": "husky"
   },
   "devDependencies": {

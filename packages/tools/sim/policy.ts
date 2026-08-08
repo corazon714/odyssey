@@ -1,0 +1,153 @@
+import {
+  evaluatePredicate,
+  type Choice,
+  type ContentPack,
+  type GameEvent,
+  type Rng,
+  type RunState,
+  createPredicateContext,
+} from '@odyssey/engine';
+
+/**
+ * How the simulated player chooses.
+ *
+ * A policy is a stand-in for the choiceSequence a real player produces, and the SPREAD across
+ * policies is what makes a balance report meaningful: a completion rate under `random` and
+ * under `adversarial-worst-case` bound the range a real player lives in. One policy would
+ * only tell you about itself.
+ *
+ * The policy's Rng is a SEPARATE generator from the run's. Drawing the player's decisions
+ * from the engine's own cursors would make the "player" part of the world state and break the
+ * (seed, choiceSequence) decomposition that replay is built on.
+ */
+export const POLICY_NAMES = [
+  'random',
+  'greedy-safe',
+  'greedy-fast',
+  'risk-taker',
+  'adversarial-worst-case',
+] as const;
+
+export type PolicyName = (typeof POLICY_NAMES)[number];
+
+export type Policy = {
+  readonly name: PolicyName;
+  choose(choices: readonly Choice[], state: RunState, rng: Rng): Choice | null;
+};
+
+/** Choices the engine would actually accept, in canonical order. */
+export function selectableChoices(
+  event: GameEvent,
+  state: RunState,
+  pack: ContentPack,
+): readonly Choice[] {
+  const ctx = createPredicateContext(state, pack.refs, `policy:${event.id}`);
+  return event.choices.filter((choice) => {
+    if (choice.hiddenUnless !== null && !evaluatePredicate(choice.hiddenUnless, ctx).value) {
+      return false;
+    }
+    return evaluatePredicate(choice.requires, ctx).value;
+  });
+}
+
+/**
+ * Policies are scored on the DISTRIBUTION of a choice's outcomes, not on its average.
+ *
+ * An earlier version scored the mean and gave `risk-taker` a flat bonus for having a skill
+ * check. Running it showed `greedy-safe` and `risk-taker` producing byte-identical runs on
+ * every fixture seed — because the bonus only applied where a check existed, so on every
+ * other event they were the same function. Two policies that always agree bound nothing.
+ *
+ * Maximin versus maximax is the real distinction, and it is the one a balance report needs:
+ * the safe player's completion rate and the gambler's bracket the range a real player lives
+ * in.
+ */
+function costTotal(choice: Choice): number {
+  let total = 0;
+  for (const cost of choice.costs) {
+    if (cost.op === 'resource') total += cost.delta;
+  }
+  return total;
+}
+
+function outcomeTotals(choice: Choice): readonly number[] {
+  const base = costTotal(choice);
+  return choice.outcomes.map((outcome) => {
+    let total = base;
+    for (const effect of outcome.effects) {
+      if (effect.op === 'resource') total += effect.delta;
+    }
+    return total;
+  });
+}
+
+/** The outcome that hurts most. `greedy-safe` maximises it; `adversarial` minimises it. */
+function worstCase(choice: Choice): number {
+  const totals = outcomeTotals(choice);
+  return totals.length === 0 ? 0 : Math.min(...totals);
+}
+
+/** The outcome that pays best. `risk-taker` chases it regardless of the downside. */
+function bestCase(choice: Choice): number {
+  const totals = outcomeTotals(choice);
+  return totals.length === 0 ? 0 : Math.max(...totals);
+}
+
+function timeCost(choice: Choice): number {
+  let hours = 0;
+  for (const outcome of choice.outcomes) {
+    for (const effect of outcome.effects) {
+      if (effect.op === 'advanceTime') hours += effect.hours / choice.outcomes.length;
+    }
+  }
+  return hours;
+}
+
+/** Deterministic tie-break by id keeps every policy replayable (`<`, never localeCompare). */
+function best(choices: readonly Choice[], score: (c: Choice) => number): Choice | null {
+  let winner: Choice | null = null;
+  let winningScore = Number.NEGATIVE_INFINITY;
+
+  for (const choice of choices) {
+    const value = score(choice);
+    if (
+      value > winningScore ||
+      (value === winningScore && winner !== null && choice.id < winner.id)
+    ) {
+      winner = choice;
+      winningScore = value;
+    }
+  }
+  return winner;
+}
+
+export const POLICIES: Readonly<Record<PolicyName, Policy>> = Object.freeze({
+  random: {
+    name: 'random',
+    choose: (choices, _state, rng) => rng.pick(choices, 'eventPick'),
+  },
+  'greedy-safe': {
+    name: 'greedy-safe',
+    // Maximin: takes the option whose worst outcome is least bad. The cautious player.
+    choose: (choices) => best(choices, worstCase),
+  },
+  'greedy-fast': {
+    name: 'greedy-fast',
+    choose: (choices) => best(choices, (c) => -timeCost(c)),
+  },
+  'risk-taker': {
+    name: 'risk-taker',
+    // Maximax: chases the best available outcome and ignores the downside. The upper bound.
+    choose: (choices) => best(choices, bestCase),
+  },
+  'adversarial-worst-case': {
+    name: 'adversarial-worst-case',
+    // Minimin: deliberately walks into the worst branch. The lower bound on survivability,
+    // and the policy that finds the dead ends design pillar 4 forbids.
+    choose: (choices) => best(choices, (c) => -worstCase(c)),
+  },
+});
+
+export function isPolicyName(value: string): value is PolicyName {
+  return (POLICY_NAMES as readonly string[]).includes(value);
+}

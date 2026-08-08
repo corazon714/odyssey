@@ -24,6 +24,22 @@
 
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
+
+    // Relative imports in packages/engine must resolve under BARE NODE, because CI runs
+    // `node packages/engine/src/index.ts` to prove rule 2.2 executably. Node ESM requires
+    // an explicit extension and does not rewrite `.js` -> `.ts` (verified: a `.js`
+    // specifier fails with ERR_MODULE_NOT_FOUND). So engine sources import each other as
+    // './thing.ts', which TypeScript only permits with this flag. Legal because every
+    // project in the repo sets noEmit.
+    //
+    // It lives in the base rather than in packages/engine so that consumers work too:
+    // @odyssey/engine's `types` field points at raw src/*.ts, and TypeScript resolves the
+    // workspace symlink to its real path, so engine sources land in the CONSUMER's program
+    // as ordinary project files that skipLibCheck does not cover.
+    //
+    // apps/mobile extends expo/tsconfig.base, not this file, and will need its own copy
+    // the first time the app imports the engine.
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,

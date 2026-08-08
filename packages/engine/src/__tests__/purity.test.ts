@@ -36,11 +36,46 @@ const FORBIDDEN_SPECIFIERS: readonly RegExp[] = [
  */
 const FORBIDDEN_PATTERNS: readonly { readonly label: string; readonly re: RegExp }[] = [
   { label: 'Math.random()', re: /\bMath\s*\.\s*random\b/ },
-  { label: "Math['random']", re: /\bMath\s*\[\s*['"`]random['"`]\s*\]/ },
   { label: 'Date.now()', re: /\bDate\s*\.\s*now\b/ },
   { label: 'new Date()', re: /\bnew\s+Date\s*\(\s*\)/ },
   { label: 'performance.now()', re: /\bperformance\s*\.\s*now\b/ },
   { label: 'crypto.randomUUID()', re: /\bcrypto\s*\.\s*randomUUID\b/ },
+  // Computed access is checked as `Math[` rather than `Math['random']`, because
+  // stripCommentsAndLiterals blanks the quoted key before this runs — the old
+  // `Math['random']` regex could never match post-strip and was silently dead. Engine
+  // source has no legitimate reason to index these objects dynamically at all, so the
+  // broader form is both correct and stricter.
+  { label: 'computed Math[…]', re: /\bMath\s*\[/ },
+  { label: 'computed Date[…]', re: /\bDate\s*\[/ },
+  { label: 'computed crypto[…]', re: /\bcrypto\s*\[/ },
+  { label: 'computed performance[…]', re: /\bperformance\s*\[/ },
+];
+
+/**
+ * Cross-ENGINE hazards, as distinct from the nondeterminism above.
+ *
+ * These are perfectly deterministic on one machine. The problem is that ECMAScript marks
+ * Math.pow, Math.exp, Math.log, Math.sqrt, Math.cbrt, Math.hypot, every trig function and
+ * the exponent operator as *implementation-approximated*, and makes localeCompare, the
+ * toLocale family and Intl locale-dependent. Two conforming engines may therefore disagree
+ * on the last bit, or on sort order.
+ *
+ * That matters here more than in most codebases: CI runs Linux and Windows today, the game
+ * ships on Hermes, and a golden run is only worth something if it reproduces on all three.
+ * A single Math.pow in a scoring factor breaks replay in a way that passes every local test.
+ * Canonical ordering must use `<` / `>` on strings, which is exact UTF-16 code-unit order.
+ */
+const CROSS_ENGINE_PATTERNS: readonly { readonly label: string; readonly re: RegExp }[] = [
+  {
+    label: 'Math transcendental',
+    re: /\bMath\s*\.\s*(?:pow|exp|expm1|log|log1p|log2|log10|sqrt|cbrt|hypot|sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh|asinh|acosh|atanh|fround)\b/,
+  },
+  // `**` survives the strip: block comments (including the `/**` opener) are removed first,
+  // and glob strings like 'src/**' are blanked with the rest of the string literals.
+  { label: '** operator', re: /\*\*/ },
+  { label: 'localeCompare', re: /\blocaleCompare\b/ },
+  { label: 'toLocale*', re: /\btoLocale[A-Z]\w*/ },
+  { label: 'Intl', re: /\bIntl\s*[.[]/ },
 ];
 
 const IMPORT_SPECIFIER =
@@ -149,5 +184,51 @@ describe('packages/engine determinism (CLAUDE.md 2.3)', () => {
     const offenders = FORBIDDEN_PATTERNS.filter(({ re }) => re.test(code)).map((p) => p.label);
 
     expect(offenders).toEqual(['Math.random()']);
+  });
+});
+
+describe('packages/engine cross-engine reproducibility (CLAUDE.md 2.3)', () => {
+  it.each(sourceFiles.map((f) => [rel(f), f]))(
+    '%s uses no implementation-approximated or locale-dependent API',
+    (_name, file) => {
+      const code = stripCommentsAndLiterals(readFileSync(file, 'utf8'));
+      const offenders = CROSS_ENGINE_PATTERNS.filter(({ re }) => re.test(code)).map((p) => p.label);
+
+      expect(offenders).toEqual([]);
+    },
+  );
+
+  it('detects each cross-engine hazard in live code but not in prose', () => {
+    // Guards the guard, twice over. The first array proves every pattern still bites; the
+    // second proves the strip keeps a docstring that MENTIONS the ban from reporting
+    // itself — which is exactly how this file's own rules are documented elsewhere.
+    const live = stripCommentsAndLiterals(
+      [
+        'const a = Math.pow(2, 8);',
+        'const b = 2 ** 8;',
+        'const c = x.localeCompare(y);',
+        'const d = n.toLocaleString();',
+        'const e = new Intl.NumberFormat();',
+      ].join('\n'),
+    );
+    expect(CROSS_ENGINE_PATTERNS.filter(({ re }) => re.test(live)).map((p) => p.label)).toEqual([
+      'Math transcendental',
+      '** operator',
+      'localeCompare',
+      'toLocale*',
+      'Intl',
+    ]);
+
+    const prose = stripCommentsAndLiterals(
+      [
+        '/** Never use Math.pow or ** here — see CLAUDE.md 2.3. */',
+        '// localeCompare and Intl are locale-dependent.',
+        "const glob = 'src/**/*.ts';",
+        'const label = "toLocaleString";',
+      ].join('\n'),
+    );
+    expect(CROSS_ENGINE_PATTERNS.filter(({ re }) => re.test(prose)).map((p) => p.label)).toEqual(
+      [],
+    );
   });
 });

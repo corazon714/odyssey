@@ -1,0 +1,172 @@
+import { describe, expect, it } from 'vitest';
+import { createRunState } from '../../state/create-run-state.ts';
+import { createRunInit } from '../../state/run-init.ts';
+import { validateRoute } from '../../state/validate-route.ts';
+import { loadFixtureRoutes, loadMiniPack } from '../../__tests__/support/load-fixtures.ts';
+import { contentVersion, createContentPack, EMPTY_REGISTRIES } from '../content-pack.ts';
+import { EVENT_PRIORITIES } from '../event-priority.ts';
+
+const { events, registries } = loadMiniPack();
+
+/** Deterministic shuffle — no Math.random, and reproducible when a case fails. */
+function shuffle<T>(items: readonly T[], seed: number): T[] {
+  const out = [...items];
+  let state = seed;
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    const j = state % (i + 1);
+    const a = out[i];
+    const b = out[j];
+    if (a !== undefined && b !== undefined) {
+      out[i] = b;
+      out[j] = a;
+    }
+  }
+  return out;
+}
+
+describe('createContentPack', () => {
+  it('sorts events into canonical id order', () => {
+    const pack = createContentPack(events, registries);
+    const ids = pack.events.map((e) => e.id);
+    expect(ids).toEqual([...ids].sort());
+  });
+
+  it('produces an identical pack from any input order', () => {
+    // The replay hazard this exists for: content arrives from a filesystem glob whose order
+    // differs between operating systems, and CI runs Linux AND Windows.
+    const baseline = createContentPack(events, registries);
+
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const shuffled = createContentPack(shuffle(events, seed), registries);
+      expect(shuffled.events.map((e) => e.id)).toEqual(baseline.events.map((e) => e.id));
+      expect(shuffled.version).toBe(baseline.version);
+    }
+  });
+
+  it('would detect an unsorted pack', () => {
+    // Guards the guard: if the fixture happened to be authored in sorted order, the test
+    // above would pass without the sort doing anything.
+    const authored = events.map((e) => e.id);
+    expect(authored).not.toEqual([...authored].sort());
+  });
+
+  it('indexes by id', () => {
+    const pack = createContentPack(events, registries);
+    expect(pack.byId.size).toBe(events.length);
+    expect(pack.byId.get('border.bribe_attempt' as never)?.priority).toBe('beat');
+  });
+
+  it('indexes by priority and exposes the filler pool', () => {
+    const pack = createContentPack(events, registries);
+    for (const [priority, bucket] of pack.byPriority) {
+      expect(EVENT_PRIORITIES).toContain(priority);
+      for (const event of bucket) expect(event.priority).toBe(priority);
+    }
+    // The relaxation ladder's rung-6 floor needs at least two.
+    expect(pack.fillers.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('indexes beats by beatType, and only beats', () => {
+    const pack = createContentPack(events, registries);
+    for (const [beatType, bucket] of pack.byBeatType) {
+      for (const event of bucket) {
+        expect(event.priority).toBe('beat');
+        expect(event.beatType).toBe(beatType);
+      }
+    }
+    expect([...pack.byBeatType.keys()].sort()).toEqual([
+      'border_crossing',
+      'finale',
+      'midpoint_crisis',
+    ]);
+  });
+
+  it('reports duplicate ids rather than silently dropping one', () => {
+    const first = events[0];
+    if (first === undefined) throw new Error('fixture is empty');
+    expect(createContentPack([...events, first], registries).duplicateIds).toEqual([first.id]);
+  });
+});
+
+describe('content references', () => {
+  it('finds no dangling references in the fixture pack', () => {
+    // In a QBN engine a dangling reference is SILENT — the event simply never fires
+    // (ADR 0001). This is the instrument that makes it loud.
+    const pack = createContentPack(events, registries);
+    expect(pack.danglingRefs).toEqual([]);
+  });
+
+  it('reports every dangling reference with the event it came from', () => {
+    const pack = createContentPack(events, EMPTY_REGISTRIES);
+    expect(pack.danglingRefs.length).toBeGreaterThan(0);
+
+    for (const ref of pack.danglingRefs) {
+      expect(['event', 'npc', 'item', 'trait']).toContain(ref.kind);
+      expect(ref.inEvent).not.toBe('');
+    }
+    // The bribe event names border_guard in both a predicate and an effect.
+    expect(pack.danglingRefs.some((r) => r.kind === 'npc' && r.id === 'border_guard')).toBe(true);
+  });
+
+  it('resolves refs for the pack it was built from', () => {
+    const pack = createContentPack(events, registries);
+    expect(pack.refs.hasEvent('border.bribe_attempt' as never)).toBe(true);
+    expect(pack.refs.hasEvent('does.not.exist' as never)).toBe(false);
+    expect(pack.refs.hasNpc('border_guard' as never)).toBe(true);
+    expect(pack.refs.hasTrait('smooth_talker' as never)).toBe(true);
+    expect(pack.refs.hasItem('unicorn' as never)).toBe(false);
+  });
+
+  it('follows a scheduleEvent target', () => {
+    // The one sanctioned soft pointer still has to point somewhere.
+    const pack = createContentPack(events, registries);
+    expect(pack.byId.has('border.guard_remembers' as never)).toBe(true);
+  });
+});
+
+describe('contentVersion', () => {
+  it('is order-independent', () => {
+    expect(contentVersion(shuffle(events, 7), registries)).toBe(contentVersion(events, registries));
+  });
+
+  it('changes when any authored field changes', () => {
+    const first = events[0];
+    if (first === undefined) throw new Error('fixture is empty');
+    const nudged = [{ ...first, weight: first.weight + 1 }, ...events.slice(1)];
+    expect(contentVersion(nudged, registries)).not.toBe(contentVersion(events, registries));
+  });
+
+  it('changes when the registries change', () => {
+    expect(contentVersion(events, EMPTY_REGISTRIES)).not.toBe(contentVersion(events, registries));
+  });
+
+  it('is 32 lowercase hex characters', () => {
+    expect(contentVersion(events, registries)).toMatch(/^[0-9a-f]{32}$/);
+  });
+});
+
+describe('fixture routes', () => {
+  it('every fixture route is valid', () => {
+    for (const route of loadFixtureRoutes()) {
+      expect(validateRoute(route), `route ${route.id}`).toBeNull();
+    }
+  });
+
+  it('every fixture route can start a run', () => {
+    for (const route of loadFixtureRoutes()) {
+      const result = createRunState(createRunInit('fixture', 'v1', route));
+      expect(result.ok, `route ${route.id}`).toBe(true);
+    }
+  });
+
+  it('covers the beat types the pack can fill', () => {
+    const pack = createContentPack(events, registries);
+    const scheduled = new Set(
+      loadFixtureRoutes().flatMap((r) => r.beatSchedule.map((s) => s.type)),
+    );
+    for (const beatType of pack.byBeatType.keys()) {
+      expect(scheduled, `no fixture route schedules ${beatType}`).toContain(beatType);
+    }
+  });
+});

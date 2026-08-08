@@ -1,0 +1,222 @@
+{
+  "_comment": [
+    "Fixture routes. Phase 1 takes the route as caller-supplied input — route generation,",
+    "legCountFor and beat-schedule generation are all out of scope, because leg density by",
+    "terrain and montage compression need terrain data and sim tuning that do not exist.",
+    "",
+    "The sim harness reads this file by path via findWorkspaceRoot, so nothing here is",
+    "exported from the engine barrel.",
+    "",
+    "Node ids are generic on purpose (rule 11): the map uses real geography, but a FIXTURE",
+    "must not encode behaviour against a named place.",
+    "",
+    "Each entry carries a `start` block: the preparation choices a real run makes on the",
+    "preparation screen. Without them transport defaults to foot and money to 0, which makes",
+    "every vehicle-constrained and cost-gated event unreachable — the walking skeleton caught",
+    "exactly that, with 5 of 9 events never firing."
+  ],
+  "routes": [
+    {
+      "start": {
+        "transportMode": "car",
+        "vehicleLegal": true,
+        "money": 320,
+        "startHour": 7,
+        "weather": "clear"
+      },
+      "route": {
+        "id": "fixture.short",
+        "profile": "fastest",
+        "nodes": ["origin", "waypoint_a", "destination"],
+        "edges": ["origin-waypoint_a", "waypoint_a-destination"],
+        "legIndex": 0,
+        "legCount": 10,
+        "progressKm": 0,
+        "totalKm": 620,
+        "beatSchedule": [
+          {
+            "legIndex": 0,
+            "type": "departure",
+            "slackLegs": 0,
+            "status": "pending"
+          },
+          {
+            "legIndex": 5,
+            "type": "midpoint_crisis",
+            "slackLegs": 2,
+            "status": "pending"
+          },
+          {
+            "legIndex": 9,
+            "type": "finale",
+            "slackLegs": 0,
+            "status": "pending"
+          }
+        ],
+        "legLocations": [
+          "city",
+          "roadside",
+          "rest_stop",
+          "roadside",
+          "town",
+          "checkpoint",
+          "roadside",
+          "rest_stop",
+          "roadside",
+          "city"
+        ]
+      }
+    },
+    {
+      "start": {
+        "transportMode": "truck",
+        "vehicleLegal": false,
+        "money": 540,
+        "startHour": 19,
+        "weather": "fog"
+      },
+      "route": {
+        "id": "fixture.illicit",
+        "profile": "illicit",
+        "nodes": ["origin", "border_a", "waypoint_b", "border_b", "destination"],
+        "edges": [
+          "origin-border_a",
+          "border_a-waypoint_b",
+          "waypoint_b-border_b",
+          "border_b-destination"
+        ],
+        "legIndex": 0,
+        "legCount": 24,
+        "progressKm": 0,
+        "totalKm": 2140,
+        "beatSchedule": [
+          {
+            "legIndex": 0,
+            "type": "departure",
+            "slackLegs": 0,
+            "status": "pending"
+          },
+          {
+            "legIndex": 5,
+            "type": "border_crossing",
+            "slackLegs": 3,
+            "status": "pending"
+          },
+          {
+            "legIndex": 12,
+            "type": "midpoint_crisis",
+            "slackLegs": 3,
+            "status": "pending"
+          },
+          {
+            "legIndex": 17,
+            "type": "border_crossing",
+            "slackLegs": 3,
+            "status": "pending"
+          },
+          {
+            "legIndex": 20,
+            "type": "approach",
+            "slackLegs": 2,
+            "status": "pending"
+          },
+          {
+            "legIndex": 23,
+            "type": "finale",
+            "slackLegs": 0,
+            "status": "pending"
+          }
+        ],
+        "legLocations": [
+          "city",
+          "roadside",
+          "roadside",
+          "rest_stop",
+          "roadside",
+          "border_crossing",
+          "roadside",
+          "roadside",
+          "town",
+          "checkpoint",
+          "roadside",
+          "rest_stop",
+          "wilderness",
+          "checkpoint",
+          "station",
+          "roadside",
+          "roadside",
+          "border_crossing",
+          "roadside",
+          "roadside",
+          "town",
+          "checkpoint",
+          "rest_stop",
+          "city"
+        ]
+      }
+    },
+    {
+      "start": {
+        "transportMode": "bus",
+        "vehicleLegal": true,
+        "money": 260,
+        "startHour": 9,
+        "weather": "clear"
+      },
+      "route": {
+        "id": "fixture.scenic",
+        "profile": "scenic",
+        "nodes": ["origin", "waypoint_a", "waypoint_b", "destination"],
+        "edges": ["origin-waypoint_a", "waypoint_a-waypoint_b", "waypoint_b-destination"],
+        "legIndex": 0,
+        "legCount": 16,
+        "progressKm": 0,
+        "totalKm": 1380,
+        "beatSchedule": [
+          {
+            "legIndex": 0,
+            "type": "departure",
+            "slackLegs": 0,
+            "status": "pending"
+          },
+          {
+            "legIndex": 8,
+            "type": "midpoint_crisis",
+            "slackLegs": 2,
+            "status": "pending"
+          },
+          {
+            "legIndex": 13,
+            "type": "approach",
+            "slackLegs": 2,
+            "status": "pending"
+          },
+          {
+            "legIndex": 15,
+            "type": "finale",
+            "slackLegs": 0,
+            "status": "pending"
+          }
+        ],
+        "legLocations": [
+          "city",
+          "roadside",
+          "roadside",
+          "rest_stop",
+          "roadside",
+          "roadside",
+          "town",
+          "roadside",
+          "wilderness",
+          "roadside",
+          "checkpoint",
+          "roadside",
+          "rest_stop",
+          "town",
+          "roadside",
+          "city"
+        ]
+      }
+    }
+  ]
+}
