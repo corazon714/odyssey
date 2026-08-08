@@ -1,3 +1,5 @@
+import { type LocationType } from '../content/location-type.ts';
+import { type ContainerKind } from '../state/container-state.ts';
 import { type TimeOfDay } from '../state/clock-state.ts';
 import {
   type EventId,
@@ -45,7 +47,13 @@ export type Predicate =
   | { readonly kind: 'skill'; readonly key: SkillKey; readonly cmp: NumberCmp }
   | { readonly kind: 'language'; readonly id: LanguageId }
   | { readonly kind: 'trait'; readonly id: TraitId }
-  | { readonly kind: 'item'; readonly id: ItemId; readonly cmp: NumberCmp }
+  /** `in: null` sums across every container; naming one asks about that container alone. */
+  | {
+      readonly kind: 'item';
+      readonly id: ItemId;
+      readonly cmp: NumberCmp;
+      readonly in: ContainerKind | null;
+    }
 
   // ── documents ──────────────────────────────────────────────────────────────
   | {
@@ -79,6 +87,19 @@ export type Predicate =
   // ── world ──────────────────────────────────────────────────────────────────
   | { readonly kind: 'weather'; readonly anyOf: readonly string[] }
   | { readonly kind: 'timeOfDay'; readonly anyOf: readonly TimeOfDay[] }
+  /**
+   * Where the player is THIS leg, read from `route.legLocations`.
+   *
+   * Added in Phase 2A M2A.3 for the modifier registry, whose `when` needs to say "at a
+   * checkpoint, a uniform matters" without a location being a check TAG — location is state,
+   * not a kind of test. It also closes a spec gap: `docs/engine-spec.md:143` writes
+   * `requires: { context: { locationTypes: [...] } }` inside a `scheduleEvent`, and there was
+   * no predicate kind that could express it.
+   *
+   * Distinct from `EventContext.locationTypes`, which is a director FILTER the relaxation
+   * ladder can drop (rung 5). This never relaxes — it is an ordinary predicate.
+   */
+  | { readonly kind: 'locationType'; readonly anyOf: readonly LocationType[] }
   | { readonly kind: 'routeProfile'; readonly anyOf: readonly RouteProfile[] }
   | { readonly kind: 'status'; readonly anyOf: readonly RunStatus[] }
   | { readonly kind: 'leg'; readonly cmp: NumberCmp }
@@ -94,6 +115,57 @@ export type Predicate =
   | { readonly kind: 'chance'; readonly percent: number };
 
 export type PredicateKind = Predicate['kind'];
+
+/**
+ * Every predicate kind, as data.
+ *
+ * A union cannot be enumerated at runtime, and two things need to enumerate this one:
+ * `packages/content`'s schema-completeness test (a kind with no schema must fail the build,
+ * not ship silently) and the trace-contract sweep, which until now asserted a hard-coded 27.
+ *
+ * `satisfies` catches an entry that is not a real kind. The other direction — a kind missing
+ * from this array — is caught by `PredicateKindsAreExhaustive` below, and that pair is the
+ * one genuinely non-vacuous conformance assertion in the repo: both sides are independently
+ * hand-written, so neither can be derived from the other and quietly agree.
+ */
+export const PREDICATE_KINDS = [
+  'always',
+  'never',
+  'all',
+  'any',
+  'not',
+  'resource',
+  'skill',
+  'language',
+  'trait',
+  'item',
+  'passport',
+  'visa',
+  'flag',
+  'relationship',
+  'npcMet',
+  'eventMemory',
+  'transportMode',
+  'transportStat',
+  'vehicleLegal',
+  'weather',
+  'timeOfDay',
+  'locationType',
+  'routeProfile',
+  'status',
+  'leg',
+  'day',
+  'tension',
+  'chance',
+] as const satisfies readonly PredicateKind[];
+
+/**
+ * `true` only if `PREDICATE_KINDS` covers the union exactly. Asserted in
+ * `__tests__/trace-contract.test.ts`; a missing kind makes this `never` and fails there.
+ */
+export type PredicateKindsAreExhaustive = PredicateKind extends (typeof PREDICATE_KINDS)[number]
+  ? true
+  : never;
 
 export const ALWAYS: Predicate = Object.freeze({ kind: 'always' });
 export const NEVER: Predicate = Object.freeze({ kind: 'never' });

@@ -23,11 +23,16 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status (planned).** None of the seven loop steps above is implemented. As of 2026-08-07
-> the repo contains the Phase 0 toolchain and its guardrails, plus a placeholder screen.
-> `packages/engine/src/index.ts` is an empty barrel by design. This section describes the
-> product to be built, and is the reference for _what_ to build — not a description of what
-> runs. `docs/PROGRESS.md` is the authority on current state.
+> **Status as of 2026-08-08 — Phase 1 complete.** Steps 5, 6 and 7 RUN: the leg loop, event
+> selection from a filtered and scored pool, choices resolving to weighted outcomes, and all
+> four memory mechanisms. `pnpm sim -- --runs=20000` completes twenty thousand journeys.
+>
+> Steps 1-4 do NOT: no map, no route generation, no preparation screen. The route is
+> caller-supplied via `RunInit.route`. There is no content — the nine events under
+> `packages/engine/src/__tests__/__fixtures__/` are test fixtures, not the seed corpus.
+>
+> `docs/PROGRESS.md` is the authority on current state; `docs/engine-spec.md` Part II is the
+> authority on what the engine actually does, written from the code.
 
 ---
 
@@ -45,8 +50,11 @@ These have caused real damage in similar projects when broken. Do not "improve" 
    state) and a `weight`. The director picks from the eligible pool. If you find yourself wanting
    `nextEventId`, use a **flag** plus a `requires` on the target event, or the **consequence queue**.
    The single exception is `scheduleEvent`, which is a _soft_ pointer resolved by the director.
-   _Enforcement: **(planned)** — the content linter must reject `nextEventId`. No events, no
-   schema and no linter exist yet, so nothing catches this today. Rationale: `docs/adr/0001`._
+   _Enforcement: **live.** The event schema is `z.strictObject`, so `nextEventId` is not a
+   rule the linter has to know about — it is an unknown key and the file fails to parse. The
+   engine also has NO field an event could point with: `GameEvent` has no
+   successor, and `scheduleEvent` is a queue entry the director may decline. The sim reports
+   scheduled-vs-fired, so a soft pointer that never resolves is visible. Rationale: `adr/0001`._
 
 2. **`packages/engine` must never import React, React Native, Expo, or any DOM/native API.**
    It is pure TypeScript. It must run under plain Node so it can be simulated 20,000 times.
@@ -68,15 +76,19 @@ These have caused real damage in similar projects when broken. Do not "improve" 
    Everything about a run must be reproducible from `(seed, choiceSequence, contentVersion)`.
    _Enforcement: **live** — verified catching `Math.random()`, `Math['random']`,
    `const { random } = Math`, `Date.now()`, `Date['now']`, `new Date()` and `Date()`.
-   The `Rng` service, the `Clock` port and golden-run replay are **(planned)** for Phase 1;
-   until replay exists, obfuscated nondeterminism is not detectable._
+   The `Rng` service and golden-run replay are now **live** — `replayRun` reproduces a run
+   byte-for-byte from `(seed, choiceSequence, contentVersion)`, which is the backstop that
+   catches obfuscated nondeterminism. `purity.test.ts` additionally bans implementation-
+   approximated and locale-dependent APIs. **Proven on V8 only; Hermes is untested — ADR 0012.**
+   The `Clock` port remains **(planned)**: the engine takes no clock, it advances its own._
 
 4. **No user-visible string literals in code or content data.** Only i18n keys.
    `title: "You lost your passport"` is a bug. `titleKey: "events.passport_lost.title"` is correct.
-   _Enforcement: **(planned)** — "enforced by the content linter" describes an intent, not a
-   fact: `packages/tools/content-lint/` is empty. Today this rests on review. The rule is
-   already being honoured in app code — `apps/mobile/app/index.tsx` renders the key
-   `app.placeholder.title` rather than copy._
+   _Enforcement: **live, and by construction.** An event file has NO text fields at all —
+   `titleKey`, `labelKey` and `textKey` are DERIVED from ids by the schema transform, so there
+   is nowhere to type prose. Explicit keys are accepted as an escape hatch and must still match
+   the i18n-key shape. `pnpm content:lint` additionally checks every derived key resolves in
+   `en/`, and scans the locale for §11 patterns. ADR 0015/0017._
 
 5. **No text rendered inside generated images.** Ever. The game ships in 4 languages.
    _Enforcement: **(planned)** — `packages/tools/imagegen/` is empty and no images exist.
@@ -84,17 +96,25 @@ These have caused real damage in similar projects when broken. Do not "improve" 
 
 6. **Content is data, not code.** Events live in `packages/content/events/**.yaml`, validated by Zod
    at build time and in tests. Never hardcode an event in a `.ts` file.
-   _Enforcement: **(planned)** — `packages/content/events/` is empty, `schema/index.ts` is an
-   empty barrel, and Zod is installed but unused. The rule binds from the first event written._
+   _Enforcement: **live.** Nine YAML events under `packages/content/events/`, validated by Zod
+   and held identical to the engine types by the conformance harness in
+   `packages/content/__tests__/conformance.test.ts` (ADR 0009). `pnpm content:lint` is the
+   build-time gate and runs in CI. The engine fixture is JSON DATA, never `.ts`, and a
+   round-trip test proves the YAML produces it byte-for-byte._
 
 7. **Every state mutation goes through an `Effect`.** No direct mutation of `RunState` from UI code.
    The UI dispatches a choice; the engine returns a new state plus a list of applied effects.
-   _Enforcement: **(planned)** — neither `RunState` nor `Effect` exists yet (Phase 1)._
+   _Enforcement: **live.** `applyEffects` is the only writer; `RunState` is deeply readonly,
+   and `effects/__tests__/purity-and-sharing.test.ts` deep-freezes the input and applies all
+   12 ops. Module code is strict, so an in-place write throws. The freeze is itself guarded._
 
-8. **The engine is deterministic and pure.** `resolve(state, input) -> { state, log }`.
-   Side effects (persistence, audio, haptics, analytics) happen in the app layer by observing the log.
-   _Enforcement: purity of the **package** is live (see rule 2). The `resolve` signature
-   itself is **(planned)** — no engine function exists yet._
+8. **The engine is deterministic and pure.** Shipped as two functions rather than one
+   `resolve`: `advanceLeg(state, pack)` and `resolveChoice(state, pack, choiceId)`, each
+   returning a new state plus a log. Side effects (persistence, audio, haptics, analytics)
+   happen in the app layer by observing the log.
+   _Enforcement: **live.** Package purity per rule 2; both entry points RETURN a typed
+   `EngineError` and never throw; the RNG is derived from state and drained back, never
+   injected, so a caller cannot desynchronise replay. See `docs/engine-spec.md` Part II._
 
 9. **Animation is presentation, never mechanics.** The engine resolves the outcome and the
    state is persisted _before_ any animation starts. A die is shown landing on a number the
@@ -128,13 +148,19 @@ apps/mobile/                Expo app (UI only — no game rules here)
   src/design/               tokens, theme, mood system, primitives         (planned)
   src/audio/                ambience + sfx manager                         (planned)
 packages/engine/            Pure TS game engine                         ✅ package exists
-  src/index.ts              public barrel                               ✅ empty by design
-  src/state/                RunState, reducers, effects                    (planned)
-  src/director/             event selection, pacing, tension curve         (planned)
-  src/rng/                  seeded PRNG + named substreams                 (planned)
-  src/predicate/            requires-DSL evaluator                         (planned)
-  src/effects/              effect-DSL applier                             (planned)
-  src/route/                route graph traversal, k-shortest paths        (planned)
+  src/index.ts              public barrel, 159 exports                  ✅ Phase 1 complete
+  src/ids/                  Brand<> + 12 branded content id types       ✅
+  src/errors/               EngineError — RETURNED, never thrown        ✅ (not in original layout)
+  src/rng/                  counter-based PRNG + 8 named substreams     ✅
+  src/state/                RunState, clamping, digest, flag access     ✅
+  src/predicate/            requires-DSL, 27 kinds + reason trace       ✅
+  src/effects/              effect-DSL applier, 12 ops, ModifierSource  ✅
+  src/content/              GameEvent types + ContentPack               ✅ (not in original layout)
+  src/director/             filters, scoring, ladder, beats, tension    ✅
+  src/queue/                consequence queue: caps, eviction, rebase   ✅ (not in original layout)
+  src/loop/                 advanceLeg · resolveChoice · replayRun      ✅ (not in original layout)
+  src/migrate/              save migration ladder + content reconcile   ✅ (not in original layout)
+  src/route/                route graph traversal, k-shortest paths        (planned — Phase 2)
 packages/content/                                                       ✅ package exists
   events/                   *.yaml event definitions (grouped by category) (empty)
   geo/                      nodes.json, edges.json, world.simplified.geojson (empty)
@@ -144,7 +170,7 @@ packages/content/                                                       ✅ pack
   schema/                   Zod schemas (single source of truth)        ✅ empty barrel, no schemas yet
 packages/tools/                                                         ✅ package exists
   shared/                   cross-tool helpers (findWorkspaceRoot)      ✅ (not in original layout)
-  sim/                      headless simulation harness + balance reports  (empty)
+  sim/                      headless sim harness + engine-spec 6 report  ✅ 11 files
   content-lint/             structural + semantic content validation       (empty)
   imagegen/                 build-time AI image pipeline                   (empty)
   i18n-check/               key coverage, pseudo-loc, length audit         (empty)
@@ -247,10 +273,12 @@ pnpm format / format:check    # prettier write / check                          
 pnpm test                     # vitest (packages) + jest (apps/mobile)             ✅
 pnpm test:engine              # engine unit + golden-run tests only (fast)         ✅
 
-pnpm content:lint             # validate all events, predicates, i18n keys, image refs  (planned)
-pnpm content:stats            # counts by category/region/tag, coverage gaps            (planned)
+pnpm content:lint             # validate events, refs, orphan flags, tags, i18n, safety   ✅
+pnpm content:lint -- --fix    # sort registries by id, dedupe list fields (nothing else)  ✅
+pnpm content:stats            # counts by category/tag/check-tag + a 4-axis coverage report  ✅
 pnpm sim -- --runs=20000      # headless balance simulation                                 ✅
 pnpm sim:diff                 # compare latest sim to docs/sim-baseline.md                ✅
+pnpm golden:update            # regenerate golden-runs.json from the engine — REVIEW the diff ✅
 
 pnpm images:plan              # what would be generated/regenerated (dry run, cost)     (planned)
 pnpm images:gen               # generate missing/stale images                           (planned)
@@ -287,8 +315,8 @@ A change is not done until all of these pass:
 1. `pnpm typecheck` clean
 2. `pnpm lint` clean
 3. `pnpm test` green
-4. `pnpm content:lint` clean (if content or schema touched) — **(planned)**: the command does
-   not exist yet. Until it does, report this item as **N/A**, never as passing.
+4. `pnpm content:lint` clean (if content or schema touched) ✅ **exists since Phase 2A M2A.6**.
+   Exits 1 on an error, 0 with warnings — the warnings are real findings, so read them.
 5. New behavior has a test. Bug fixes have a **regression test that fails before the fix**.
 6. If engine behavior changed: `pnpm sim -- --runs=5000` run and the report delta explained.
    — **(planned)**: same as 4. Report **N/A** while the harness does not exist.

@@ -98,6 +98,22 @@ jobs:
       - name: Run 50 full journeys end to end
         run: pnpm sim -- --runs=50
 
+  content-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Exits 1 on an error and 0 with warnings, so this needs no assertions. The split is
+      # deliberate: blocking CI on a warning trains people to suppress warnings, and a
+      # suppressed §11 safety check is worse than no check because it looks like coverage.
+      - name: Validate content
+        run: pnpm content:lint
+
   # Development happens on Windows. Monorepo path-separator and CRLF bugs surface on no
   # other runner, and finding them here is much cheaper than finding them locally.
   typecheck-windows:

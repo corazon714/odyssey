@@ -1,0 +1,68 @@
+id: transit.bus_ejection
+category: transit
+tags:
+  - authority
+  - transport
+  - humiliation
+weight: 90
+tensionBand:
+  - 0.2
+  - 0.9
+context:
+  transportModes:
+    - bus
+cooldownLegs: 8
+maxOccurrences: 3
+choices:
+  - id: plead_with_driver
+    labelKey: events.transit.bus_ejection.choice.plead
+    check:
+      skill: negotiation
+      dc: 14
+      tags: [social, intimidate]
+      visibility: hidden
+      modifiers:
+        - labelKey: check.modifier.seen_before
+          delta: -2
+          when:
+            eventSeen: transit.bus_ejection
+            gte: 1
+          why: 'fixture: exercises the choice-local modifier path before the registry exists'
+    outcomes:
+      - id: relented
+        weight: 1
+        onCheck: success
+        textVariants:
+          - events.transit.bus_ejection.out.relented_again
+        effects:
+          - op: resource
+            key: morale
+            delta: -1
+      - id: ejected
+        weight: 1
+        onCheck: failure
+        textVariants:
+          - events.transit.bus_ejection.out.ejected_again
+        effects:
+          - op: transport
+            change:
+              field: mode
+              mode: foot
+              vehicleId: null
+          - op: resource
+            key: morale
+            delta: -2
+          - op: advanceTime
+            hours: 4
+  - id: get_off
+    outcomes:
+      - id: walked
+        weight: 1
+        effects:
+          - op: transport
+            change:
+              field: mode
+              mode: foot
+              vehicleId: null
+          - op: advanceTime
+            hours: 3

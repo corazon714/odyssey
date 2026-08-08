@@ -1,6 +1,7 @@
 import { type RunState } from '../state/run-state.ts';
 import { appliedEffect, type AppliedEffect, type EffectApplication } from './applied-effect.ts';
 import { applyCarriedEffect } from './apply-carried-effects.ts';
+import { applyContainerEffect } from './apply-container-effects.ts';
 import { applyMemoryEffect } from './apply-memory-effects.ts';
 import { applyMeterEffect } from './apply-meter-effects.ts';
 import { applyWorldEffect } from './apply-world-effects.ts';
@@ -32,6 +33,11 @@ export function applyEffect(
       return applyMemoryEffect(state, effect, ctx);
 
     case 'item':
+    case 'moveItem':
+    case 'loseContainer':
+    case 'grantContainer':
+      return applyContainerEffect(state, effect);
+
     case 'document':
       return applyCarriedEffect(state, effect);
 

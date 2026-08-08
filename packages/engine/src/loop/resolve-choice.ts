@@ -13,6 +13,7 @@ import { type RollResult } from '../rng/roll-result.ts';
 import { type WeightedEntry } from '../rng/weighted-pick.ts';
 import { type RunState } from '../state/run-state.ts';
 import { checkRunEnd, type RunEndVerdict } from './check-run-end.ts';
+import { type ModifierResolution } from '../modifiers/resolved-modifier.ts';
 import { runSkillCheck } from './run-skill-check.ts';
 
 /**
@@ -30,6 +31,12 @@ export type ResolveChoiceResult =
       readonly state: RunState;
       readonly outcome: Outcome | null;
       readonly check: RollResult | null;
+      /**
+       * Presentation-ready modifier chips, ordered and annotated. null when the choice had no
+       * check. This is what the Phase 7B dice animation renders; `check.modifiers` carries the
+       * same deltas but not the diminished/capped/rawDelta detail pillar 2 needs.
+       */
+      readonly resolution: ModifierResolution | null;
       readonly applied: readonly AppliedEffect[];
       readonly end: RunEndVerdict;
     };
@@ -82,7 +89,7 @@ export function resolveChoice(
   next = costs.state;
   applied.push(...costs.applied);
 
-  const check =
+  const checked =
     choice.skillCheck === null
       ? null
       : runSkillCheck(
@@ -90,7 +97,12 @@ export function resolveChoice(
           createPredicateContext(next, pack.refs, `${event.id}:${String(next.route.legIndex)}`),
           rng,
           PHASE_1_MODIFIER_SOURCES,
+          // The registry rides on the pack, so the seam needs no new parameter and no caller
+          // can hand in a different one — the same argument ADR 0005 makes for deriving the
+          // RNG from state rather than injecting it.
+          pack.modifiers,
         );
+  const check = checked === null ? null : checked.roll;
 
   const outcome = pickOutcome(choice, check, next, pack, rng);
   if (outcome !== null) {
@@ -109,7 +121,15 @@ export function resolveChoice(
     next = { ...next, status: 'ended', unlockedEndings: unlocked };
   }
 
-  return { ok: true, state: next, outcome, check, applied, end };
+  return {
+    ok: true,
+    state: next,
+    outcome,
+    check,
+    resolution: checked === null ? null : checked.resolution,
+    applied,
+    end,
+  };
 }
 
 /**

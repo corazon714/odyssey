@@ -1,0 +1,107 @@
+# THE GLOBAL CHECK-MODIFIER REGISTRY.
+#
+# A modifier declared here applies to every check whose `tags` intersect its `appliesTo`. That
+# is the whole point: "you don't speak the language" is ONE row, not the same penalty copied
+# into every social event, drifting in value between copies (08-DIVERSITY-SYSTEMS D1).
+#
+# `labelKey` is derived from the id, so there is nowhere to type prose here either.
+#
+# FIXTURE SET — eight rows chosen to exercise every step of the resolution pipeline
+# (conflicts, non-stacking collapse, diminishing returns, both clamps), not a seed corpus.
+# The 160-modifier corpus is Phase 2B, written against the content bible.
+
+# ── condition: how you present ──────────────────────────────────────────────────────────
+- id: dishevelled
+  appliesTo: [social, haggle, deception, intimidate, authority]
+  when: { resource: hygiene, lte: 3 }
+  delta: -2
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: exhausted
+  appliesTo: [physical, endurance, mechanics, perception, navigate]
+  when: { resource: energy, lte: 2 }
+  delta: -2
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+# ── the language row. `Skills.languages` exists in state and NOTHING read it before this. ──
+- id: no_shared_language
+  appliesTo: [social, haggle, deception, intimidate, authority, language]
+  when: { not: { language: local } }
+  delta: -2
+  sourceKind: skill
+  priority: 40
+  stacks: false
+
+# ── heat: being wanted follows you ──────────────────────────────────────────────────────
+- id: wanted_by_authorities
+  appliesTo: [authority, bribery, documents, search]
+  when: { flag: wanted }
+  delta: -3
+  sourceKind: flag
+  priority: 60
+  stacks: true
+
+# ── the money pair, and the conflict between them ───────────────────────────────────────
+# Carrying a lot of cash is what a search finds; concealing it is what stops the search
+# finding it. They cannot both apply, so they conflict and concealment wins on priority.
+- id: large_cash_on_person
+  appliesTo: [authority, search, bribery]
+  when: { resource: cash, gte: 400 }
+  delta: -2
+  sourceKind: condition
+  conflictsWith: [cash_concealed]
+  priority: 50
+  stacks: false
+
+- id: cash_concealed
+  appliesTo: [authority, search]
+  when: { item: cash_belt, gte: 1 }
+  delta: 2
+  sourceKind: item
+  priority: 70
+  stacks: false
+
+# ── place, using the locationType predicate kind added alongside the registry ───────────
+- id: official_scrutiny
+  appliesTo: [authority, documents, deception]
+  when: { locationType: [border_crossing, checkpoint] }
+  delta: -1
+  sourceKind: context
+  priority: 30
+  stacks: true
+
+# ── a positive the player earns ─────────────────────────────────────────────────────────
+- id: guard_owes_you
+  appliesTo: [social, authority, bribery]
+  when: { relationship: border_guard, gte: 1 }
+  delta: 2
+  sourceKind: relationship
+  priority: 55
+  stacks: true
+
+# ── the three-tier money model, made visible to a check ─────────────────────────────────
+# Cash is stealable and VISIBLE; bank is neither. Someone who has moved their money into an
+# account looks broke to a guard, which is the whole mechanical point of the distinction —
+# without a row like this, `bank` would be a resource nothing ever reads.
+- id: looks_broke
+  appliesTo: [authority, search, bribery]
+  when: { all: [{ resource: cash, lte: 20 }, { resource: bank, gte: 200 }] }
+  delta: 1
+  sourceKind: condition
+  priority: 45
+  stacks: false
+
+# The other side of it: a bribe you cannot fund. Below the threshold the choice should be
+# hidden by `hiddenUnless` rather than merely penalised, but until the seed corpus has those
+# choices this row makes the floor visible in the chip list rather than invisible.
+- id: cannot_cover_a_bribe
+  appliesTo: [bribery]
+  when: { resource: cash, lte: 10 }
+  delta: -3
+  sourceKind: condition
+  priority: 65
+  stacks: true

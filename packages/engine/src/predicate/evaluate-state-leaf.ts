@@ -1,3 +1,4 @@
+import { countEverywhere, countIn } from '../state/container-state.ts';
 import { compareNumber } from './number-cmp.ts';
 import { type PredicateContext } from './predicate-context.ts';
 import { type Predicate } from './predicate.ts';
@@ -73,12 +74,16 @@ export function evaluateStateLeaf(predicate: StateLeaf, ctx: PredicateContext): 
 
     case 'item': {
       if (!ctx.refs.hasItem(predicate.id)) return unknownRefReason('item', predicate.id);
-      // Summed rather than first-match: nothing forbids two stacks of the same id, and a
-      // predicate asking for 3 rations should not care how they are grouped.
-      let count = 0;
-      for (const entry of state.inventory) {
-        if (entry.id === predicate.id) count += entry.count;
-      }
+      // Summed across EVERY container: "do I have 3 rations" should not care whether they are
+      // in the bag or the boot. The `item` effect drains in the same order for exactly this
+      // reason — if the reader summed and the writer took the first match, a choice enabled
+      // by 4 rations across two containers would charge the player for 2 (M2A.5, ADR 0017).
+      //
+      // `in` narrows the question to one container when the author means to ask it.
+      const count =
+        predicate.in === null
+          ? countEverywhere(state.inventory, predicate.id)
+          : countIn(state.inventory[predicate.in], predicate.id);
       return leafReason(
         'item',
         compareNumber(predicate.cmp, count),

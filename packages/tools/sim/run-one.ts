@@ -48,7 +48,7 @@ export type SimRun = {
   /** Resource snapshots at the legs engine-spec 6 asks for. */
   readonly checkpoints: readonly {
     readonly leg: number;
-    readonly money: number;
+    readonly cash: number;
     readonly health: number;
     readonly morale: number;
     readonly energy: number;
@@ -95,7 +95,7 @@ export function runOne(
   const choicesPicked: string[] = [];
   const checkpoints: {
     leg: number;
-    money: number;
+    cash: number;
     health: number;
     morale: number;
     energy: number;
@@ -116,7 +116,7 @@ export function runOne(
     if (CHECKPOINT_LEGS.has(state.route.legIndex)) {
       checkpoints.push({
         leg: state.route.legIndex,
-        money: state.resources.money,
+        cash: state.resources.cash,
         health: state.resources.health,
         morale: state.resources.morale,
         energy: state.resources.energy,

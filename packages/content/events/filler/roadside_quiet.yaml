@@ -1,0 +1,17 @@
+id: filler.roadside_quiet
+category: filler
+tags:
+  - travel
+  - quiet
+priority: filler
+cooldownLegs: 2
+choices:
+  - id: keep_going
+    outcomes:
+      - id: onward
+        weight: 1
+        textVariants:
+          - events.filler.roadside_quiet.out.onward_again
+        effects:
+          - op: advanceTime
+            hours: 3

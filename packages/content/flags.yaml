@@ -1,0 +1,31 @@
+# Declared flags. engine-spec §3: "the anti-pattern is making everything a flag; a 400-flag
+# system is unmanageable". Every flag a predicate reads or an effect writes must appear here,
+# and `content:lint` rejects one that is written and never read — the number one content bug.
+#
+# FIXTURE SET. These are the five flags the Phase 1 fixture pack uses, not a seed corpus.
+
+- id: bribed_this_border
+  description: Set after any bribe at the current crossing; suppresses a second attempt.
+  category: border
+  lifetime:
+    ttlLegs: 1
+
+- id: bribe_on_record
+  description: A refused bribe was logged. Intended to raise later authority scrutiny.
+  category: border
+  lifetime: permanent
+
+- id: detained
+  description: Held by authorities this leg. Read by arrival and journal logic.
+  category: authority
+  lifetime: permanent
+
+- id: took_the_long_way
+  description: Turned back from a crossing and detoured; colours the journal's route summary.
+  category: route
+  lifetime: permanent
+
+- id: wanted
+  description: Actively sought by authorities. Gates border, transit and rest-stop branches.
+  category: heat
+  lifetime: permanent

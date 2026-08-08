@@ -5,36 +5,299 @@
 
 ---
 
-## Current state: **PHASE 1 COMPLETE.** M0–M11 shipped.
+## Shipped this session (2026-08-08, session 4) — Phase 2A M2A.0
 
-851 Vitest + 3 Jest. The engine plays a full run, replays it bit-for-bit, reports on itself,
-and migrates its own saves. `pnpm sim -- --runs=1000` completes a thousand journeys; every
-number is diffable against `docs/sim-baseline.md`.
+**Phase 2A is planned and approved** — 8 milestones, plan at
+`~/.claude/plans/phase-2a-plan-mode-precious-elephant.md`. Review gates after M2A.2 and M2A.5.
+Three questions were settled by the human before planning: rename `money` → `cash` and add
+`bank`; skill bypasses the modifier clamp (`d20 + skill + clamp(mods, −8..+6)`); fix `worldTick`
+first as its own milestone.
 
-**M11 moved no sim numbers, which is the point** — versioning is machinery around the loop,
-not inside it. `pnpm sim:diff` reports no change.
+### M2A.0 — the drift curve. `docs/adr/0014`. Two commits.
 
-### What Phase 1 built
+`worldTick` now charges every drain against the **clock span the leg covers**, not the leg.
+Open question 1 is **closed**.
 
-| Milestone | Delivers                                                           |
-| --------- | ------------------------------------------------------------------ |
-| M0        | `.ts` module specifiers; cross-engine purity guard                 |
-| M1        | Counter-based RNG, eight substreams                                |
-| M2        | `RunState`, `createRunState`, `stateDigest`                        |
-| M3        | 27 predicate kinds + the frozen reason trace                       |
-| M4        | 12 effect ops, pure applier, `ModifierSource` seam                 |
-| M5        | Content model, `createContentPack`, fixtures                       |
-| M6        | The walking skeleton — a run that runs                             |
-| M7        | Six scoring factors, seven-rung ladder, tension, complication seam |
-| M8        | Consequence queue: caps, eviction, expiry, rebasing                |
-| M9        | Beat consumption: fill, slide, expire                              |
-| M10       | Golden-run replay, full engine-spec §6 report, `sim:diff`          |
-| M11       | Save migration ladder, shape guard, content reconciliation         |
+- **The defect, measured:** health first dropped on leg 8 in **1500 of 1500 runs**, distinct=1.
+  Identical, not clustered — because every drain was per-leg and unconditional, so a nine-hour
+  walk cost the same as a four-hour train ride and nothing read the hour jitter.
+- **After:** distinct=**9** (legs 5–14). Completion 30.1% → 31.2%, inside the 30–50% band, so
+  this is not a difficulty change. `gave_up` 39.1% → 33.2%, `collapsed` 30.8% → 35.6% — the two
+  failure modes are near-balanced where one dominated.
+- **`spanPoints(before, hours, per)`** carries the remainder across legs, so summed cost is
+  exactly `floor(total / per)` (property test). **No new state** — the clock is already the
+  accumulator, so `SAVE_VERSION` is untouched and there is no migration.
+- **The finding worth keeping (ADR 0014 §3): grade a penalty on an unbounded meter, never on a
+  floored one.** Energy floors at 0 and most runs sit there, so a second harsher morale rung is
+  a penalty the whole population takes on the same leg — it _synchronises_ the collapse.
+  Measured: it drove leg-15 morale from `0/2/6` to `0/0/0`. Hunger has no ceiling, so grading
+  there spreads. This cost the most to learn.
+- **`worldTick` had no unit test at all**, which is how a curve that resolves to a constant
+  survived to a sim report. It has 12 now, pinning the _shape_ not the constants; verified
+  failing on a deliberate violation first.
+- **`pnpm golden:update` now exists.** `golden-runs.json`'s header and `golden-run.test.ts` both
+  said to regenerate with `ODYSSEY_UPDATE_GOLDEN=1`; **nothing implemented it.** The generator is
+  `packages/tools/sim/regenerate-goldens.ts` — outside the engine because the engine may not
+  touch `process` or write files, and it derives expectations from `replayRun` rather than the
+  simulator so the two cannot drift apart and still look green.
 
-**Both Phase 2 seams ship empty and tested as seams:** `ModifierSource` (M4) and the
-complication hook (M7). Each has a test that appends a stub and asserts it reaches the output.
+**Still true and not fixed by M2A.0:** the fixture pack contains **no food** — nothing reduces
+hunger, one effect grants energy. Health decline is therefore irreversible and every long run
+still converges to 0; only the leg it _starts_ varies. A wide p10/p90 at a fixed late leg needs
+the seed corpus.
 
-### What M10's instruments found, all at once
+Baseline regenerated; `pnpm sim:diff -- --runs=2000` reports no change. 863 Vitest + 3 Jest.
+
+### M2A.1 — schema foundations + the conformance harness. Four commits.
+
+**The three experiments were run first, and the load-bearing one came back NO.** Zod 4.4.3
+cannot infer a recursive transforming schema (TS7022), and the annotation that fixes it
+(`z.ZodType<Predicate>`) makes ADR 0009's assertion a **tautology** — `z.infer` of an annotated
+schema IS the annotation, so it passes on a schema that parses nothing, and because `Equals` is
+deep it poisons `GameEvent`/`Choice`/`Outcome` too: five of twelve, including the four that
+matter. Fix: annotate **only the recursive back-reference**, leave the union inferred.
+
+The anti-vacuity guard is better than the one the plan proposed. Hand-mirroring a terse input
+type is brittle (the readonly boundary differs between annotated and inferred arms). What works
+is `Equals<z.input<S>, unknown> = false` — an annotated schema's input collapses to `unknown`.
+
+**The harness, four layers, each verified failing on a deliberate violation:**
+
+| Layer                                     | Catches                          | Proven by                                          |
+| ----------------------------------------- | -------------------------------- | -------------------------------------------------- |
+| L1 `Equals<z.infer<S>, T>`                | shape drift                      | a new field on `GameEvent` → TS2741 at the builder |
+| L1' `Equals<z.input<S>, unknown> = false` | annotating a schema into vacuity | annotating `effectSchema` → red                    |
+| L2 runtime barrel enumeration             | a type with **no** schema        | removing `BEAT_TYPES` → named                      |
+| L3 27-case terse→canonical corpus         | semantics `Equals` is blind to   | `gte`→`lte` → 7 cases fail                         |
+
+Other findings worth keeping:
+
+- **`.default()` does not fire on `null`,** and YAML `weather:` parses as null. `z.array().default([])`
+  would leave the field null at runtime while every type assertion passed. Every default is
+  `.nullish().transform(v => v ?? …)`.
+- **`.brand()` is unusable** (Zod's symbol, not the engine's); `.readonly()` on a branded scalar
+  yields `Readonly<EventId>`. `z.string().transform(engineCtor)` is the only idiom.
+- **`z.intersection` DOES infer identity-equal** — my plan's stated reason for flattening
+  `SkillCheck` was wrong. The real reason: `.strictObject` on either half rejects the other
+  half's keys, so an intersection can never be sealed.
+- All settled in `packages/content/__tests__/zod-idioms.test.ts`, which is the regression guard
+  for the next Zod upgrade.
+
+**Authoring form is 36% of canonical** (10.3KB/496 lines vs 28.3KB/1182) and **no event file
+contains a text field at all** — keys are derived from ids, so rule 2.4 is true by construction.
+Two escape hatches the fixtures forced: explicit `textVariants` (`out.onward_again` reads better
+than `out.onward.v2`) and explicit `labelKey` (a choice with id `fix_it_yourself` keyed
+`choice.fix`).
+
+### M2A.2 — declaration registries. One commit.
+
+`flags` `items` `npcs` `traits` `endings` + schemas + loader, all in `packages/content`.
+
+- **Deviated from the plan: `ContentRegistries` was NOT widened.** ADR 0007 §4 says a missing
+  flag is deliberately not `unknown-ref`; endings are the same. Widening would contradict that
+  ADR and move `contentVersion` for no behavioural gain. ADR 0009 §4 already assigns the walk to
+  `content-lint`, so the cross-reference checks live in the content package.
+- **The liability rule is decidable now.** "Is this outcome bad?" is not statically checkable, so
+  each item names the events where carrying it hurts and the schema refuses an empty list.
+- **The reverse checks caught two of my own mistakes**: I copied `ration` and `light_sleeper`
+  from the engine fixture's registry block without checking any event reads them. Neither does,
+  and `ration` had a liability I had annotated as unbacked. Both removed rather than explained.
+
+`pnpm sim:diff` reports no change for both milestones. 950 Vitest + 3 Jest.
+
+### M2A.3 — check tags, modifier registry, pipeline. `docs/adr/0015`.
+
+- **A correlated-randomness bug was live.** `modifier-source.ts` called `evaluatePredicate`
+  with no `path`, so every `{chance}` gate in every modifier, in one event on one leg, shared
+  one RNG address and returned one answer. Both paths are now content-addressed.
+- **DR is computed once over the tail sum, and rounds half-up.** Per-entry `trunc(d×3/5)` makes
+  four `+1`s and eight `+1`s both total `+3`; a test then caught that truncation still zeroes a
+  single `+1`.
+- **Clamp attributes by largest remainder** so chips sum to the total exactly (pillar 2).
+- 18 tags: dropped `border` (a location — replaced by the `locationType` predicate kind, the
+  28th), added `bribery`/`documents`/`search`/`language`.
+- Registry lives INSIDE `ContentRegistries` so `contentVersion` covers it.
+- **`sim:diff` no longer ignores the report header** — a `contentVersion` change was invisible.
+
+### M2A.4 — three-tier money, first real migration. `docs/adr/0016`.
+
+- `money` → `cash`, plus `bank`. `SAVE_VERSION` 2. **`MIGRATIONS` is no longer empty.**
+- **The migration is not a field rename**: `key: 'money'` is persisted inside
+  `pendingEvents[].requires`, so the predicate tree is rewritten recursively. A _flag_ named
+  `money` is left alone; `history` is not rewritten at all.
+- Closed a NaN hazard: `isRunStateShape` checked `resources` only as an object.
+- Sim delta: two lines, neither a number.
+
+### M2A.5 — container inventory. `docs/adr/0017`. **← second review gate**
+
+- Four containers; `SAVE_VERSION` 3. Documents record their container; **visas deliberately do
+  not** (a visa is a stamp in the passport).
+- **Fixed the predicate-sums / applier-first-matches divergence**, which containers made
+  reachable: the player paid less than the price they were shown, silently.
+- `isRunStateShape`'s `inventory` array check moved in the same commit — otherwise every save
+  becomes unloadable with the error blaming the migration.
+- **`searchContainer` is deferred and named as a gap**: the `search` check tag has registry
+  rows and no caller. The data (searchDC, concealability) exists and is inert until 2B.
+
+1029 Vitest + 3 Jest. Sim delta for M2A.3/4/5 is `contentVersion` only — no behavioural number
+has moved since M2A.0.
+
+### M2A.6 — `pnpm content:lint`. 13 rules, wired into CI.
+
+**It found three errors on its first run, all genuine.** Two `LOCAL_MODIFIER` (the bribe event
+kept choice-local `unwashed`/`wanted` after M2A.3 declared them in the registry — the D1 decay
+the rule exists to catch, introduced two milestones earlier) and
+**`FLAG_READ_NEVER_WRITTEN: wanted`** — the finding the sim printed every run since Phase 1 and
+that PROGRESS carried as an untested engine surface. Being detained now sets it; the sim line
+went from `wanted <- gate can never open` to `(none)`.
+
+Rules are scoped honestly: `CONTRADICTORY_REQUIRES_NUMERIC` names its own fragment because only
+numeric intervals inside an `all` are decidable, and the orphan check documents that it is
+static. An absent locale gives ONE finding, not a hundred. `--fix` will not touch i18n (a
+placeholder is a user-visible string) or hoist a modifier (id/priority/sourceKind are not
+derivable). **CLAUDE.md rules 1, 4 and 6 moved to live; DoD item 4 is no longer N/A.**
+
+### M2A.7 — `pnpm content:stats`. Phase 2A complete.
+
+Counts plus a 4-axis coverage pass (1,400 combinations). The rule it turns on: an empty
+constraint means NO constraint, so empty expands to the full axis. The number worth reading is
+**filler-only cells**, not empty ones — a cell covered by two universal fillers is a hole with a
+rug over it, and it is the sim's 75%-filler finding seen from the other end.
+
+Reports zero holes today, which is honest for nine loosely-constrained events — so three tests
+construct narrow corpora and prove it _can_ find 1,399. **No region axis**: `EventContext` has
+no region field, `geo/` is empty, and region-gating events is what §11 warns against.
+
+---
+
+## Phase 2A is complete — 8 milestones, ~20 commits
+
+`pnpm typecheck` · `pnpm lint` · `pnpm test` (**1053** Vitest + 3 Jest) · `pnpm format:check` ·
+`pnpm content:lint` (0 errors, 29 warnings) · `pnpm content:stats` · `pnpm sim:diff` — all green.
+
+**Every behavioural sim number is unchanged since M2A.0's deliberate retune**, except the two
+0.1pp ending shifts M2A.6 caused by fixing `wanted`. M2A.3/4/5 moved `contentVersion` only.
+
+### The 29 lint warnings are the honest to-do list for Phase 2B
+
+| Warning                                 | Count | Closes when                                                           |
+| --------------------------------------- | ----- | --------------------------------------------------------------------- |
+| `MISSING_LOCALE` / `SAFETY_NOT_SCANNED` | 2     | `i18n/en/*.json` exists                                               |
+| `MISSING_IMAGE_MANIFEST`                | 1     | `images/manifest.json` exists                                         |
+| `THIN_TAG` / `UNUSED_TAG`               | 22    | the seed corpus gives every tag ≥3 events and ≥5 modifiers            |
+| `LIABILITY_UNBACKED`                    | 2     | events actually read `cash_belt` / `spare_tyre`                       |
+| `FLAG_WRITTEN_NEVER_READ`               | 3     | something gates on `bribe_on_record`, `detained`, `took_the_long_way` |
+
+### Named gaps carried into 2B
+
+1. **`searchContainer` is not implemented.** ADR 0017 explains why it is not an effect op. The
+   data is live and inert — `searchDC`, `concealability`, the `search` tag, four registry rows —
+   but no event performs a search, so `content:lint` reports `UNUSED_TAG: search`.
+2. **Hermes is still unproven** (ADR 0012 §3). Every cross-engine defence is preventive.
+3. **`CHECK_DIE_SIDES = 20` is still a placeholder.** The modifier clamp is ±6/−8 and skill
+   bypasses it, so a d20 still swamps a single modifier at 5% each. Needs the seed corpus.
+4. **`worldTick`'s spread is bounded by content**: the fixture pack has no food, so health
+   decline is irreversible and only its START leg varies (ADR 0014).
+
+### Next: Phase 2B — the seed corpus
+
+`pnpm content:stats` and `pnpm content:lint` are now the instruments for writing it. Author
+against `docs/engine-spec.md` Part II and the content bible; the 12 seed events, 160 modifiers,
+complications, universal choices and quirks are all 2B.
+
+**⚠ This is the first milestone that moves sim numbers.** M2A.0–M2A.2 were all
+`sim:diff`-neutral; from here the baseline is regenerated per milestone, one reason each.
+
+The plan is at `~/.claude/plans/phase-2a-plan-mode-precious-elephant.md`. The parts that will
+bite, in order:
+
+1. **A correlated-randomness bug is live today.** `effects/modifier-source.ts:45` calls
+   `evaluatePredicate(modifier.when, ctx)` with no `path`, so every `when` evaluates at the
+   default root `'r'` — meaning **every `{chance}` gate in every modifier, in one event on one
+   leg, shares one address and returns one answer**. Harmless with Phase 1's single source;
+   catastrophic with a registry. Fix with a content-addressed path (`m:<source>:<modifier>`),
+   never positional — positional resurrects ADR 0005 §2.
+2. **`contentVersion` must cover the registry**, so put it INSIDE `ContentRegistries` rather
+   than as a sibling field on `ContentPack`. `contentVersion()` hashes
+   `canonicalJson({ events, registries })`; a sibling field would leave `pack.version` unmoved
+   when `modifiers.yaml` changes, `replayRun`'s refusal would never fire, and every golden run
+   would silently replay against different modifier maths with a green suite. Add the test that
+   asserts the version moves when one `delta` changes by 1.
+3. **DR must be computed once over the tail sum**, not per entry: `trunc(delta*3/5)` per entry
+   makes four `+1`s cost `+3` — every modifier past the third is free in exactly the
+   many-small-modifiers case DR exists for.
+4. **Clamp attribution by largest remainder** so the chips always sum to the shown total
+   (pillar 2). Reject float-proportional and trim-smallest-first; the latter deletes chips, and
+   a modifier that vanished is unreconstructable.
+5. **Widen `collectFlagUsage` and `collectRefs` to walk the registry.** Both walk `events` only,
+   so a flag read only by a registry modifier reports as `writtenNeverRead` — a false positive
+   on the most valuable line in the sim report.
+6. Fix the three phantom `scoring-order.test.ts` references (`director/score-event.ts:12`,
+   `director/scoring-factors.ts:108`, this file above) — the pinning actually lives in
+   `director/__tests__/scoring.test.ts`.
+
+---
+
+## Shipped in session 3 (2026-08-08) — **PHASE 1 COMPLETE**, M0–M11
+
+The engine plays a full run, replays it bit-for-bit, reports on itself, and migrates its own
+saves. **[PR #2](https://github.com/corazon714/odyssey/pull/2) is open against `main`, all six
+CI jobs green** — including `sim-smoke`, which had never run on a real runner until now.
+
+Every claim below has the command that proves it. All were run at session end.
+
+```bash
+pnpm typecheck                      # exit 0 — 4 projects + root
+pnpm lint                           # exit 0
+pnpm test                           # 851 Vitest + 3 Jest
+pnpm format:check                   # exit 0
+node packages/engine/src/index.ts   # exit 0 — CI's rule-2.2 proof, run locally
+pnpm sim -- --runs=20000            # 4.6 s against a 30 s budget
+pnpm sim:diff -- --runs=2000        # "No change vs docs/sim-baseline.md"
+pnpm --filter @odyssey/engine run coverage   # 88.51% statements
+```
+
+| Milestone | Delivers                                                              | Commit              |
+| --------- | --------------------------------------------------------------------- | ------------------- |
+| M0        | `.ts` module specifiers; purity guard widened to cross-engine hazards | `998cea1` `9aeed80` |
+| M1        | Counter-based RNG, 8 named substreams                                 | `31b731a`           |
+| M2        | `RunState`, `createRunState`, `stateDigest`                           | `9c875ee`           |
+| M3        | 27 predicate kinds + the reason trace Phase 7 renders                 | `c29a544`           |
+| M4        | 12 effect ops, pure applier, `ModifierSource` seam                    | `6db1333`           |
+| M5        | Content model, `createContentPack`, JSON fixtures                     | `ff0f981`           |
+| M6        | The walking skeleton — a run that runs                                | `b3cb1d7`           |
+| M7        | Six scoring factors, seven-rung ladder, tension, complication seam    | `67fd25d`           |
+| M8        | Consequence queue: caps, eviction, expiry, rebasing                   | `b8ccf70`           |
+| M9        | Beat consumption: fill, slide, expire                                 | `651ccbd`           |
+| M10       | Golden replay, engine-spec §6 report, `sim:diff`                      | `2330d07`           |
+| M11       | Save migration ladder, shape guard, content reconciliation            | `f92d5a0`           |
+| —         | Verification pass, engine-spec Part II, ADR 0012                      | `f9f7b5f`           |
+
+**Bugs found by running the thing, that no unit test saw:** 5 of 9 events unreachable (M6),
+a payoff scheduled 20× and fired 0× (M6), two sim policies producing byte-identical runs (M6),
+a queue that never released fired promises (M8), beat slots re-fillable forever (M9).
+
+---
+
+## Half-done
+
+**Nothing is broken or partial.** No `TODO(handoff)` markers, working tree clean, all CI green.
+
+Three things are **deliberately inert** — built, tested, and called by nothing. That is by
+design, but a fresh agent will find them and should not "fix" them:
+
+| Path                                                             | State                          | Why                                                                                                                                                                         |
+| ---------------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/engine/src/queue/rebase-pending.ts`                    | Fully tested, **zero callers** | Re-routing is Phase 2. The queue's shape was chosen for it, so the test IS the deliverable (ADR 0011 §3). Wiring is one line when re-routing lands.                         |
+| `packages/engine/src/migrate/migrations.ts`                      | **Empty array**                | `SAVE_VERSION` is 1; no save format has been superseded. Inventing a fake migration would put a lie in the ladder (ADR 0012). Machinery is proven against a synthetic list. |
+| `effects/modifier-source.ts` · `director/complication-source.ts` | Seams ship **empty**           | Phase 2 registries plug in with no call-site change. Each has a test appending a stub and asserting it reaches the output.                                                  |
+
+**Not started** (still `.gitkeep` only): `packages/content/{events,geo,i18n,images}`,
+`packages/content/schema/`, `packages/tools/{content-lint,imagegen,i18n-check}`.
+
+---
+
+### What the sim's instruments found — open findings
 
 Every one of these is a FIXTURE gap, not an engine fault — and none of them errored:
 
@@ -85,19 +348,68 @@ complete.**
 
 ## Next step (ONE task, start here)
 
-**Phase 1 is done. Before Phase 2 starts, three things need a human decision.**
+**Build `packages/content/schema/` — the Zod schemas and the terse→canonical transform.**
 
-1. **Push and open a PR.** 17 commits sit on local `dev`, unpushed. **The `sim-smoke` CI job
-   has never run on a real runner** — it is the only Phase 1 addition with no green build
-   behind it.
-2. **Close the untested engine surface** (see the ⚠ section above). Four mechanisms have never
-   executed in a run, `hiddenUnless` among them. Accepted deliberately, but it needs doing with
-   the seed corpus rather than being forgotten.
-3. **Hermes.** Determinism is proven on V8 only — Linux and Windows in CI. Golden runs will not
-   catch a Hermes divergence until something runs them there. Named as a Phase 2 gap since M1.
+This is Phase 2's first milestone. It is first because everything else in Phase 2 — the seed
+corpus, the four registries, i18n — needs a validated content pipeline, and because it is the
+milestone that discharges the promise made in ADR 0009.
 
-Then Phase 2, roughly: `packages/content` schemas + the terse→canonical Zod transform, the 12
-seed events, i18n wiring, the four registries, persistence, and route generation.
+### Start here, in this order
+
+```bash
+pnpm install && pnpm typecheck && pnpm lint && pnpm test   # must be green before writing
+```
+
+Read, in order: `docs/adr/0009` (who owns the types), `docs/adr/0007` §1 (why predicates are
+kind-tagged), `CLAUDE.md` §9 (already amended to match), and `docs/engine-spec.md` **Part II**
+(what the engine actually accepts — Part I is the original plan and diverges in nine places).
+
+### Deliver
+
+1. **Declare two dependencies by hand** (`pnpm add` is DENIED by `.claude/settings.json`; edit
+   the manifests then run `pnpm install`, which is an `ask` rule):
+   - `pnpm-workspace.yaml` catalog: `yaml: ^2.9.0` — **it is already in `node_modules` as an
+     undeclared phantom via Vite.** Using it without declaring it breaks the day Vite drops it.
+   - `packages/content/package.json`: `@odyssey/engine: workspace:*` and `yaml: catalog:`
+2. **Zod schemas** in `packages/content/schema/` mirroring the engine's types. The engine owns
+   the types; the schema owns _content semantics_ — which YAML fields exist, which values are
+   legal, what an omitted key defaults to.
+3. **The terse→canonical transform.** Authors write engine-spec §2's
+   `{ resource: money, gte: 30 }` and `{ not: { flag: bribed } }`; the engine consumes
+   `{ kind: 'resource', key: 'money', cmp: { op: 'gte', value: 30 } }`. Use `z.lazy` for the
+   recursive predicate and `.transform()` to normalise. Effects need NO transform — `op` is
+   already a proper discriminant.
+4. **`.default()` on every optional YAML key**, producing `| null` for scalars and `[]` for
+   lists — the engine has no optional properties (ADR 0006 §1).
+5. **The conformance test that discharges ADR 0009.** Bidirectional, so a schema narrower _or_
+   wider than the type fails the build:
+   ```ts
+   type Equals<A, B> =
+     (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+   const _eventsMatch: Equals<z.infer<typeof gameEventSchema>, GameEvent> = true;
+   ```
+   Twelve types on the surface: `GameEvent`, `Choice`, `Outcome`, `SkillCheck`, `CheckModifier`,
+   `EventContext`, `EventPriority`, `BeatType`, `LocationType`, `TimeOfDay`, `Predicate`,
+   `Effect`.
+6. **`loadEvents()`** — readdir + parse YAML + validate → `readonly GameEvent[]`, feeding
+   `createContentPack`.
+7. **Three sample YAML events** proving the transform round-trips. **NOT the seed corpus** —
+   that is a later milestone written against the content bible.
+
+### Constraints that will bite
+
+- `packages/content/tsconfig.json` includes only `schema/**` and `__tests__/**`. A new
+  top-level dir is invisible to `tsc` **and** to type-aware ESLint until you add the glob.
+- Relative imports need an explicit `.ts` extension (ADR 0005 §4).
+- No default exports; inline type imports; no `any`; no `!` outside tests.
+- Do **not** put Zod in `packages/engine` — `purity.test.ts` asserts its manifest, and ADR 0009
+  §1 explains why the layering must not invert.
+
+### Done when
+
+`pnpm typecheck && pnpm lint && pnpm test` green, the conformance assertion compiles, the three
+YAML events parse into `createContentPack`, and `pnpm sim:diff -- --runs=2000` still reports
+**no change** — the schema layer must not move a single engine number.
 
 ---
 
@@ -891,10 +1203,43 @@ appears. `roll()` knows nothing about skills — M6 passes a skill in as a label
    `bundledNativeModules` and Rive is not — Rive additionally forces a hand-pinned
    `react-native-nitro-modules@0.35.10` if MMKV is also used. Confirm Lottie as the default,
    or say Rive is worth the pin. **Still open; not needed before Phase 3.**
-4. **`CLAUDE.md` is 423 lines** (not 424 — the earlier count was off by one), past its own
-   "~400 lines" cap, because of the `(planned)` markers and enforcement notes you asked for.
-   Leave it, or move the per-rule `_Enforcement:_` notes into `docs/enforcement.md` and keep
-   one-word markers in §2? **Note M5 must edit §9 regardless** — see below.
+
+---
+
+## ⚠ Open questions for the human — SESSION 3
+
+**These block or shape Phase 2. Answering 1 and 2 before content lands is much cheaper than
+answering them after.**
+
+1. **`worldTick`'s drift constants are structurally wrong — fix before or after content?**
+   At 20,000 runs health's p10/p50/p90 collapse to `0/1/1` together, so the dominant failure
+   mode is independent of player choice (ADR 0012 §2). **The trap:** real content will apply
+   resource effects on top of a decay curve already killing ~60% of runs alone, and the obvious
+   fix — weakening the drift — silently changes which system controls pacing. Fixing it _first_
+   means one baseline regeneration; fixing it _after_ means re-tuning content too.
+   _My recommendation: fix first, as a small dedicated milestone with its own sim delta._
+
+2. **`CHECK_DIE_SIDES = 20` needs a real decision, and it is coupled to the check formula.**
+   engine-spec §2 shows `dc: 5` with ±2–3 modifiers. On a d20 each modifier is worth 5% while
+   the skill (0–10) swamps them entirely. Currently `total = die + skill + modifiers` vs `dc`.
+   Skill checks are picked 0.3–1.5% of the time, so nothing has tested it. **What die, and
+   how should skill enter?** This is a design call, not an engineering one.
+
+3. **Merge PR #2 to `main` before Phase 2, or keep stacking on `dev`?**
+   All six CI jobs are green. Phase 2 is comparable in size to Phase 1; stacking it on an
+   unmerged `dev` makes both unreviewable — the same argument that applied to PR #1.
+   ⚠ **Local `main` is stale** at `fdd93aa Initial commit`, now ~30 commits behind
+   `origin/main`, which will mislead any `git diff main`.
+
+4. **`CLAUDE.md` is now 463 lines** against its own "~400 lines" cap — third time asked, and
+   the gap grew this session because the enforcement notes got longer as rules became live.
+   Move the per-rule `_Enforcement:_` notes to `docs/enforcement.md` and keep one-word markers
+   in §2, or drop the cap? _It is a constitution; 463 lines is past what anyone re-reads._
+
+5. **Hermes verification — who does it, and when?** Determinism is proven on V8 only. Every
+   cross-engine defence (no transcendentals, no `localeCompare`, integer `weightedPick`,
+   `Math.imul` over BigInt) is preventive rather than demonstrated (ADR 0012 §3). It needs a
+   device or emulator running the golden runs, which is app-layer work.
 
 ---
 

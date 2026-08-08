@@ -56,32 +56,24 @@ describe('logical nodes', () => {
 
 describe('resource, skill and inventory leaves', () => {
   it('compares a resource with each operator', () => {
-    const ctx = makeContext({ resources: { ...createResources(), money: 30 } });
-    expect(value({ kind: 'resource', key: 'money', cmp: { op: 'gte', value: 30 } }, ctx)).toBe(
-      true,
-    );
-    expect(value({ kind: 'resource', key: 'money', cmp: { op: 'gt', value: 30 } }, ctx)).toBe(
+    const ctx = makeContext({ resources: { ...createResources(), cash: 30 } });
+    expect(value({ kind: 'resource', key: 'cash', cmp: { op: 'gte', value: 30 } }, ctx)).toBe(true);
+    expect(value({ kind: 'resource', key: 'cash', cmp: { op: 'gt', value: 30 } }, ctx)).toBe(false);
+    expect(value({ kind: 'resource', key: 'cash', cmp: { op: 'eq', value: 30 } }, ctx)).toBe(true);
+    expect(value({ kind: 'resource', key: 'cash', cmp: { op: 'neq', value: 30 } }, ctx)).toBe(
       false,
     );
-    expect(value({ kind: 'resource', key: 'money', cmp: { op: 'eq', value: 30 } }, ctx)).toBe(true);
-    expect(value({ kind: 'resource', key: 'money', cmp: { op: 'neq', value: 30 } }, ctx)).toBe(
-      false,
-    );
-    expect(value({ kind: 'resource', key: 'money', cmp: { op: 'lte', value: 30 } }, ctx)).toBe(
-      true,
-    );
-    expect(value({ kind: 'resource', key: 'money', cmp: { op: 'lt', value: 30 } }, ctx)).toBe(
-      false,
-    );
+    expect(value({ kind: 'resource', key: 'cash', cmp: { op: 'lte', value: 30 } }, ctx)).toBe(true);
+    expect(value({ kind: 'resource', key: 'cash', cmp: { op: 'lt', value: 30 } }, ctx)).toBe(false);
   });
 
   it('reports actual alongside required', () => {
-    const ctx = makeContext({ resources: { ...createResources(), money: 12 } });
+    const ctx = makeContext({ resources: { ...createResources(), cash: 12 } });
     const { trace } = evaluatePredicate(
-      { kind: 'resource', key: 'money', cmp: { op: 'gte', value: 30 } },
+      { kind: 'resource', key: 'cash', cmp: { op: 'gte', value: 30 } },
       ctx,
     );
-    expect(trace.params).toEqual({ key: 'money', required: 30, actual: 12 });
+    expect(trace.params).toEqual({ key: 'cash', required: 30, actual: 12 });
   });
 
   it('compares a skill', () => {
@@ -100,19 +92,35 @@ describe('resource, skill and inventory leaves', () => {
     expect(value({ kind: 'trait', id: traitId('paranoid') }, ctx)).toBe(false);
   });
 
-  it('sums item counts across stacks', () => {
+  it('sums item counts across CONTAINERS', () => {
+    // Was "across stacks" until M2A.5. Duplicate stacks within one container are now
+    // impossible by invariant — merged on insert — so the question that remains is whether a
+    // predicate cares WHERE the rations are. It must not: `item gte 5` asks what you have.
     const ctx = makeContext({
-      inventory: [
-        { id: itemId('ration'), count: 2, condition: null },
-        { id: itemId('ration'), count: 3, condition: null },
-      ],
+      inventory: {
+        person: {
+          slots: 6,
+          searchDC: 2,
+          items: [{ id: itemId('ration'), count: 2, condition: null }],
+        },
+        bag: {
+          slots: 10,
+          searchDC: 4,
+          items: [{ id: itemId('ration'), count: 3, condition: null }],
+        },
+        vehicle: null,
+        stash: null,
+      },
     });
-    expect(value({ kind: 'item', id: itemId('ration'), cmp: { op: 'gte', value: 5 } }, ctx)).toBe(
-      true,
-    );
-    expect(value({ kind: 'item', id: itemId('ration'), cmp: { op: 'gte', value: 6 } }, ctx)).toBe(
-      false,
-    );
+    const has = (n: number, where: 'person' | 'bag' | null = null): boolean =>
+      value({ kind: 'item', id: itemId('ration'), cmp: { op: 'gte', value: n }, in: where }, ctx);
+
+    expect(has(5)).toBe(true);
+    expect(has(6)).toBe(false);
+
+    // ...and `in` narrows it back down when the author means to ask about one container.
+    expect(has(3, 'person')).toBe(false);
+    expect(has(3, 'bag')).toBe(true);
   });
 });
 
@@ -121,7 +129,7 @@ describe('document leaves', () => {
     const none = makeContext();
     const invalid = makeContext({
       documents: {
-        passport: { present: true, valid: false, flagged: false },
+        passport: { present: true, valid: false, flagged: false, container: 'person' },
         visas: {},
         tickets: [],
       },
@@ -141,7 +149,7 @@ describe('document leaves', () => {
   it('treats a null field as "do not care"', () => {
     const ctx = makeContext({
       documents: {
-        passport: { present: true, valid: true, flagged: true },
+        passport: { present: true, valid: true, flagged: true, container: 'person' },
         visas: {},
         tickets: [],
       },
@@ -270,7 +278,7 @@ describe('unknown content references', () => {
     const ctx = makeContext({}, NO_REFS_KNOWN);
     const cases: Predicate[] = [
       { kind: 'trait', id: traitId('x') },
-      { kind: 'item', id: itemId('x'), cmp: { op: 'gte', value: 1 } },
+      { kind: 'item', id: itemId('x'), cmp: { op: 'gte', value: 1 }, in: null },
       { kind: 'relationship', npc: npcId('x'), cmp: { op: 'gte', value: 0 } },
       { kind: 'npcMet', npc: npcId('x'), met: true },
       { kind: 'eventMemory', event: eventId('x'), field: 'count', cmp: { op: 'gte', value: 0 } },

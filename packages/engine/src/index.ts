@@ -25,6 +25,46 @@ export {
 export { type Brand } from './ids/brand.ts';
 export * from './ids/content-ids.ts';
 
+export { CHECK_TAGS, SKILL_IMPLIES_TAG, type CheckTag } from './modifiers/check-tag.ts';
+export {
+  CONTAINER_KINDS,
+  CONTAINER_SPECS,
+  DRAIN_ORDER,
+  countEverywhere,
+  countIn,
+  createContainer,
+  createInventory,
+  freeSlots,
+  presentContainers,
+  usedSlots,
+  type Container,
+  type ContainerKind,
+  type InventoryState,
+} from './state/container-state.ts';
+export {
+  DEFAULT_TUNABLES,
+  mulDivRound,
+  type ModifierTunables,
+} from './modifiers/modifier-tunables.ts';
+export {
+  EMPTY_MODIFIER_REGISTRY,
+  MODIFIER_SOURCE_KINDS,
+  createModifierRegistry,
+  type ModifierRegistry,
+  type ModifierSourceKind,
+  type RegistryModifier,
+} from './modifiers/registry-modifier.ts';
+export {
+  resolveModifiers,
+  type CheckLike,
+  type LocalModifier,
+} from './modifiers/resolve-modifiers.ts';
+export {
+  EMPTY_RESOLUTION,
+  type ModifierResolution,
+  type ResolvedModifier,
+  type SuppressedModifier,
+} from './modifiers/resolved-modifier.ts';
 export { BEAT_TYPES, type BeatType } from './content/beat-type.ts';
 export { EVENT_PRIORITIES, type EventPriority } from './content/event-priority.ts';
 export { LOCATION_TYPES, type LocationType } from './content/location-type.ts';
@@ -37,6 +77,7 @@ export {
   type GameEvent,
   type Outcome,
   type SkillCheck,
+  type SkillCheckCoversSpec,
 } from './content/game-event.ts';
 export {
   collectFlagUsage,
@@ -52,7 +93,14 @@ export {
   type ContentPack,
   type ContentRegistries,
 } from './content/content-pack.ts';
-export { ALWAYS, NEVER, type Predicate, type PredicateKind } from './predicate/predicate.ts';
+export {
+  ALWAYS,
+  NEVER,
+  PREDICATE_KINDS,
+  type Predicate,
+  type PredicateKind,
+  type PredicateKindsAreExhaustive,
+} from './predicate/predicate.ts';
 export {
   compareNumber,
   NUMBER_OPS,

@@ -1,5 +1,6 @@
 import { drawWord } from '../rng/draw-word.ts';
 import { timeOfDayFor } from '../state/clock-state.ts';
+import { locationAtLeg } from '../state/route-state.ts';
 import { compareNumber } from './number-cmp.ts';
 import { chanceAddress, type PredicateContext } from './predicate-context.ts';
 import { type Predicate } from './predicate.ts';
@@ -16,7 +17,15 @@ type WorldLeaf = Extract<
   Predicate,
   {
     kind:
-      'weather' | 'timeOfDay' | 'routeProfile' | 'status' | 'leg' | 'day' | 'tension' | 'chance';
+      | 'weather'
+      | 'timeOfDay'
+      | 'locationType'
+      | 'routeProfile'
+      | 'status'
+      | 'leg'
+      | 'day'
+      | 'tension'
+      | 'chance';
   }
 >;
 
@@ -36,6 +45,15 @@ export function evaluateWorldLeaf(
     case 'timeOfDay': {
       const actual = timeOfDayFor(state.clock.hour);
       return leafReason('timeOfDay', predicate.anyOf.includes(actual), 'reason.timeOfDay', {
+        actual,
+      });
+    }
+
+    case 'locationType': {
+      // Same source the director's context filter reads, so a modifier's `when` and an
+      // event's `context.locationTypes` can never disagree about where the player is.
+      const actual = locationAtLeg(state.route, state.route.legIndex);
+      return leafReason('locationType', predicate.anyOf.includes(actual), 'reason.locationType', {
         actual,
       });
     }

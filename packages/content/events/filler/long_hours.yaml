@@ -1,0 +1,32 @@
+id: filler.long_hours
+category: filler
+tags:
+  - travel
+  - fatigue
+priority: filler
+weight: 80
+cooldownLegs: 2
+choices:
+  - id: push_on
+    outcomes:
+      - id: tired
+        weight: 1
+        effects:
+          - op: advanceTime
+            hours: 5
+          - op: resource
+            key: energy
+            delta: -1
+  - id: rest
+    outcomes:
+      - id: rested
+        weight: 1
+        effects:
+          - op: advanceTime
+            hours: 8
+          - op: resource
+            key: energy
+            delta: 2
+          - op: resource
+            key: hunger
+            delta: 1

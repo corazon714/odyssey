@@ -19,7 +19,7 @@ function makeState(): RunState {
 
 /** One of every op, so the sweeps below touch every branch of the applier. */
 const ALL_EFFECTS: readonly Effect[] = [
-  { op: 'resource', key: 'money', delta: 50 },
+  { op: 'resource', key: 'cash', delta: 50 },
   { op: 'skill', key: 'stealth', delta: 2 },
   { op: 'flag', id: flagId('wanted'), value: true, ttlLegs: 3 },
   { op: 'clearFlag', id: flagId('wanted') },
@@ -33,7 +33,7 @@ const ALL_EFFECTS: readonly Effect[] = [
     payload: { a: 1 },
   },
   { op: 'unlockEnding', id: endingId('ending.x') },
-  { op: 'item', id: itemId('ration'), countDelta: 3, condition: 8 },
+  { op: 'item', id: itemId('ration'), countDelta: 3, condition: 8, container: null },
   { op: 'transport', change: { field: 'condition', delta: -2 } },
   { op: 'document', change: { field: 'grantPassport', valid: true } },
   { op: 'route', change: { field: 'progressKm', delta: 120 } },
@@ -73,7 +73,7 @@ describe('applier purity (CLAUDE.md 2.8)', () => {
     expect(Object.isFrozen(frozen)).toBe(true);
     expect(Object.isFrozen(frozen.resources)).toBe(true);
     expect(() => {
-      (frozen.resources as { money: number }).money = 999;
+      (frozen.resources as { cash: number }).cash = 999;
     }).toThrow();
   });
 
@@ -86,7 +86,7 @@ describe('applier purity (CLAUDE.md 2.8)', () => {
 describe('structural sharing', () => {
   it('keeps untouched branches identical', () => {
     const state = makeState();
-    const { state: next } = applyEffects(state, [{ op: 'resource', key: 'money', delta: 10 }], CTX);
+    const { state: next } = applyEffects(state, [{ op: 'resource', key: 'cash', delta: 10 }], CTX);
 
     expect(next).not.toBe(state);
     expect(next.resources).not.toBe(state.resources);
@@ -109,7 +109,10 @@ describe('structural sharing', () => {
         'relationships',
       ],
       [{ op: 'advanceTime', hours: 3 }, 'clock'],
-      [{ op: 'item', id: itemId('i'), countDelta: 1, condition: null }, 'inventory'],
+      [
+        { op: 'item', id: itemId('i'), countDelta: 1, condition: null, container: null },
+        'inventory',
+      ],
       [{ op: 'document', change: { field: 'grantPassport', valid: true } }, 'documents'],
       [{ op: 'unlockEnding', id: endingId('e') }, 'unlockedEndings'],
       [{ op: 'route', change: { field: 'progressKm', delta: 10 } }, 'route'],

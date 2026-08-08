@@ -3,7 +3,7 @@ import { flagId, itemId, npcId, traitId } from '../../ids/content-ids.ts';
 import { createResources } from '../../state/resources.ts';
 import { describeReason } from '../describe-reason.ts';
 import { evaluatePredicate } from '../evaluate-predicate.ts';
-import { type Predicate } from '../predicate.ts';
+import { PREDICATE_KINDS, type Predicate, type PredicateKindsAreExhaustive } from '../predicate.ts';
 import { type ReasonNode } from '../reason-node.ts';
 import { makeContext, NO_REFS_KNOWN } from './support/make-context.ts';
 
@@ -20,11 +20,11 @@ const ALL_PREDICATES: readonly Predicate[] = [
   { kind: 'all', of: [{ kind: 'always' }, { kind: 'never' }] },
   { kind: 'any', of: [{ kind: 'always' }, { kind: 'never' }] },
   { kind: 'not', of: { kind: 'always' } },
-  { kind: 'resource', key: 'money', cmp: { op: 'gte', value: 30 } },
+  { kind: 'resource', key: 'cash', cmp: { op: 'gte', value: 30 } },
   { kind: 'skill', key: 'negotiation', cmp: { op: 'gte', value: 2 } },
   { kind: 'language', id: 'ru' as never },
   { kind: 'trait', id: traitId('smooth_talker') },
-  { kind: 'item', id: itemId('ration'), cmp: { op: 'gte', value: 1 } },
+  { kind: 'item', id: itemId('ration'), cmp: { op: 'gte', value: 1 }, in: null },
   { kind: 'passport', present: true, valid: null, flagged: null },
   { kind: 'visa', region: 'schengen' as never, valid: true },
   { kind: 'flag', id: flagId('wanted'), cmp: { op: 'isSet' } },
@@ -36,6 +36,7 @@ const ALL_PREDICATES: readonly Predicate[] = [
   { kind: 'vehicleLegal', legal: true },
   { kind: 'weather', anyOf: ['clear'] },
   { kind: 'timeOfDay', anyOf: ['morning'] },
+  { kind: 'locationType', anyOf: ['checkpoint'] },
   { kind: 'routeProfile', anyOf: ['cheapest'] },
   { kind: 'status', anyOf: ['travelling'] },
   { kind: 'leg', cmp: { op: 'gte', value: 0 } },
@@ -51,10 +52,20 @@ function walk(node: ReasonNode, visit: (n: ReasonNode) => void): void {
 
 describe('trace consistency', () => {
   it('exercises every predicate kind', () => {
-    // Guards the sweeps: if a kind is added to the union but not here, this count drifts and
-    // the reviewer is forced to notice.
-    const kinds = new Set(ALL_PREDICATES.map((p) => p.kind));
-    expect(kinds.size).toBe(27);
+    // Guards the sweeps: a kind added to the union but not constructed here would make every
+    // sweep below pass without touching it. Compared against PREDICATE_KINDS rather than a
+    // hard-coded count, so the failure names the missing kind instead of a drifted number.
+    const kinds = new Set<string>(ALL_PREDICATES.map((p) => p.kind));
+    expect([...PREDICATE_KINDS].filter((kind) => !kinds.has(kind))).toEqual([]);
+    expect(kinds.size).toBe(PREDICATE_KINDS.length);
+  });
+
+  it('PREDICATE_KINDS covers the union exactly', () => {
+    // The type does the work: `PredicateKindsAreExhaustive` resolves to `never` if the union
+    // has a kind the array lacks, and `satisfies` in predicate.ts catches the reverse. This
+    // line only forces the check to be instantiated somewhere a test run reports on.
+    const exhaustive: PredicateKindsAreExhaustive = true;
+    expect(exhaustive).toBe(true);
   });
 
   it.each(ALL_PREDICATES.map((p) => [p.kind, p] as const))(
@@ -73,7 +84,7 @@ describe('trace consistency', () => {
       of: [
         {
           kind: 'any',
-          of: [{ kind: 'never' }, { kind: 'resource', key: 'money', cmp: { op: 'gte', value: 0 } }],
+          of: [{ kind: 'never' }, { kind: 'resource', key: 'cash', cmp: { op: 'gte', value: 0 } }],
         },
         { kind: 'not', of: { kind: 'flag', id: flagId('wanted'), cmp: { op: 'isSet' } } },
       ],
@@ -158,8 +169,8 @@ describe('describeReason', () => {
   });
 
   it('composes nested negation', () => {
-    const ctx = makeContext({ resources: { ...createResources(), money: 100 } });
-    const inner: Predicate = { kind: 'resource', key: 'money', cmp: { op: 'gte', value: 30 } };
+    const ctx = makeContext({ resources: { ...createResources(), cash: 100 } });
+    const inner: Predicate = { kind: 'resource', key: 'cash', cmp: { op: 'gte', value: 30 } };
 
     expect(describeReason(evaluatePredicate(inner, ctx).trace)[0]?.polarity).toBe('pro');
     expect(

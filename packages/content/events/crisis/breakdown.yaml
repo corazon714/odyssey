@@ -1,0 +1,74 @@
+id: crisis.breakdown
+category: crisis
+tags:
+  - transport
+  - money
+  - delay
+priority: beat
+beatType: midpoint_crisis
+tensionBand:
+  - 0.5
+  - 1
+context:
+  transportModes:
+    - car
+    - truck
+cooldownLegs: 999
+maxOccurrences: 1
+choices:
+  - id: fix_it_yourself
+    labelKey: events.crisis.breakdown.choice.fix
+    check:
+      skill: mechanics
+      dc: 15
+      tags: [mechanics, physical]
+      visibility: full
+      modifiers:
+        - labelKey: check.modifier.has_spare
+          delta: 4
+          when:
+            item: spare_tyre
+            gte: 1
+          why: 'fixture: exercises the choice-local modifier path before the registry exists'
+    outcomes:
+      - id: fixed
+        weight: 1
+        onCheck: success
+        effects:
+          - op: transport
+            change:
+              field: condition
+              delta: 4
+          - op: advanceTime
+            hours: 5
+      - id: stuck
+        weight: 1
+        onCheck: failure
+        effects:
+          - op: advanceTime
+            hours: 12
+          - op: resource
+            key: morale
+            delta: -2
+  - id: find_help
+    requires:
+      resource: cash
+      gte: 60
+    costs:
+      - op: resource
+        key: cash
+        delta: -60
+    outcomes:
+      - id: towed
+        weight: 1
+        effects:
+          - op: transport
+            change:
+              field: condition
+              delta: 6
+          - op: relationship
+            npc: roadside_mechanic
+            trustDelta: 1
+            meet: true
+          - op: advanceTime
+            hours: 9

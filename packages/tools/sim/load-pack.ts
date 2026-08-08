@@ -43,7 +43,7 @@ type MiniPackFile = {
 type FixtureStart = {
   readonly transportMode: TransportMode;
   readonly vehicleLegal: boolean;
-  readonly money: number;
+  readonly cash: number;
   readonly startHour: number;
   readonly weather: string;
 };
@@ -84,7 +84,7 @@ export function loadFixtureScenarios(): readonly FixtureScenario[] {
       vehicleId: start.transportMode === 'foot' ? null : `${route.id}-vehicle`,
       legal: start.vehicleLegal,
     },
-    resources: { ...createResources(), money: start.money },
+    resources: { ...createResources(), cash: start.cash },
     startHour: start.startHour,
     weather: start.weather,
   }));

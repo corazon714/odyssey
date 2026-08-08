@@ -38,7 +38,16 @@ function populated(): RunState {
     weather: 'rain',
     tension: 0.42,
     traits: [traitId('smooth_talker')],
-    inventory: [{ id: itemId('spare_tyre'), count: 1, condition: 6 }],
+    inventory: {
+      person: {
+        slots: 6,
+        searchDC: 2,
+        items: [{ id: itemId('spare_tyre'), count: 1, condition: 6 }],
+      },
+      bag: { slots: 10, searchDC: 4, items: [{ id: itemId('ration'), count: 2, condition: null }] },
+      vehicle: null,
+      stash: null,
+    },
     unlockedEndings: [endingId('ending.detained_at_border')],
     flags: {
       [flagId('passport_lost')]: { value: true, setAtLeg: 3, expiresAtLeg: null },
@@ -70,7 +79,7 @@ function populated(): RunState {
         choiceId: choiceId('chase'),
         textKey: 'events.rest.pickpocket_victim.out.lost',
         params: { amount: 40 },
-        tags: ['theft', 'money'],
+        tags: ['theft', 'cash'],
       },
     ],
     presentation: {

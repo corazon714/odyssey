@@ -3,7 +3,16 @@ import { createRunState } from '../../state/create-run-state.ts';
 import { createRunInit } from '../../state/run-init.ts';
 import { validateRoute } from '../../state/validate-route.ts';
 import { loadFixtureRoutes, loadMiniPack } from '../../__tests__/support/load-fixtures.ts';
-import { contentVersion, createContentPack, EMPTY_REGISTRIES } from '../content-pack.ts';
+import {
+  contentVersion,
+  createContentPack,
+  EMPTY_REGISTRIES,
+  type ContentPack,
+} from '../content-pack.ts';
+import {
+  createModifierRegistry,
+  type RegistryModifier,
+} from '../../modifiers/registry-modifier.ts';
 import { EVENT_PRIORITIES } from '../event-priority.ts';
 
 const { events, registries } = loadMiniPack();
@@ -168,5 +177,43 @@ describe('fixture routes', () => {
     for (const beatType of pack.byBeatType.keys()) {
       expect(scheduled, `no fixture route schedules ${beatType}`).toContain(beatType);
     }
+  });
+});
+
+describe('contentVersion covers the modifier registry (M2A.3)', () => {
+  const row = (delta: number): RegistryModifier => ({
+    id: 'dishevelled',
+    appliesTo: ['social'],
+    when: { kind: 'always' },
+    delta,
+    labelKey: 'check.modifier.dishevelled',
+    sourceKind: 'condition',
+    conflictsWith: [],
+    priority: 10,
+    stacks: false,
+  });
+
+  const packWith = (delta: number): ContentPack =>
+    createContentPack([], { ...EMPTY_REGISTRIES, modifiers: createModifierRegistry([row(delta)]) });
+
+  it('moves when a single modifier delta changes by 1', () => {
+    // THE test that makes putting the registry inside ContentRegistries load-bearing rather
+    // than tidy. Hung off ContentPack as a sibling field it would not be hashed, so
+    // pack.version would not move when modifiers.yaml changed — replayRun's contentVersion
+    // refusal would never fire and every golden run would silently replay against different
+    // modifier maths with a green suite.
+    expect(packWith(-2).version).not.toBe(packWith(-1).version);
+  });
+
+  it('is stable for an identical registry', () => {
+    expect(packWith(-2).version).toBe(packWith(-2).version);
+  });
+
+  it('is independent of the order rows were declared in', () => {
+    const a = createModifierRegistry([row(-2), { ...row(-1), id: 'exhausted' }]);
+    const b = createModifierRegistry([{ ...row(-1), id: 'exhausted' }, row(-2)]);
+    expect(createContentPack([], { ...EMPTY_REGISTRIES, modifiers: a }).version).toBe(
+      createContentPack([], { ...EMPTY_REGISTRIES, modifiers: b }).version,
+    );
   });
 });

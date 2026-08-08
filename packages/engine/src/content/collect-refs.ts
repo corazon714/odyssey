@@ -1,4 +1,5 @@
 import { type Effect } from '../effects/effect.ts';
+import { EMPTY_MODIFIER_REGISTRY, type ModifierRegistry } from '../modifiers/registry-modifier.ts';
 import { type Predicate } from '../predicate/predicate.ts';
 import { type GameEvent } from './game-event.ts';
 
@@ -24,7 +25,10 @@ export type ContentRef = {
   readonly inEvent: string;
 };
 
-export function collectRefs(events: readonly GameEvent[]): readonly ContentRef[] {
+export function collectRefs(
+  events: readonly GameEvent[],
+  registry: ModifierRegistry = EMPTY_MODIFIER_REGISTRY,
+): readonly ContentRef[] {
   const refs: ContentRef[] = [];
 
   for (const event of events) {
@@ -50,6 +54,18 @@ export function collectRefs(events: readonly GameEvent[]): readonly ContentRef[]
         for (const effect of outcome.effects) walkEffect(effect, push);
       }
     }
+  }
+
+  // The registry's `when` predicates name traits, items and npcs exactly like an event's do.
+  // Walking events only would let a modifier reference a deleted npc and never appear in
+  // danglingRefs — ADR 0009 §4's whole point, missed by one loop.
+  //
+  // `inEvent` carries `modifier:<id>` rather than an event id. The field is what makes a
+  // linter report actionable, and "which modifier" is the actionable answer here.
+  for (const row of registry) {
+    walkPredicate(row.when, (kind, id) => {
+      refs.push({ kind, id, inEvent: `modifier:${row.id}` });
+    });
   }
 
   return refs;
@@ -121,7 +137,10 @@ export type FlagUsage = {
   readonly readNeverWritten: readonly string[];
 };
 
-export function collectFlagUsage(events: readonly GameEvent[]): FlagUsage {
+export function collectFlagUsage(
+  events: readonly GameEvent[],
+  registry: ModifierRegistry = EMPTY_MODIFIER_REGISTRY,
+): FlagUsage {
   const written = new Set<string>();
   const read = new Set<string>();
 
@@ -164,6 +183,11 @@ export function collectFlagUsage(events: readonly GameEvent[]): FlagUsage {
       }
     }
   }
+
+  // Same omission, and here it is worse: a flag READ only by a registry modifier would be
+  // reported as written-but-never-read, a false positive on the most valuable line in the
+  // sim report.
+  for (const row of registry) walkP(row.when);
 
   const sorted = (set: ReadonlySet<string>): string[] =>
     [...set].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));

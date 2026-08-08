@@ -53,7 +53,7 @@ describe('selectEvent', () => {
       ),
       registries,
     );
-    const state = makeState({ resources: { ...createResources(), money: 0 } });
+    const state = makeState({ resources: { ...createResources(), cash: 0 } });
 
     const result = selectEvent(state, gatedOnly, rng());
     expect(result.kind).toBe('uneventful');
@@ -91,7 +91,7 @@ describe('hard filters', () => {
   };
 
   it('rejects on requires, and names it', () => {
-    const state = makeState({ resources: { ...createResources(), money: 0 } });
+    const state = makeState({ resources: { ...createResources(), cash: 0 } });
     const verdict = filterEvent(find('rest.pickpocket_victim'), state, PACK, ctxFor(state));
 
     expect(verdict.eligible).toBe(false);
@@ -118,7 +118,7 @@ describe('hard filters', () => {
   it('NEVER relaxes requires, at any rung', () => {
     // The correctness boundary. An event needing a passport you do not have must not fire,
     // however desperate the ladder gets.
-    const state = makeState({ resources: { ...createResources(), money: 0 } });
+    const state = makeState({ resources: { ...createResources(), cash: 0 } });
     const relaxAll = {
       beatGate: true,
       softContext: true,
@@ -158,7 +158,7 @@ describe('hard filters', () => {
   });
 
   it('reports the FIRST failure, so the reason is the informative one', () => {
-    const state = makeState({ resources: { ...createResources(), money: 0 } });
+    const state = makeState({ resources: { ...createResources(), cash: 0 } });
     const verdict = filterEvent(find('border.bribe_attempt'), state, PACK, ctxFor(state));
     if (verdict.eligible) return;
     // requires is checked before the beat gate and before context, deliberately.

@@ -1,0 +1,47 @@
+# Declared endings.
+#
+# Four of these are produced by the ENGINE (loop/check-run-end.ts), not by content, and are
+# declared anyway: the journal renders them and i18n needs keys for them, so an undeclared
+# engine ending is a missing-translation bug waiting to happen.
+
+- id: ending.arrival
+  description: Reached the destination. The generic arrival, refined by the ones below.
+  category: arrival
+  kind: arrival
+  rank: 0
+
+- id: ending.arrival_triumphant
+  description: Arrived with resources and reputation intact. The rarest good ending.
+  category: arrival
+  kind: arrival
+  rank: 1
+
+- id: ending.arrival_hollow
+  description: Arrived, but spent. The journey cost more than the destination was worth.
+  category: arrival
+  kind: arrival
+  rank: 2
+
+- id: ending.arrival_quiet
+  description: Arrived without incident. Nothing to tell anyone about, which is its own ending.
+  category: arrival
+  kind: arrival
+  rank: 3
+
+- id: ending.failure_collapsed
+  description: Health reached zero on the road. The body gave out before the route did.
+  category: failure
+  kind: failure
+  rank: 10
+
+- id: ending.failure_gave_up
+  description: Morale reached zero. Nothing physically stopped you; you stopped.
+  category: failure
+  kind: failure
+  rank: 11
+
+- id: ending.detained_at_border
+  description: Held at a crossing with a flag already in the system. Content-unlocked.
+  category: failure
+  kind: failure
+  rank: 12

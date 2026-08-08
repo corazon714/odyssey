@@ -1,0 +1,139 @@
+id: border.bribe_attempt
+category: border
+tags:
+  - authority
+  - money
+  - risk
+  - corruption
+priority: beat
+beatType: border_crossing
+tensionBand:
+  - 0.4
+  - 1
+context:
+  locationTypes:
+    - border_crossing
+    - checkpoint
+  timeOfDay:
+    - evening
+    - night
+  transportModes:
+    - car
+    - truck
+    - bus
+cooldownLegs: 999
+maxOccurrences: 1
+exclusiveGroup: border_resolution
+image: border/bribe_attempt
+requires:
+  all:
+    - resource: cash
+      gte: 30
+    - not:
+        flag: bribed_this_border
+choices:
+  - id: offer_bribe
+    labelKey: events.border.bribe_attempt.choice.offer
+    costs:
+      - op: resource
+        key: cash
+        delta: -40
+    check:
+      skill: negotiation
+      dc: 12
+      tags: [social, bribery, authority, crime]
+      modifiers:
+        # The only local modifier left. `unwashed` and `wanted` used to sit here too and were
+        # deleted once modifiers.yaml declared them — content:lint's LOCAL_MODIFIER rule found
+        # the duplication, which is exactly the D1 decay it exists to catch.
+        - labelKey: check.modifier.smooth_talker
+          delta: 2
+          when:
+            trait: smooth_talker
+          why: 'fixture: keeps the choice-local path exercised now that the registry covers the rest'
+    outcomes:
+      - id: success
+        weight: 1
+        onCheck: success
+        effects:
+          - op: flag
+            id: bribed_this_border
+            ttlLegs: 1
+          - op: relationship
+            npc: border_guard
+            trustDelta: 1
+            meet: true
+            addTags:
+              - bribed
+          - op: advanceTime
+            hours: 1
+          - op: scheduleEvent
+            eventId: border.guard_remembers
+            inLegs:
+              - 4
+              - 12
+      - id: refused
+        weight: 3
+        onCheck: failure
+        effects:
+          - op: resource
+            key: heat
+            delta: 2
+          - op: flag
+            id: bribe_on_record
+      - id: detained
+        weight: 1
+        onCheck: failure
+        requires:
+          resource: heat
+          gte: 5
+        effects:
+          - op: flag
+            id: detained
+          # Closes a gap Phase 1 carried deliberately: `wanted` was READ by three gates and
+          # written by nothing, so those branches could never open. The sim reported it every
+          # run and content:lint now errors on it. Being detained at a crossing is the natural
+          # place for it — you are in the system now.
+          - op: flag
+            id: wanted
+          - op: advanceTime
+            hours: 14
+          - op: resource
+            key: morale
+            delta: -3
+  - id: present_documents
+    labelKey: events.border.bribe_attempt.choice.documents
+    requires:
+      passport:
+        present: true
+        valid: true
+    outcomes:
+      - id: waved_through
+        weight: 4
+        effects:
+          - op: advanceTime
+            hours: 2
+      - id: flagged_in_system
+        weight: 1
+        requires:
+          flag: wanted
+        effects:
+          - op: flag
+            id: detained
+          - op: unlockEnding
+            id: ending.detained_at_border
+  - id: turn_back
+    hiddenUnless:
+      resource: heat
+      gte: 6
+    outcomes:
+      - id: detour
+        weight: 1
+        effects:
+          - op: advanceTime
+            hours: 20
+          - op: resource
+            key: morale
+            delta: -2
+          - op: flag
+            id: took_the_long_way

@@ -22,10 +22,10 @@ const apply = (effect: Effect, state = makeState()): ReturnType<typeof applyEffe
 
 describe('resource and skill effects', () => {
   it('applies a delta', () => {
-    const state = makeState({ resources: { ...createResources(), money: 100 } });
-    const { state: next, applied } = apply({ op: 'resource', key: 'money', delta: -40 }, state);
+    const state = makeState({ resources: { ...createResources(), cash: 100 } });
+    const { state: next, applied } = apply({ op: 'resource', key: 'cash', delta: -40 }, state);
 
-    expect(next.resources.money).toBe(60);
+    expect(next.resources.cash).toBe(60);
     expect(applied.changed).toBe(true);
     expect(applied.params).toMatchObject({ requested: -40, applied: -40, after: 60 });
   });
@@ -33,19 +33,19 @@ describe('resource and skill effects', () => {
   it('clamps AND reports what actually happened', () => {
     // The distinction the whole AppliedEffect type exists for: spending 40 when you hold 12
     // spends 12, and a log recording -40 would make the sim's money trajectory a lie.
-    const state = makeState({ resources: { ...createResources(), money: 12 } });
-    const { state: next, applied } = apply({ op: 'resource', key: 'money', delta: -40 }, state);
+    const state = makeState({ resources: { ...createResources(), cash: 12 } });
+    const { state: next, applied } = apply({ op: 'resource', key: 'cash', delta: -40 }, state);
 
-    expect(next.resources.money).toBe(0);
+    expect(next.resources.cash).toBe(0);
     expect(applied.params).toMatchObject({ requested: -40, applied: -12 });
     expect(applied.clamps).toEqual([
-      { key: 'money', requested: -28, applied: 0, bound: 'min', limit: 0 },
+      { key: 'cash', requested: -28, applied: 0, bound: 'min', limit: 0 },
     ]);
   });
 
   it('is a noop at a bound', () => {
-    const state = makeState({ resources: { ...createResources(), money: 0 } });
-    const { state: next, applied } = apply({ op: 'resource', key: 'money', delta: -5 }, state);
+    const state = makeState({ resources: { ...createResources(), cash: 0 } });
+    const { state: next, applied } = apply({ op: 'resource', key: 'cash', delta: -5 }, state);
 
     expect(next).toBe(state);
     expect(applied.changed).toBe(false);
@@ -201,28 +201,36 @@ describe('relationship, schedule and ending effects', () => {
 
 describe('item and document effects', () => {
   it('adds, stacks and removes items', () => {
-    const added = apply({ op: 'item', id: itemId('ration'), countDelta: 2, condition: null });
-    expect(added.state.inventory).toEqual([{ id: 'ration', count: 2, condition: null }]);
+    const added = apply({
+      op: 'item',
+      id: itemId('ration'),
+      countDelta: 2,
+      condition: null,
+      container: null,
+    });
+    expect(added.state.inventory.person.items).toEqual([
+      { id: 'ration', count: 2, condition: null },
+    ]);
 
     const more = applyEffect(
       added.state,
-      { op: 'item', id: itemId('ration'), countDelta: 1, condition: null },
+      { op: 'item', id: itemId('ration'), countDelta: 1, condition: null, container: null },
       CTX,
     );
-    expect(more.state.inventory[0]?.count).toBe(3);
+    expect(more.state.inventory.person.items[0]?.count).toBe(3);
 
     const gone = applyEffect(
       more.state,
-      { op: 'item', id: itemId('ration'), countDelta: -9, condition: null },
+      { op: 'item', id: itemId('ration'), countDelta: -9, condition: null, container: null },
       CTX,
     );
-    expect(gone.state.inventory).toEqual([]);
+    expect(gone.state.inventory.person.items).toEqual([]);
   });
 
   it('is a noop removing an item that is not carried', () => {
     const state = makeState();
     const { state: next, applied } = apply(
-      { op: 'item', id: itemId('nothing'), countDelta: -1, condition: null },
+      { op: 'item', id: itemId('nothing'), countDelta: -1, condition: null, container: null },
       state,
     );
     expect(next).toBe(state);
@@ -249,7 +257,12 @@ describe('item and document effects', () => {
       { op: 'document', change: { field: 'losePassport' } },
       CTX,
     );
-    expect(lost.state.documents.passport).toEqual({ present: false, valid: true, flagged: false });
+    expect(lost.state.documents.passport).toEqual({
+      present: false,
+      valid: true,
+      flagged: false,
+      container: 'person',
+    });
   });
 
   it('grants and expires a visa', () => {
@@ -321,8 +334,8 @@ describe('applyEffects', () => {
   it('records one entry per effect, even for noops', () => {
     // The invariant that makes a silently dropped effect impossible.
     const effects: Effect[] = [
-      { op: 'resource', key: 'money', delta: 10 },
-      { op: 'resource', key: 'money', delta: 0 },
+      { op: 'resource', key: 'cash', delta: 10 },
+      { op: 'resource', key: 'cash', delta: 0 },
       { op: 'clearFlag', id: flagId('absent') },
     ];
     const { applied } = applyEffects(makeState(), effects, CTX);
@@ -333,14 +346,14 @@ describe('applyEffects', () => {
 
   it('threads state through in order', () => {
     const { state } = applyEffects(
-      makeState({ resources: { ...createResources(), money: 0 } }),
+      makeState({ resources: { ...createResources(), cash: 0 } }),
       [
-        { op: 'resource', key: 'money', delta: 100 },
-        { op: 'resource', key: 'money', delta: -30 },
+        { op: 'resource', key: 'cash', delta: 100 },
+        { op: 'resource', key: 'cash', delta: -30 },
       ],
       CTX,
     );
-    expect(state.resources.money).toBe(70);
+    expect(state.resources.cash).toBe(70);
   });
 
   it('returns the same state object when every effect is a noop', () => {
@@ -359,7 +372,7 @@ describe('applyEffects', () => {
   it('covers every declared op', () => {
     // Guards against an op existing in the union but never being exercised here.
     const byOp: Record<string, Effect> = {
-      resource: { op: 'resource', key: 'money', delta: 1 },
+      resource: { op: 'resource', key: 'cash', delta: 1 },
       skill: { op: 'skill', key: 'stealth', delta: 1 },
       flag: { op: 'flag', id: flagId('f'), value: true, ttlLegs: null },
       clearFlag: { op: 'clearFlag', id: flagId('f') },
@@ -373,10 +386,17 @@ describe('applyEffects', () => {
         payload: null,
       },
       unlockEnding: { op: 'unlockEnding', id: endingId('x') },
-      item: { op: 'item', id: itemId('i'), countDelta: 1, condition: null },
+      item: { op: 'item', id: itemId('i'), countDelta: 1, condition: null, container: null },
       transport: { op: 'transport', change: { field: 'legal', legal: false } },
       document: { op: 'document', change: { field: 'grantPassport', valid: true } },
       route: { op: 'route', change: { field: 'progressKm', delta: 10 } },
+      // Order matters here and nowhere else in this map: the container ops act on each
+      // other's output. Grant a bag, move the item `item` just added into it, then lose the
+      // bag — so all three report `changed`, and the sequence is also the memory chain in
+      // miniature.
+      grantContainer: { op: 'grantContainer', container: 'bag', slots: null, searchDC: null },
+      moveItem: { op: 'moveItem', id: itemId('i'), count: 1, from: 'person', to: 'bag' },
+      loseContainer: { op: 'loseContainer', container: 'bag' },
     };
 
     expect(Object.keys(byOp).sort()).toEqual([...EFFECT_OPS].sort());

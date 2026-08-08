@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Generated, never hand-written. Regenerate with ODYSSEY_UPDATE_GOLDEN=1 and REVIEW the diff:",
+    "Generated, never hand-written. Regenerate with `pnpm golden:update` and REVIEW the diff:",
     "a changed digest is either a deliberate engine change or the bug the golden run exists to catch."
   ],
   "runs": [
@@ -8,7 +8,7 @@
       "seed": "golden:fixture.short:random",
       "routeId": "fixture.short",
       "policy": "random",
-      "contentVersion": "7f34f65d5e3fe51f70e5076af9b97b39",
+      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
       "choiceSequence": [
         "keep_going",
         "rest",
@@ -21,7 +21,7 @@
         "rest",
         "walk_in"
       ],
-      "expectedDigest": "3af6a5c2aa40799a6a23127ba73acdb6",
+      "expectedDigest": "297e84c8671346a373b7d2e1897ea62e",
       "expectedHistoryKeys": [
         "events.filler.roadside_quiet.out.onward",
         "events.filler.long_hours.out.rested",
@@ -41,7 +41,7 @@
       "seed": "golden:fixture.short:greedy-safe",
       "routeId": "fixture.short",
       "policy": "greedy-safe",
-      "contentVersion": "7f34f65d5e3fe51f70e5076af9b97b39",
+      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
       "choiceSequence": [
         "rest",
         "keep_going",
@@ -54,7 +54,7 @@
         "keep_going",
         "walk_in"
       ],
-      "expectedDigest": "c9148bceb56c84fe324d7bc2e03e2350",
+      "expectedDigest": "ad6d4f9167ab0e713a80ac714551832e",
       "expectedHistoryKeys": [
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
@@ -74,7 +74,7 @@
       "seed": "golden:fixture.short:risk-taker",
       "routeId": "fixture.short",
       "policy": "risk-taker",
-      "contentVersion": "7f34f65d5e3fe51f70e5076af9b97b39",
+      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
       "choiceSequence": [
         "rest",
         "keep_going",
@@ -87,7 +87,7 @@
         "keep_going",
         "walk_in"
       ],
-      "expectedDigest": "906de66e634aa976f7ff17ae453fd298",
+      "expectedDigest": "3a7b5901cf7cb887b7499fc3ebea18d5",
       "expectedHistoryKeys": [
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
@@ -107,7 +107,7 @@
       "seed": "golden:fixture.illicit:random",
       "routeId": "fixture.illicit",
       "policy": "random",
-      "contentVersion": "7f34f65d5e3fe51f70e5076af9b97b39",
+      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
       "choiceSequence": [
         "let_it_go",
         "keep_going",
@@ -120,10 +120,9 @@
         "push_on",
         "keep_going",
         "push_on",
-        "let_it_go",
-        "fix_it_yourself"
+        "let_it_go"
       ],
-      "expectedDigest": "245988f0f5817746fd54f4e587055590",
+      "expectedDigest": "250445500dfdf81041acde890e6a0e3a",
       "expectedHistoryKeys": [
         "events.rest.pickpocket_victim.out.shrug",
         "events.filler.roadside_quiet.out.onward",
@@ -136,8 +135,7 @@
         "events.filler.long_hours.out.tired",
         "events.filler.roadside_quiet.out.onward",
         "events.filler.long_hours.out.tired",
-        "events.rest.pickpocket_victim.out.shrug",
-        "events.crisis.breakdown.out.stuck"
+        "events.rest.pickpocket_victim.out.shrug"
       ],
       "expectedLegs": 12,
       "expectedEndings": ["ending.failure_gave_up"]
@@ -146,7 +144,7 @@
       "seed": "golden:fixture.illicit:greedy-safe",
       "routeId": "fixture.illicit",
       "policy": "greedy-safe",
-      "contentVersion": "7f34f65d5e3fe51f70e5076af9b97b39",
+      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
       "choiceSequence": [
         "let_it_go",
         "keep_going",
@@ -160,11 +158,9 @@
         "rest",
         "keep_going",
         "let_it_go",
-        "fix_it_yourself",
-        "rest",
-        "keep_going"
+        "fix_it_yourself"
       ],
-      "expectedDigest": "14787d0f7003b8d02fe4d74ff7a27793",
+      "expectedDigest": "2c050ce29d737b6b2110426ca8377ce9",
       "expectedHistoryKeys": [
         "events.rest.pickpocket_victim.out.shrug",
         "events.filler.roadside_quiet.out.onward",
@@ -178,18 +174,16 @@
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
         "events.rest.pickpocket_victim.out.shrug",
-        "events.crisis.breakdown.out.stuck",
-        "events.filler.long_hours.out.rested",
-        "events.filler.roadside_quiet.out.onward"
+        "events.crisis.breakdown.out.stuck"
       ],
-      "expectedLegs": 15,
+      "expectedLegs": 13,
       "expectedEndings": ["ending.failure_collapsed"]
     },
     {
       "seed": "golden:fixture.illicit:risk-taker",
       "routeId": "fixture.illicit",
       "policy": "risk-taker",
-      "contentVersion": "7f34f65d5e3fe51f70e5076af9b97b39",
+      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
       "choiceSequence": [
         "chase",
         "rest",
@@ -203,11 +197,9 @@
         "rest",
         "keep_going",
         "chase",
-        "fix_it_yourself",
-        "keep_going",
-        "rest"
+        "fix_it_yourself"
       ],
-      "expectedDigest": "1a109eb8ebb7bf99295600dfd2b49ef8",
+      "expectedDigest": "23bd2ff3373d6a1526e2cbd983835809",
       "expectedHistoryKeys": [
         "events.rest.pickpocket_victim.out.lost",
         "events.filler.long_hours.out.rested",
@@ -221,18 +213,16 @@
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
         "events.rest.pickpocket_victim.out.lost",
-        "events.crisis.breakdown.out.fixed",
-        "events.filler.roadside_quiet.out.onward",
-        "events.filler.long_hours.out.rested"
+        "events.crisis.breakdown.out.fixed"
       ],
-      "expectedLegs": 15,
+      "expectedLegs": 13,
       "expectedEndings": ["ending.failure_collapsed"]
     },
     {
       "seed": "golden:fixture.scenic:random",
       "routeId": "fixture.scenic",
       "policy": "random",
-      "contentVersion": "7f34f65d5e3fe51f70e5076af9b97b39",
+      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
       "choiceSequence": [
         "keep_going",
         "plead_with_driver",
@@ -244,13 +234,9 @@
         "rest",
         "keep_going",
         "push_on",
-        "keep_going",
-        "rest",
-        "keep_going",
-        "chase",
-        "push_on"
+        "keep_going"
       ],
-      "expectedDigest": "c04d6715cfbad6fa9b17820a6d3f78d2",
+      "expectedDigest": "10a252ebb6679c329a83cde7bfe76788",
       "expectedHistoryKeys": [
         "events.filler.roadside_quiet.out.onward",
         "events.transit.bus_ejection.out.ejected",
@@ -262,23 +248,18 @@
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
         "events.filler.long_hours.out.tired",
-        "events.filler.roadside_quiet.out.onward",
-        "events.filler.long_hours.out.rested",
-        "events.filler.roadside_quiet.out.onward",
-        "events.rest.pickpocket_victim.out.lost",
-        "events.filler.long_hours.out.tired"
+        "events.filler.roadside_quiet.out.onward"
       ],
-      "expectedLegs": 15,
+      "expectedLegs": 11,
       "expectedEndings": ["ending.failure_gave_up"]
     },
     {
       "seed": "golden:fixture.scenic:greedy-safe",
       "routeId": "fixture.scenic",
       "policy": "greedy-safe",
-      "contentVersion": "7f34f65d5e3fe51f70e5076af9b97b39",
+      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
       "choiceSequence": [
         "let_it_go",
-        "keep_going",
         "get_off",
         "keep_going",
         "rest",
@@ -288,16 +269,11 @@
         "rest",
         "keep_going",
         "rest",
-        "keep_going",
-        "let_it_go",
-        "keep_going",
-        "rest",
         "keep_going"
       ],
-      "expectedDigest": "0114f6d56aa66d140e18eb1187c5f44d",
+      "expectedDigest": "f2de9482526a2b233719b3cf5888d77d",
       "expectedHistoryKeys": [
         "events.rest.pickpocket_victim.out.shrug",
-        "events.filler.roadside_quiet.out.onward",
         "events.transit.bus_ejection.out.walked",
         "events.filler.roadside_quiet.out.onward",
         "events.filler.long_hours.out.rested",
@@ -307,20 +283,16 @@
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
         "events.filler.long_hours.out.rested",
-        "events.filler.roadside_quiet.out.onward",
-        "events.rest.pickpocket_victim.out.shrug",
-        "events.filler.roadside_quiet.out.onward",
-        "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward"
       ],
-      "expectedLegs": 16,
-      "expectedEndings": ["ending.arrival_quiet"]
+      "expectedLegs": 11,
+      "expectedEndings": ["ending.failure_collapsed"]
     },
     {
       "seed": "golden:fixture.scenic:risk-taker",
       "routeId": "fixture.scenic",
       "policy": "risk-taker",
-      "contentVersion": "7f34f65d5e3fe51f70e5076af9b97b39",
+      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
       "choiceSequence": [
         "keep_going",
         "get_off",
@@ -331,15 +303,9 @@
         "rest",
         "keep_going",
         "rest",
-        "keep_going",
-        "rest",
-        "keep_going",
-        "rest",
-        "chase",
-        "keep_going",
-        "rest"
+        "keep_going"
       ],
-      "expectedDigest": "7b6b2fea45dd75a6ea1153e277db3ef8",
+      "expectedDigest": "48b6dcc67a26ee329a3347c547fb896c",
       "expectedHistoryKeys": [
         "events.filler.roadside_quiet.out.onward",
         "events.transit.bus_ejection.out.walked",
@@ -350,16 +316,10 @@
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
         "events.filler.long_hours.out.rested",
-        "events.filler.roadside_quiet.out.onward",
-        "events.filler.long_hours.out.rested",
-        "events.filler.roadside_quiet.out.onward",
-        "events.filler.long_hours.out.rested",
-        "events.rest.pickpocket_victim.out.lost",
-        "events.filler.roadside_quiet.out.onward",
-        "events.filler.long_hours.out.rested"
+        "events.filler.roadside_quiet.out.onward"
       ],
-      "expectedLegs": 16,
-      "expectedEndings": ["ending.arrival_quiet"]
+      "expectedLegs": 10,
+      "expectedEndings": ["ending.failure_collapsed"]
     }
   ]
 }

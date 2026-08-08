@@ -8,6 +8,7 @@ import {
 } from '../ids/content-ids.ts';
 import { type Predicate } from '../predicate/predicate.ts';
 import { type BeatSlotStatus } from '../state/beat-slot.ts';
+import { type ContainerKind } from '../state/container-state.ts';
 import { type FlagValue } from '../state/memory-entries.ts';
 import { type ResourceKey } from '../state/resources.ts';
 import { type SkillKey } from '../state/skills.ts';
@@ -39,6 +40,9 @@ export const EFFECT_OPS = [
   'transport',
   'document',
   'route',
+  'moveItem',
+  'loseContainer',
+  'grantContainer',
 ] as const;
 
 export type EffectOp = (typeof EFFECT_OPS)[number];
@@ -99,6 +103,34 @@ export type Effect =
       readonly id: ItemId;
       readonly countDelta: number;
       readonly condition: number | null;
+      /**
+       * Where it goes, or where it comes from. null means "wherever there is room", filling
+       * in `DRAIN_ORDER` — person first for a grant, and draining in the same order for a
+       * removal so the total always matches what the `item` predicate reported.
+       */
+      readonly container: ContainerKind | null;
+    }
+  /** Between containers. Packing the passport into the stash is a real, risky decision. */
+  | {
+      readonly op: 'moveItem';
+      readonly id: ItemId;
+      readonly count: number;
+      readonly from: ContainerKind;
+      readonly to: ContainerKind;
+    }
+  /**
+   * The bag is stolen; the car is impounded. Contents go WITH it — explicitly, never
+   * silently relocated (W3). A passport kept in that container becomes `present: false`,
+   * which is the recoverable state, not `null`, which means you never had one.
+   */
+  | { readonly op: 'loseContainer'; readonly container: Exclude<ContainerKind, 'person'> }
+  /** Acquiring a bag, a vehicle, or a hidden compartment. Idempotent if you already have one. */
+  | {
+      readonly op: 'grantContainer';
+      readonly container: Exclude<ContainerKind, 'person'>;
+      /** null uses `CONTAINER_SPECS`. A bigger vehicle overrides. */
+      readonly slots: number | null;
+      readonly searchDC: number | null;
     }
   | { readonly op: 'transport'; readonly change: TransportChange }
   | { readonly op: 'document'; readonly change: DocumentChange }

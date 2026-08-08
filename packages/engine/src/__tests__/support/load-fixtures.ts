@@ -104,7 +104,7 @@ export function loadMiniPack(): MiniPackFile {
 export type FixtureStart = {
   readonly transportMode: string;
   readonly vehicleLegal: boolean;
-  readonly money: number;
+  readonly cash: number;
   readonly startHour: number;
   readonly weather: string;
 };

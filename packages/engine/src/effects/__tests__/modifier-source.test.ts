@@ -18,6 +18,7 @@ import { makeContext } from '../../predicate/__tests__/support/make-context.ts';
 const CHECK: SkillCheckSpec = {
   skill: 'negotiation',
   dc: 5,
+  tags: ['social'],
   modifiers: [
     { labelKey: 'check.modifier.smooth_talker', delta: 2, when: null },
     {

@@ -65,7 +65,7 @@ describe('the relaxation ladder', () => {
 
   it('NEVER satisfies an unsatisfiable requires, at any rung', () => {
     // The correctness boundary. This is the assertion that keeps the ladder honest.
-    const state = makeState({ resources: { ...createResources(), money: 0 } });
+    const state = makeState({ resources: { ...createResources(), cash: 0 } });
     const ctx = createPredicateContext(state, PACK.refs, 'test');
     const gated = find('rest.pickpocket_victim'); // requires money >= 10
 
@@ -108,7 +108,7 @@ describe('the relaxation ladder', () => {
       ),
       registries,
     );
-    const state = makeState({ resources: { ...createResources(), money: 0 } });
+    const state = makeState({ resources: { ...createResources(), cash: 0 } });
 
     const result = selectEvent(state, gatedOnly, rng());
     expect(result.kind).toBe('uneventful');

@@ -7,7 +7,8 @@
   "main": "./schema/index.ts",
   "types": "./schema/index.ts",
   "exports": {
-    ".": "./schema/index.ts"
+    ".": "./schema/index.ts",
+    "./loader": "./loader/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -19,6 +20,8 @@
     "vitest": "catalog:"
   },
   "dependencies": {
+    "@odyssey/engine": "workspace:*",
+    "yaml": "catalog:",
     "zod": "catalog:"
   }
 }

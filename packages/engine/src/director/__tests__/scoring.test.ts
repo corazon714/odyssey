@@ -30,7 +30,7 @@ function statesUnderStress(): readonly RunState[] {
     makeState({ tension: 0 }),
     makeState({ tension: 1 }),
     makeState({ tension: 0.5 }),
-    makeState({ resources: { ...createResources(), money: 0, health: 1, morale: 1, heat: 10 } }),
+    makeState({ resources: { ...createResources(), cash: 0, health: 1, morale: 1, heat: 10 } }),
     makeState({ route: { ...makeRoute(), legIndex: 11 } }),
     makeState({
       eventMemory: Object.fromEntries(
@@ -188,7 +188,7 @@ describe('tagSaturation', () => {
     // a filter in disguise. `max` keeps it a shading factor.
     const event = find('border.bribe_attempt'); // tags: authority, money, risk, corruption
     const state = makeState({
-      history: ['authority', 'money', 'risk', 'corruption'].map((tag, i) => ({
+      history: ['authority', 'cash', 'risk', 'corruption'].map((tag, i) => ({
         legIndex: i,
         day: 0,
         eventId: null,
