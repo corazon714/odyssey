@@ -1,5 +1,6 @@
 import { type ContentPack } from '../content/content-pack.ts';
 import { selectEvent, type SelectionResult } from '../director/select-event.ts';
+import { nextTension } from '../director/tension.ts';
 import { engineError, type EngineError } from '../errors/engine-error.ts';
 import { createRng } from '../rng/rng.ts';
 import { type RunState } from '../state/run-state.ts';
@@ -60,6 +61,10 @@ export function advanceLeg(state: RunState, pack: ContentPack): AdvanceLegResult
   if (arrival.ended) return { ok: true, ...endRun(next, arrival, rng) };
 
   next = worldTick(next, rng);
+
+  // Tension is recomputed AFTER the world tick and BEFORE selection, so the director scores
+  // against the pressure the player is actually under this leg rather than last leg’s.
+  next = { ...next, tension: nextTension(next, pack) };
 
   const failure = checkRunEnd(next);
   if (failure.ended) return { ok: true, ...endRun(next, failure, rng) };

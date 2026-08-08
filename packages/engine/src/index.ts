@@ -175,7 +175,32 @@ export {
   type FilterVerdict,
   type Relaxation,
 } from './director/hard-filters.ts';
-export { duePendingEvents, selectEvent, type SelectionResult } from './director/select-event.ts';
+export {
+  duePendingEvents,
+  selectEvent,
+  type SelectOptions,
+  type SelectionResult,
+} from './director/select-event.ts';
+export * from './director/scoring-constants.ts';
+export {
+  contextAffinity,
+  novelty,
+  priorityBoost,
+  recency,
+  SCORING_FACTORS,
+  tensionFit,
+} from './director/scoring-factors.ts';
+export { tagSaturation, tagsOf } from './director/tag-saturation.ts';
+export { pickWeight, scoreEvent } from './director/score-event.ts';
+export { FILLER_RUNG, RELAXATION_RUNGS, UNEVENTFUL_RUNG } from './director/relaxation-rung.ts';
+export {
+  collectComplications,
+  EMPTY_COMPLICATIONS,
+  PHASE_1_COMPLICATION_SOURCES,
+  type Complication,
+  type ComplicationSource,
+} from './director/complication-source.ts';
+export { consecutiveHighTension, nextTension } from './director/tension.ts';
 
 export { advanceLeg, type AdvanceLegResult } from './loop/advance-leg.ts';
 export { pickOutcome, resolveChoice, type ResolveChoiceResult } from './loop/resolve-choice.ts';

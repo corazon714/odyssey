@@ -120,6 +120,7 @@ describe('hard filters', () => {
     // however desperate the ladder gets.
     const state = makeState({ resources: { ...createResources(), money: 0 } });
     const relaxAll = {
+      beatGate: true,
       softContext: true,
       cooldown: true,
       locationTypes: true,
@@ -143,6 +144,7 @@ describe('hard filters', () => {
       eventMemory: { [event.id]: { count: 1, lastLeg: 0, lastChoiceId: null } },
     });
     const relaxAll = {
+      beatGate: true,
       softContext: true,
       cooldown: true,
       locationTypes: true,

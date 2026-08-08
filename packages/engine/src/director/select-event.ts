@@ -6,93 +6,144 @@ import { type Rng } from '../rng/rng.ts';
 import { type WeightedEntry } from '../rng/weighted-pick.ts';
 import { type RunState } from '../state/run-state.ts';
 import { type TextParams } from '../text-params.ts';
-import { filterEvent, RELAX_NOTHING, type Relaxation } from './hard-filters.ts';
+import {
+  collectComplications,
+  EMPTY_COMPLICATIONS,
+  PHASE_1_COMPLICATION_SOURCES,
+  type Complication,
+  type ComplicationSource,
+} from './complication-source.ts';
+import { filterEvent } from './hard-filters.ts';
+import { FILLER_RUNG, RELAXATION_RUNGS, UNEVENTFUL_RUNG } from './relaxation-rung.ts';
+import { pickWeight } from './score-event.ts';
 
 /**
  * What the director decided, as a discriminated union. IT NEVER THROWS.
  *
  * A content gap in one region must not become a hard crash in a player's 30-leg run, so the
- * failure mode is a typed `uneventful` result the loop can present. Every fallback is counted
- * and surfaces as engine-spec 6's "empty-pool fallbacks" line — the only instrument that can
- * see this class of problem.
+ * failure mode is a typed `uneventful` result the loop can present. Every fallback carries the
+ * rung it reached, which surfaces as engine-spec 6's "empty-pool fallbacks" line — the only
+ * instrument that can see this class of problem.
  */
 export type SelectionResult =
   | {
       readonly kind: 'event';
       readonly event: GameEvent;
-      /** Relaxation rung reached. 0 = nothing relaxed. M6 only ever produces 0. */
+      /** Relaxation rung reached. 0 = nothing relaxed. */
       readonly rung: number;
       readonly fromQueue: boolean;
+      readonly complications: readonly Complication[];
     }
   | { readonly kind: 'uneventful'; readonly reasonKey: string; readonly params: TextParams };
 
-/**
- * M6's ladder, deliberately short: rung 0, then the filler pool, then `uneventful`.
- *
- * The full seven-rung ladder (beat gate → exclusiveGroup → soft context → cooldown →
- * locationTypes → filler → uneventful) lands in M7. Shipping it now would mean tuning
- * relaxation before anything can measure how often it fires.
- */
-const M6_RUNGS: readonly Relaxation[] = [
-  RELAX_NOTHING,
-  { softContext: true, cooldown: true, locationTypes: true, exclusiveGroup: true },
-];
+export type SelectOptions = {
+  readonly complicationSources: readonly ComplicationSource[];
+};
 
-export function selectEvent(state: RunState, pack: ContentPack, rng: Rng): SelectionResult {
+const DEFAULT_OPTIONS: SelectOptions = Object.freeze({
+  complicationSources: PHASE_1_COMPLICATION_SOURCES,
+});
+
+export function selectEvent(
+  state: RunState,
+  pack: ContentPack,
+  rng: Rng,
+  opts: SelectOptions = DEFAULT_OPTIONS,
+): SelectionResult {
   const ctx = createPredicateContext(
     state,
     pack.refs,
     `${state.route.id}:${String(state.route.legIndex)}`,
   );
 
+  const chosen = choose(state, pack, rng, ctx);
+  if (chosen === null) {
+    return {
+      kind: 'uneventful',
+      reasonKey: 'director.uneventful.emptyPool',
+      params: { leg: state.route.legIndex, poolSize: pack.events.length, rung: UNEVENTFUL_RUNG },
+    };
+  }
+
+  // The complication hook, post-selection. Empty in Phase 1 — the LIST is the extension
+  // point. It draws from `encounterFlavor`, so Phase 2 consuming randomness here cannot
+  // shift `eventPick` and invalidate M10's golden runs.
+  return {
+    ...chosen,
+    complications:
+      opts.complicationSources.length === 0
+        ? EMPTY_COMPLICATIONS
+        : collectComplications(chosen.event, state, rng, opts.complicationSources),
+  };
+}
+
+type Chosen = { kind: 'event'; event: GameEvent; rung: number; fromQueue: boolean };
+
+function choose(
+  state: RunState,
+  pack: ContentPack,
+  rng: Rng,
+  ctx: PredicateContext,
+): Chosen | null {
   // 1. The consequence queue has priority. A scheduled event that is due and still satisfies
-  //    its own gate fires ahead of the general pool — that is the whole point of the queue,
-  //    and it is why the payoff rate is a headline number in the sim report.
+  //    its own gate fires ahead of the general pool — the whole point of the queue, and why
+  //    the payoff rate is a headline number in the sim report.
   const due = duePendingEvents(state, pack, ctx);
   if (due.length > 0) {
     const picked = rng.pick(due, 'eventPick');
     if (picked !== null) return { kind: 'event', event: picked, rung: 0, fromQueue: true };
   }
 
-  // 2. Walk the rungs. Candidates are drawn from the pack's CANONICAL order, so the pool is
-  //    identical on every platform (ADR 0009 §3).
-  for (const [rung, relax] of M6_RUNGS.entries()) {
+  // 2. Walk the rungs. Candidates come from the pack's CANONICAL order, so the pool — and
+  //    therefore the weighted accumulation — is identical on every platform (ADR 0009 §3).
+  for (const [rung, relax] of RELAXATION_RUNGS.entries()) {
+    const claimed = claimedGroups(state, pack);
     const eligible = pack.events.filter(
-      (event) => filterEvent(event, state, pack, ctx, relax).eligible,
+      (event) => filterEvent(event, state, pack, ctx, relax, claimed).eligible,
     );
-    const picked = pickUniform(eligible, rng);
+    const picked = pickScored(eligible, state, rng);
     if (picked !== null) return { kind: 'event', event: picked, rung, fromQueue: false };
   }
 
-  // 3. The filler pool, ignoring context entirely.
+  // 3. The filler pool, context ignored entirely. `requires` still holds.
   const fillers = pack.fillers.filter(
     (event) => evaluatePredicate(event.requires, ctx, `req:${event.id}`).value,
   );
-  const filler = pickUniform(fillers, rng);
-  if (filler !== null) {
-    return { kind: 'event', event: filler, rung: M6_RUNGS.length, fromQueue: false };
-  }
+  const filler = pickScored(fillers, state, rng);
+  if (filler !== null) return { kind: 'event', event: filler, rung: FILLER_RUNG, fromQueue: false };
 
-  // 4. Nothing at all. Tested against a pack with ZERO fillers, because `content-lint` does
-  //    not exist and "the linter guarantees fillers" is an assertion with no enforcement.
-  return {
-    kind: 'uneventful',
-    reasonKey: 'director.uneventful.emptyPool',
-    params: { leg: state.route.legIndex, poolSize: pack.events.length },
-  };
+  return null;
+}
+
+/** Weight-proportional selection over the six scoring factors. */
+function pickScored(events: readonly GameEvent[], state: RunState, rng: Rng): GameEvent | null {
+  if (events.length === 0) return null;
+
+  const entries: WeightedEntry<GameEvent>[] = events.map((event) => ({
+    value: event,
+    weight: pickWeight(event, state),
+  }));
+
+  return rng.weightedPick(entries, 'eventPick');
 }
 
 /**
- * Uniform selection in M6 — every eligible event carries weight 1.
+ * Groups already used this leg.
  *
- * Authored weights and the six scoring factors arrive in M7. Using them now would mean
- * balancing a director nothing has measured, and a uniform pick makes an unreachable event
- * MORE visible in the sim rather than less.
+ * M6 presented one event per leg, so this was always empty. It is derived from `history`
+ * rather than tracked in a new field, so it cannot drift out of step with what actually
+ * fired — and it costs nothing while one-event-per-leg holds.
  */
-function pickUniform(events: readonly GameEvent[], rng: Rng): GameEvent | null {
-  if (events.length === 0) return null;
-  const entries: WeightedEntry<GameEvent>[] = events.map((event) => ({ value: event, weight: 1 }));
-  return rng.weightedPick(entries, 'eventPick');
+function claimedGroups(state: RunState, pack: ContentPack): ReadonlySet<string> {
+  const claimed = new Set<string>();
+  for (let i = state.history.length - 1; i >= 0; i -= 1) {
+    const entry = state.history[i];
+    if (entry === undefined || entry.legIndex !== state.route.legIndex) break;
+    if (entry.eventId === null) continue;
+    const group = pack.byId.get(entry.eventId)?.exclusiveGroup;
+    if (group !== undefined && group !== null) claimed.add(group);
+  }
+  return claimed;
 }
 
 /** Queue entries that are in window, still exist in the pack, and pass their own gate. */

@@ -34,6 +34,7 @@ function reject(reasonKey: string, params: TextParams = NO_TEXT_PARAMS): FilterV
 
 /** Which gates the current rung is allowed to skip. M6 relaxes nothing; M7 adds the ladder. */
 export type Relaxation = {
+  readonly beatGate: boolean;
   readonly softContext: boolean;
   readonly cooldown: boolean;
   readonly locationTypes: boolean;
@@ -41,6 +42,7 @@ export type Relaxation = {
 };
 
 export const RELAX_NOTHING: Relaxation = Object.freeze({
+  beatGate: false,
   softContext: false,
   cooldown: false,
   locationTypes: false,
@@ -73,7 +75,7 @@ export function filterEvent(
   // 3. beat gate. A beat event may only fire into a matching slot, and a non-beat event may
   //    not take a slot that is due. M6 has no slot consumption yet, so beats are simply
   //    excluded — M9 turns this into the real gate.
-  if (event.priority === 'beat') {
+  if (!relax.beatGate && event.priority === 'beat') {
     const slot = state.route.beatSchedule.find(
       (s) => s.legIndex === state.route.legIndex && s.status === 'pending',
     );

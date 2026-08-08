@@ -5,10 +5,44 @@
 
 ---
 
-## Current state: Phase 1 — M0–M6 shipped. **M6 GATE PASSED, awaiting review.**
+## Current state: Phase 1 — M0–M7 shipped. M8 next.
 
-**The game runs.** `pnpm sim -- --runs=1000` completes a thousand full journeys end to end.
-653 Vitest + 3 Jest.
+**The game runs, and the director now paces it.** M7 added the six scoring factors, the full
+seven-rung relaxation ladder, the tension signal and the complication seam. 690 engine tests;
+733 Vitest + 3 Jest total.
+
+### M7 sim delta against the M6 baseline
+
+|                 | M6 (uniform) | M7 (scored)                                       |
+| --------------- | ------------ | ------------------------------------------------- |
+| Completion rate | 33.7%        | **30.5%** (30.5 / 30.9 / 31.5 across three seeds) |
+| Uneventful legs | 0.0%         | 0.0%                                              |
+| Fallback legs   | 0.0%         | 0.0%                                              |
+| Payoff rate     | 100% (20/20) | 100% (18/18)                                      |
+| Never-fired     | 0 of 9       | 0 of 9                                            |
+| 20,000 runs     | 4.4 s        | 4.7 s (+7%)                                       |
+
+The completion drop is **signal, not noise** — stable across seeds. Scoring penalises fillers
+(`priorityBoost: 0.40`), so more consequential events fire and runs cost more. Still inside
+engine-spec 6’s 30–50% band, at its lower edge.
+
+**Open balance finding: fillers are still 75.7% of everything that fires.** They are the only
+events with no context constraints, so they are eligible on nearly every leg while the rest
+are gated — a 0.40 boost cannot outweigh that eligibility gap. This is a CONTENT observation,
+not an engine defect: nine events, two of them universal, is not a distribution to balance
+against. Revisit with the Phase 2 seed corpus.
+
+| Event                  | Share |
+| ---------------------- | ----- |
+| filler.roadside_quiet  | 38.3% |
+| filler.long_hours      | 37.4% |
+| rest.pickpocket_victim | 11.3% |
+| crisis.breakdown       | 4.3%  |
+| transit.bus_ejection   | 3.2%  |
+| arrival.final_stretch  | 2.5%  |
+| border.document_check  | 2.4%  |
+| border.bribe_attempt   | 0.3%  |
+| border.guard_remembers | 0.1%  |
 
 ```
 Completion rate             33.7%      (engine-spec 6 target band 30-50%)
