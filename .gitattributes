@@ -1,0 +1,26 @@
+# Normalise line endings to LF in the repository, on every platform.
+#
+# This is not cosmetic. `contentVersion` in RunState is derived from a hash of the
+# content pack, and a run must be reproducible from (seed, choiceSequence, contentVersion).
+# If CRLF leaked into packages/content/**/*.yaml on a Windows checkout, the same content
+# would hash differently on Windows and on CI, and golden-run replay would break across
+# machines for reasons nobody would think to look for.
+* text=auto eol=lf
+
+# Binary assets — never touch these.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.ttf  binary
+*.otf  binary
+*.woff  binary
+*.woff2 binary
+*.mp3  binary
+*.m4a  binary
+*.wav  binary
+*.riv  binary
+
+# Generated; keep diffs collapsed in review.
+pnpm-lock.yaml -diff linguist-generated=true

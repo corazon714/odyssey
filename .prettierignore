@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+coverage/
+reports/
+.expo/
+pnpm-lock.yaml
+packages/content/images/generated/
+apps/mobile/ios/
+apps/mobile/android/
+
+# Hand-authored reference doc. Excluded so Prettier does not rewrite prose and table
+# layout nobody asked it to touch. Remove this line to opt it in.
+docs/engine-spec.md

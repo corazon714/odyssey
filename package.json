@@ -1,0 +1,44 @@
+{
+  "name": "odyssey",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Text-based, RNG-driven overland road-trip narrative game",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @odyssey/mobile run dev",
+    "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --parallel run typecheck",
+    "lint": "node scripts/check-no-nested-eslint-config.mjs && eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run && pnpm --filter @odyssey/mobile run test",
+    "test:engine": "vitest run --project engine",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "catalog:",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "eslint-config-expo": "catalog:",
+    "globals": "catalog:",
+    "husky": "catalog:",
+    "lint-staged": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,mjs,cjs,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yaml,yml}": [
+      "prettier --write"
+    ]
+  }
+}

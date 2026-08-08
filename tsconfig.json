@@ -1,0 +1,11 @@
+{
+  // Root-level tooling files only. Each workspace package owns its own tsconfig and
+  // is typechecked by `pnpm -r run typecheck`; this file exists so the repo-root
+  // config files are not silently excluded from `pnpm typecheck`.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["vitest.config.ts", "scripts/**/*.ts", "scripts/**/*.mjs"],
+  "exclude": ["node_modules", "apps", "packages"]
+}
