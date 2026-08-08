@@ -22,8 +22,12 @@ import { replayRun } from '../replay-run.ts';
  *
  * The fixtures are GENERATED, never hand-written. A hand-typed digest is a number someone
  * chose; a generated one is a number the engine produced, and the difference is the entire
- * value of the test. Regenerate with ODYSSEY_UPDATE_GOLDEN=1 and REVIEW the diff — a changed
+ * value of the test. Regenerate with `pnpm golden:update` and REVIEW the diff — a changed
  * digest is either a deliberate engine change or exactly the bug this exists to catch.
+ *
+ * (Until M2A.0 this comment named `ODYSSEY_UPDATE_GOLDEN=1`, which nothing implemented. The
+ * generator is `packages/tools/sim/regenerate-goldens.ts`; it lives outside the engine
+ * because the engine may not touch `process` or write files.)
  */
 const FIXTURE_DIR = join(
   dirname(fileURLToPath(import.meta.url)),

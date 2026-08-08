@@ -19,6 +19,7 @@
     "test:engine": "vitest run --project engine",
     "sim": "node packages/tools/sim/cli.ts",
     "sim:diff": "node packages/tools/sim/cli.ts --diff",
+    "golden:update": "node packages/tools/sim/regenerate-goldens.ts",
     "prepare": "husky"
   },
   "devDependencies": {

@@ -274,6 +274,7 @@ pnpm content:lint             # validate all events, predicates, i18n keys, imag
 pnpm content:stats            # counts by category/region/tag, coverage gaps            (planned)
 pnpm sim -- --runs=20000      # headless balance simulation                                 ✅
 pnpm sim:diff                 # compare latest sim to docs/sim-baseline.md                ✅
+pnpm golden:update            # regenerate golden-runs.json from the engine — REVIEW the diff ✅
 
 pnpm images:plan              # what would be generated/regenerated (dry run, cost)     (planned)
 pnpm images:gen               # generate missing/stale images                           (planned)
