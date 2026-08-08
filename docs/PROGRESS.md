@@ -5,7 +5,19 @@
 
 ---
 
-## Current state: Phase 1 in progress — M0–M4 shipped, M5 next.
+## Current state: Phase 1 in progress — M0–M5 shipped. **M6 is a REVIEW GATE.**
+
+M5 completed the last piece before the walking skeleton. `src/content/` holds the engine-owned
+types, `createContentPack` and the dangling-reference walk; the nine-event fixture pack and
+three fixture routes are JSON data under `src/__tests__/__fixtures__/`. 591 Vitest + 3 Jest.
+
+**M6 is the second of the two review gates you set.** It is the first point where a mistake in
+M1–M5 becomes visible — a broken RNG, a predicate that never passes, an effect that mutates in
+place all surface as an absurd sim number rather than as a passing unit test. Stop there.
+
+---
+
+## Superseded — current state before M5
 
 The engine can now read and write state deterministically. `src/rng/` (seeded RNG),
 `src/state/` (`RunState`, `createRunState`, `stateDigest`), `src/predicate/` (27 kinds + reason
@@ -246,7 +258,60 @@ The honest gaps are _unverified_, not _broken_:
 
 ## Next step (ONE task, start here)
 
-**M5 — build the content model: engine `src/content/` types + `createContentPack`.**
+**M6 — the walking skeleton. ★ REVIEW GATE — stop here.**
+
+The minimum that proves the loop end to end. Deliberately NOT the full director: scoring,
+the relaxation ladder, beats and the queue's caps all come after, because their bugs are
+invisible until something can run a thousand runs.
+
+1. **`director/`, minimal** — hard filters (`requires`, `maxOccurrences`, context, cooldown,
+   `exclusiveGroup`) plus **uniform** `weightedPick`. No scoring factors, no beat gate, no
+   ladder beyond falling through to `{ kind: 'uneventful' }`. `selectEvent` returns a
+   discriminated union and never throws.
+2. **`loop/`** — `advanceLeg(state, pack)`, `resolveChoice(state, pack, choiceId)`,
+   `worldTick`, `runSkillCheck` (through `collectModifiers` and
+   `PHASE_1_MODIFIER_SOURCES` — never reading `check.modifiers` directly), `pickOutcome`,
+   `checkRunEnd`. Every illegal transition returns a typed `EngineError`, never a throw.
+3. **`packages/tools/sim/`** — `runOne`, `runMany`, `parse-args`, `cli` printing five counts.
+   Policies: `random`, `greedy-safe`, `greedy-fast`, `risk-taker`, `adversarial-worst-case`.
+   Reads the fixture pack and routes by path via `findWorkspaceRoot`.
+4. **Add `sim` to root `package.json`** and a `pnpm sim -- --runs=50` smoke job to CI.
+
+**Gate criteria:** `pnpm sim -- --runs=1000` completes 1,000 full runs; report shows a
+non-zero completion rate, empty-pool fallbacks under 2%, and no never-fired event among the
+nine. Measure 1,000 runs and extrapolate against the **20,000-runs-under-30-seconds** target
+before optimising anything — if the extrapolation misses, that is a finding to report at the
+gate, not a slip to absorb.
+
+Wire `PredicateContext` to the pack's real `ContentRefs` here — `ALL_REFS_KNOWN` was a
+placeholder, and `unknown-ref` should start firing on genuinely missing content.
+
+---
+
+## M5 shipped — the content model
+
+7 files under `src/content/`, the fixture pack and routes as JSON, and a hand-written fixture
+loader. Engine tests 548 → 591. `docs/adr/0009` records the decisions, and **`CLAUDE.md` §9 is
+amended** (DoD item 8).
+
+- **The type-ownership conflict is resolved.** §9 implied engine types are `z.infer`red from
+  the Zod schemas; that would make the engine a consumer of `packages/content` and give it a
+  Zod dependency. Now: the engine owns the types, the schema owns content _semantics_, and
+  Phase 2 holds them identical with a bidirectional compile-time assertion.
+- **Sorted once, at construction.** Twenty shuffled orderings produce an identical pack and an
+  identical `contentVersion` — with a guard-the-guard asserting the fixture is _not_ already
+  in sorted order, or that test would prove nothing.
+- **`danglingRefs` walks every predicate and effect.** ADR 0001 accepts that content bugs are
+  silent; this is the first instrument that sees them. `content-lint` subsumes it in Phase 2.
+- **Fixtures are JSON data in the engine**, not `.ts` and not `packages/content/events/`.
+  `packages/content` is still untouched, so Phase 1 needs no `yaml` dependency.
+- **Nine events, chosen for coverage not realism:** two fillers (the ladder's rung-6 floor),
+  beats for three beat types, a schedule/payoff pair, and one event that can legitimately fail
+  to fire so the never-fired line has something real to report.
+
+---
+
+## M5 brief (delivered) — the content model
 
 M4 shipped (below). M5 is the last piece before the walking skeleton, and it is where the
 type-ownership decision from the plan review becomes code.

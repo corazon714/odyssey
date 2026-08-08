@@ -1,0 +1,69 @@
+{
+  "_comment": [
+    "Fixture routes. Phase 1 takes the route as caller-supplied input — route generation,",
+    "legCountFor and beat-schedule generation are all out of scope, because leg density by",
+    "terrain and montage compression need terrain data and sim tuning that do not exist.",
+    "",
+    "The sim harness reads this file by path via findWorkspaceRoot, so nothing here is",
+    "exported from the engine barrel.",
+    "",
+    "Node ids are generic on purpose (rule 11): the map uses real geography, but a FIXTURE",
+    "must not encode behaviour against a named place."
+  ],
+  "routes": [
+    {
+      "id": "fixture.short",
+      "profile": "fastest",
+      "nodes": ["origin", "waypoint_a", "destination"],
+      "edges": ["origin-waypoint_a", "waypoint_a-destination"],
+      "legIndex": 0,
+      "legCount": 10,
+      "progressKm": 0,
+      "totalKm": 620,
+      "beatSchedule": [
+        { "legIndex": 0, "type": "departure", "slackLegs": 0, "status": "pending" },
+        { "legIndex": 5, "type": "midpoint_crisis", "slackLegs": 2, "status": "pending" },
+        { "legIndex": 9, "type": "finale", "slackLegs": 0, "status": "pending" }
+      ]
+    },
+    {
+      "id": "fixture.illicit",
+      "profile": "illicit",
+      "nodes": ["origin", "border_a", "waypoint_b", "border_b", "destination"],
+      "edges": [
+        "origin-border_a",
+        "border_a-waypoint_b",
+        "waypoint_b-border_b",
+        "border_b-destination"
+      ],
+      "legIndex": 0,
+      "legCount": 24,
+      "progressKm": 0,
+      "totalKm": 2140,
+      "beatSchedule": [
+        { "legIndex": 0, "type": "departure", "slackLegs": 0, "status": "pending" },
+        { "legIndex": 5, "type": "border_crossing", "slackLegs": 3, "status": "pending" },
+        { "legIndex": 12, "type": "midpoint_crisis", "slackLegs": 3, "status": "pending" },
+        { "legIndex": 17, "type": "border_crossing", "slackLegs": 3, "status": "pending" },
+        { "legIndex": 20, "type": "approach", "slackLegs": 2, "status": "pending" },
+        { "legIndex": 23, "type": "finale", "slackLegs": 0, "status": "pending" }
+      ]
+    },
+    {
+      "id": "fixture.scenic",
+      "profile": "scenic",
+      "nodes": ["origin", "waypoint_a", "waypoint_b", "destination"],
+      "edges": ["origin-waypoint_a", "waypoint_a-waypoint_b", "waypoint_b-destination"],
+      "legIndex": 0,
+      "legCount": 16,
+      "progressKm": 0,
+      "totalKm": 1380,
+      "beatSchedule": [
+        { "legIndex": 0, "type": "departure", "slackLegs": 0, "status": "pending" },
+        { "legIndex": 8, "type": "midpoint_crisis", "slackLegs": 2, "status": "pending" },
+        { "legIndex": 13, "type": "approach", "slackLegs": 2, "status": "pending" },
+        { "legIndex": 15, "type": "finale", "slackLegs": 0, "status": "pending" }
+      ]
+    }
+  ]
+}

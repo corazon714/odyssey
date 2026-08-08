@@ -367,8 +367,24 @@ into a large play space, and they are declared once rather than per event:
 Writing a modifier or complication into a single event's YAML, when it belongs in a
 registry, is the content anti-pattern that caps this game's replayability.
 
-Full spec: `docs/engine-spec.md`. Zod schemas in `packages/content/schema/` are authoritative —
-if the doc and the schema disagree, the schema is right and the doc is a bug.
+Full spec: `docs/engine-spec.md`.
+
+**Who owns these types** — amended 2026-08-08, see `docs/adr/0009`. The earlier wording said
+the Zod schemas were authoritative in a way that implied engine types are `z.infer`red from
+them. That cannot hold: `z.infer` types are owned by whichever package declares the schema, so
+the engine would become a consumer of `packages/content` and would need a Zod dependency —
+inverting the layering and making every schema tweak an engine API change. The rule is:
+
+- **`packages/engine/src/content/` owns the TypeScript types.** ✅ shipped in Phase 1 M5.
+- **`packages/content/schema/` owns the Zod schemas** and is authoritative over _content
+  semantics_: which fields a YAML file may have, which values are legal, what an omitted key
+  defaults to. **(planned — Phase 2.)**
+- The two are held **identical** by a bidirectional compile-time assertion (mutual-extends, so
+  a schema narrower _or_ wider than the type fails the build), not by convention.
+
+So if `docs/engine-spec.md` and the schema disagree about what content _means_, the schema is
+right and the doc is a bug. If the schema and the engine type disagree about _shape_, the
+build fails and neither is right.
 
 ---
 
