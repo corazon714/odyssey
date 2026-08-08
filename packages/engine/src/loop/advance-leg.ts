@@ -1,4 +1,5 @@
 import { type ContentPack } from '../content/content-pack.ts';
+import { advanceBeatSchedule } from '../director/beat-slots.ts';
 import { selectEvent, type SelectionResult } from '../director/select-event.ts';
 import { nextTension } from '../director/tension.ts';
 import { engineError, type EngineError } from '../errors/engine-error.ts';
@@ -27,6 +28,8 @@ export type AdvanceLegResult =
       readonly state: RunState;
       readonly selection: SelectionResult | null;
       readonly queueDrops: readonly PendingDrop[];
+      readonly beatsFilled: number;
+      readonly beatsExpired: number;
       readonly end: RunEndVerdict;
     };
 
@@ -90,8 +93,18 @@ export function advanceLeg(state: RunState, pack: ContentPack): AdvanceLegResult
     queueDrops.push(...consumed.dropped);
   }
 
+  // Consume the beat schedule with what actually fired. A slot that reaches the end of its
+  // slack unfilled expires and is reported — a beat-miss rate is a balance signal about
+  // content, not an error.
+  const beats = advanceBeatSchedule(
+    next.route,
+    legIndex,
+    selection.kind === 'event' ? selection.event.beatType : null,
+  );
+
   next = {
     ...next,
+    route: { ...next.route, beatSchedule: beats.beatSchedule },
     rngCursors: rng.cursors(),
     presentation:
       selection.kind === 'event'
@@ -104,14 +117,29 @@ export function advanceLeg(state: RunState, pack: ContentPack): AdvanceLegResult
         : { kind: 'uneventful', presentedAtLeg: legIndex, reasonKey: selection.reasonKey },
   };
 
-  return { ok: true, state: next, selection, end: { ended: false }, queueDrops };
+  return {
+    ok: true,
+    state: next,
+    selection,
+    end: { ended: false },
+    queueDrops,
+    beatsFilled: beats.filled === null ? 0 : 1,
+    beatsExpired: beats.expired.length,
+  };
 }
 
 function endRun(
   state: RunState,
   verdict: RunEndVerdict & { ended: true },
   rng: ReturnType<typeof createRng>,
-): { state: RunState; selection: null; end: RunEndVerdict; queueDrops: readonly PendingDrop[] } {
+): {
+  state: RunState;
+  selection: null;
+  end: RunEndVerdict;
+  queueDrops: readonly PendingDrop[];
+  beatsFilled: number;
+  beatsExpired: number;
+} {
   const unlocked = [...state.unlockedEndings];
   for (const id of verdict.endingIds) {
     if (!unlocked.includes(id)) unlocked.push(id);
@@ -130,5 +158,7 @@ function endRun(
     // The queue is NOT cleared on an ending. It feeds the journal's unresolved threads and
     // the sim's scheduled-but-never-fired line (see queue/unresolved-threads.ts).
     queueDrops: [],
+    beatsFilled: 0,
+    beatsExpired: 0,
   };
 }

@@ -32,6 +32,7 @@ function format(
     `Long-range payoff rate    ${pct(summary.payoffRate).padStart(7)}   (${String(summary.queueFires)}/${String(summary.scheduled)} scheduled)`,
     `Never-fired events        ${String(summary.neverFired.length).padStart(7)}   of ${String(summary.runs.length > 0 ? summary.neverFired.length + firedCount(summary) : 0)}`,
     `Unresolved threads        ${String(summary.unresolvedThreads).padStart(7)}   (promises a run ended owing)`,
+    `Beat fill rate            ${pct(summary.beatFillRate).padStart(7)}   (${String(summary.beatsFilled)} filled, ${String(summary.beatsExpired)} missed)`,
     `Queue departures          ${String(summary.queueDrops).padStart(7)}   (fired / expired / evicted)`,
     '',
     `Wall clock                ${String(ms)} ms   (${(ms / runs).toFixed(2)} ms/run)`,
@@ -41,6 +42,15 @@ function format(
   if (summary.neverFired.length > 0) {
     lines.push('', '## Never-fired events');
     for (const id of summary.neverFired) lines.push(`  ${id}`);
+  }
+  if (summary.unfillableBeatTypes.length > 0) {
+    lines.push(
+      '',
+      '## Beat types no event in this pack can fill',
+      '   Every slot scheduled for one of these can only expire, so the fill rate above is',
+      '   bounded well below 100%. A content gap, not an engine fault.',
+    );
+    for (const type of summary.unfillableBeatTypes) lines.push(`  ${type}`);
   }
   if (summary.turnCapHits > 0) {
     lines.push('', `## Turn cap hit by ${String(summary.turnCapHits)} run(s) — investigate`);

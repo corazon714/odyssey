@@ -1,4 +1,5 @@
 import { type ContentPack } from '../content/content-pack.ts';
+import { dueBeatSlot } from './beat-slots.ts';
 import { type GameEvent } from '../content/game-event.ts';
 import { evaluatePredicate } from '../predicate/evaluate-predicate.ts';
 import { type PredicateContext } from '../predicate/predicate-context.ts';
@@ -72,15 +73,15 @@ export function filterEvent(
     });
   }
 
-  // 3. beat gate. A beat event may only fire into a matching slot, and a non-beat event may
-  //    not take a slot that is due. M6 has no slot consumption yet, so beats are simply
-  //    excluded — M9 turns this into the real gate.
+  // 3. beat gate. A beat event may fire only into an OPEN slot of its own type — open being
+  //    anywhere in [legIndex, legIndex + slackLegs], so a slot that slid is still fillable.
   if (!relax.beatGate && event.priority === 'beat') {
-    const slot = state.route.beatSchedule.find(
-      (s) => s.legIndex === state.route.legIndex && s.status === 'pending',
-    );
-    if (slot === undefined || slot.type !== event.beatType) {
-      return reject('director.reject.beatGate', { event: event.id });
+    const slot = dueBeatSlot(state.route, state.route.legIndex);
+    if (slot === null || slot.type !== event.beatType) {
+      return reject('director.reject.beatGate', {
+        event: event.id,
+        due: slot === null ? 'none' : slot.type,
+      });
     }
   }
 

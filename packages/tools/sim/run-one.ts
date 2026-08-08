@@ -41,6 +41,8 @@ export type SimRun = {
   readonly clamps: number;
   readonly unresolvedThreads: number;
   readonly queueDrops: number;
+  readonly beatsFilled: number;
+  readonly beatsExpired: number;
   readonly turnCapHit: boolean;
   readonly error: string | null;
   readonly digest: string;
@@ -78,6 +80,8 @@ export function runOne(
   let noOutcomeChoices = 0;
   let clamps = created.clamps.length;
   let queueDrops = 0;
+  let beatsFilled = 0;
+  let beatsExpired = 0;
   let turns = 0;
 
   while (state.status !== 'ended' && turns < MAX_TURNS) {
@@ -87,6 +91,8 @@ export function runOne(
     if (!advanced.ok) return blank(seed, route, policyName, `advanceLeg: ${advanced.error.code}`);
     state = advanced.state;
     queueDrops += advanced.queueDrops.length;
+    beatsFilled += advanced.beatsFilled;
+    beatsExpired += advanced.beatsExpired;
 
     const selection = advanced.selection;
     if (selection === null) continue;
@@ -137,6 +143,8 @@ export function runOne(
     clamps,
     unresolvedThreads: unresolvedThreads(state, pack).length,
     queueDrops,
+    beatsFilled,
+    beatsExpired,
     turnCapHit: turns >= MAX_TURNS,
     error: null,
     digest: stateDigest(state),
@@ -166,6 +174,8 @@ function blank(
     clamps: 0,
     unresolvedThreads: 0,
     queueDrops: 0,
+    beatsFilled: 0,
+    beatsExpired: 0,
     turnCapHit: false,
     error,
     digest: '',

@@ -24,6 +24,10 @@ export type SimSummary = {
   readonly turnCapHits: number;
   readonly unresolvedThreads: number;
   readonly queueDrops: number;
+  readonly beatsFilled: number;
+  readonly beatsExpired: number;
+  readonly beatFillRate: number;
+  readonly unfillableBeatTypes: readonly string[];
 };
 
 /**
@@ -61,6 +65,8 @@ export function summarise(runs: readonly SimRun[], pack: ContentPack): SimSummar
   const fallback = usable.reduce((sum, r) => sum + r.fallbackLegs, 0);
   const scheduled = usable.reduce((sum, r) => sum + r.scheduled, 0);
   const queueFires = usable.reduce((sum, r) => sum + r.queueFires, 0);
+  const filled = usable.reduce((sum, r) => sum + r.beatsFilled, 0);
+  const expiredBeats = usable.reduce((sum, r) => sum + r.beatsExpired, 0);
 
   return {
     runs,
@@ -77,6 +83,10 @@ export function summarise(runs: readonly SimRun[], pack: ContentPack): SimSummar
     turnCapHits: runs.filter((r) => r.turnCapHit).length,
     unresolvedThreads: usable.reduce((sum, r) => sum + r.unresolvedThreads, 0),
     queueDrops: usable.reduce((sum, r) => sum + r.queueDrops, 0),
+    beatsFilled: filled,
+    beatsExpired: expiredBeats,
+    beatFillRate: rate(filled, filled + expiredBeats),
+    unfillableBeatTypes: pack.unfillableBeatTypes,
   };
 }
 

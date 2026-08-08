@@ -5,35 +5,68 @@
 
 ---
 
-## Current state: Phase 1 — M0–M8 shipped. M9 next.
+## Current state: Phase 1 — M0–M9 shipped. M10 next.
 
-**The game runs, the director paces it, and consequences survive.** 733 engine tests;
-756 Vitest + 3 Jest total.
+**The game runs, the director paces it, consequences survive, and beats are consumed.**
+776 engine tests; 799 Vitest + 3 Jest total.
 
 ---
 
 ## Next step (ONE task, start here)
 
-**M9 — beat consumption: the gate, sliding, expiry and schedule validation.**
+**M10 — the full sim report and golden runs.**
 
-M7 gave the beat gate a rung on the ladder. M9 makes slots actually get consumed. Generation
-stays out of Phase 1 — leg density needs terrain data and sim tuning — so the engine consumes
-and validates a caller-supplied schedule.
+The last measurement milestone. M11 (versioning) is all that follows.
 
-1. **Mark a slot `filled`** when a beat event fires into it. Nothing does this today, so a slot
-   stays `pending` and can be re-filled on a later leg. `apply-world-effects.ts` already has
-   the `route/beatStatus` op; the loop needs to use it.
-2. **Sliding** — an unfillable slot moves forward up to `slackLegs` rather than being lost. A
-   missed beat is a pacing failure the slot can absorb; firing the wrong event is a coherence
-   failure that cannot be undone. That asymmetry is why the beat gate is rung 1.
-3. **Expiry** — a slot that slid past its slack becomes `expired` and is REPORTED. The sim
-   gains a beat-miss rate: a balance signal, not an error.
-4. **Pack-level validation** — a `beatType` scheduled on a route with no event in the pack that
-   can fill it is a content bug, and should surface at pack build like `danglingRefs` does.
-   `content-pack.test.ts` already asserts the fixture routes cover every beat type the pack can
-   fill; this makes it a product of `createContentPack` rather than a test-only check.
+1. **The engine-spec §6 report in full**: endings distribution, choices picked under 2%,
+   resource trajectories (p10/p50/p90 by leg), flags never set, flags never read. Percentiles
+   use an integer index — no float arithmetic decides a reported statistic.
+2. **`reports/sim-latest.md`** and **`pnpm sim:diff`** against a checked-in
+   `reports/sim-baseline.md`. Note `reports/` is git-ignored AND blocked by
+   `guard-protected-paths.mjs`, so the baseline needs a home outside it — `docs/sim-baseline.md`
+   is the obvious one.
+3. **Golden runs.** `__fixtures__/golden-runs.json` holding
+   `{ seed, contentVersion, choiceSequence, expectedDigest, expectedHistoryKeys }`. Replay must
+   reproduce the digest AND the history-key sequence — a digest alone can be too coarse.
+   **Regeneration behind `ODYSSEY_UPDATE_GOLDEN=1`, never automatic.**
+4. **`it('the digest changes when one resource changes by 1')`** already exists in
+   `state-digest.test.ts` — the golden test needs its own guard that a `contentVersion`
+   mismatch is refused with a typed error rather than tolerated.
 
-Diff the sim against the M8 baseline below.
+The M9 numbers below are the baseline to diff against.
+
+---
+
+## M9 shipped — beat consumption
+
+`src/director/beat-slots.ts` plus a beat-fill metric in the sim. Engine tests 733 → 776.
+
+**Sim delta from the M8 baseline:**
+
+```
+Completion rate             29.9%   (was 30.0%)
+Beat fill rate              47.8%   (1132 filled, 1236 missed)  ← NEW
+Unresolved threads              0
+Queue departures               18
+20,000 runs                 4.8 s
+```
+
+- **`legIndex` never moves.** A slot is open over `[legIndex, legIndex + slackLegs]`, and
+  sliding is a STATUS, not a mutation of the leg. Advancing the leg and decrementing slack
+  reads more naturally right up until you want to report "scheduled for 12, fired at 14" — at
+  which point the original is gone.
+- **A filled slot cannot be re-filled**, which is the defect M9 closes: before slot consumption
+  a beat stayed `pending` forever and could fire again on any later leg in range.
+- **`createContentPack` now reports `unfillableBeatTypes`**, alongside `danglingRefs`. Same
+  class of silent bug: the slot opens, nothing is eligible, it slides, it expires, and the only
+  trace is a beat-miss rate that reads like a balance problem.
+
+**Open finding — the 47.8% fill rate is a fixture gap, not an engine fault.** The fixture routes
+schedule `departure`, `approach` and `ferry_boarding`; the nine-event pack has events for none
+of them, so those slots can only expire. The sim now prints the unfillable types under the
+number so it is self-explaining. Fixing it is content work — either events for those beats or
+routes that do not schedule them — and belongs with the Phase 2 seed corpus, not with a fixture
+built to exercise the engine.
 
 ---
 

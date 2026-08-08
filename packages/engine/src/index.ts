@@ -221,3 +221,11 @@ export { consumePending, expirePending, type ExpireResult } from './queue/expire
 export { rebasePendingEvents, type Rebase, type RebaseResult } from './queue/rebase-pending.ts';
 export { schedulePending } from './queue/schedule-pending.ts';
 export { unresolvedThreads, type UnresolvedThread } from './queue/unresolved-threads.ts';
+
+export {
+  advanceBeatSchedule,
+  dueBeatSlot,
+  isSlotOpen,
+  unfillableBeats,
+  type BeatScheduleUpdate,
+} from './director/beat-slots.ts';

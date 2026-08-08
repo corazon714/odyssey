@@ -2,7 +2,7 @@ import { type EventId, type ItemId, type NpcId, type TraitId } from '../ids/cont
 import { type ContentRefs } from '../predicate/predicate-context.ts';
 import { canonicalJson } from '../state/canonical-json.ts';
 import { digestOf } from '../state/state-digest.ts';
-import { type BeatType } from './beat-type.ts';
+import { BEAT_TYPES, type BeatType } from './beat-type.ts';
 import { collectRefs, type ContentRef } from './collect-refs.ts';
 import { type EventPriority } from './event-priority.ts';
 import { type GameEvent } from './game-event.ts';
@@ -49,6 +49,8 @@ export type ContentPack = {
    */
   readonly danglingRefs: readonly ContentRef[];
   readonly duplicateIds: readonly EventId[];
+  /** Beat types no event in this pack can fill. A slot for one of these can only expire. */
+  readonly unfillableBeatTypes: readonly BeatType[];
 };
 
 export function createContentPack(
@@ -109,6 +111,7 @@ export function createContentPack(
     refs,
     danglingRefs,
     duplicateIds,
+    unfillableBeatTypes: BEAT_TYPES.filter((type) => !byBeatType.has(type)),
   };
 }
 
