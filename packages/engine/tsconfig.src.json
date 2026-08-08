@@ -1,0 +1,16 @@
+{
+  // CLAUDE.md rule 2.2 enforced at the type level, independently of ESLint.
+  //
+  //   lib without "DOM"  ->  `document`, `window`, `fetch` do not typecheck
+  //   types: []          ->  `process`, `Buffer`, `__dirname` do not typecheck
+  //
+  // Tests are excluded deliberately: the purity test has to read the filesystem to
+  // inspect the engine's own source, which is the one legitimate use of node APIs in
+  // this package. `pnpm typecheck` runs this project first, then the wider one.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "src/**/__tests__/**"]
+}

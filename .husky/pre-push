@@ -1,0 +1,4 @@
+# Typecheck is fast and catches the class of breakage lint-staged cannot: a change in
+# one package that only fails to compile from another. Tests run in CI rather than here
+# so pushing stays quick.
+pnpm typecheck

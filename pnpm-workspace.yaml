@@ -1,0 +1,77 @@
+packages:
+  - apps/*
+  - packages/*
+
+# React Native's native module resolution does not survive pnpm's default isolated
+# node_modules. pnpm's own docs: "A React Native project will most probably only work
+# if you use a hoisted node_modules." Set from the start rather than discovered later
+# via unexplainable codegen failures. See docs/adr/0002.
+nodeLinker: hoisted
+
+# pnpm 11 reads settings from THIS file. `.npmrc` now carries auth/registry only, and
+# the `pnpm` field in package.json is no longer read at all.
+
+# Auto-fetch the pinned packageManager version instead of erroring on mismatch.
+pmOnFail: download
+
+# Single source of truth for every shared version, so the four workspace packages
+# cannot drift. Referenced as "catalog:" in each package.json.
+catalog:
+  # --- Toolchain -----------------------------------------------------------------
+  # TypeScript is pinned to the 6.0 line deliberately. TS 7.0.2 is npm `latest` but
+  # ships no stable compiler API (main: null, no tsserver) and typescript-eslint
+  # peers `<6.1.0` with no v9 planned. There is no 6.1.x, so 6.0.3 is the ceiling.
+  typescript: ~6.0.3
+  # ESLint is pinned to 9 deliberately: eslint-config-expo's plugin tree caps at ^9,
+  # and ESLint 10's per-file config lookup lets a nested config silently shadow the
+  # root determinism rules. Both documented in docs/adr/0002.
+  eslint: ~9.39.5
+  '@eslint/js': ~9.39.5
+  typescript-eslint: ^8.66.0
+  eslint-config-expo: ~57.0.1
+  globals: ^17.9.0
+  prettier: ^3.9.6
+  husky: ^9.1.7
+  lint-staged: ^17.3.0
+  '@types/node': ^24.0.0
+
+  # --- Test ----------------------------------------------------------------------
+  vitest: ^4.1.10
+  '@vitest/coverage-v8': ^4.1.10
+  # Jest is pinned to the 29 line, NOT npm `latest` (30.4.2), because Expo SDK 57's test
+  # preset is built on it: jest-expo@57.0.3 and @react-native/jest-preset@0.86.2 both
+  # depend on jest-mock/@jest/globals/jest-environment-node ^29.x. With nodeLinker:
+  # hoisted there is exactly one copy of each package name at the top of node_modules,
+  # so mixing in jest 30 put jest-runtime@30 next to jest-mock@29 and every suite died
+  # with "this._moduleMocker.clearMocksOnScope is not a function". CLAUDE.md 4: the SDK
+  # wins. Revisit when jest-expo moves to jest 30.
+  jest: ^29.7.0
+  '@jest/globals': ^29.7.0
+  jest-expo: ~57.0.3
+  '@testing-library/react-native': ^14.0.1
+  # RNTL 14 peers `test-renderer: ^1.0.0` — the standalone package. NOT
+  # react-test-renderer, which React 19 deprecated.
+  test-renderer: ^1.2.0
+
+  # --- Runtime -------------------------------------------------------------------
+  zod: ^4.4.3
+
+# Explicitly reviewed build scripts. strictDepBuilds defaults to true in pnpm 11, so
+# any dependency with an unreviewed postinstall fails the install until listed here.
+allowBuilds:
+  esbuild: true
+  # Native (napi-rs) module resolver pulled in transitively by eslint-config-expo's
+  # import plugin. Its postinstall links the correct platform binary; without it,
+  # import resolution in the Expo lint layer fails.
+  unrs-resolver: true
+
+minimumReleaseAgeExclude:
+  - '@expo/cli@57.0.13'
+  - '@expo/config-plugins@57.0.7'
+  - babel-preset-expo@57.0.6
+  - expo-asset@57.0.9
+  - expo-file-system@57.0.2
+  - expo-modules-core@57.0.10
+  - expo-router@57.0.11
+  - expo-symbols@57.0.2
+  - expo@57.0.11

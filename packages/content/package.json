@@ -1,0 +1,24 @@
+{
+  "name": "@odyssey/content",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Event, geo, i18n and image content. Data, not code (CLAUDE.md 2.6).",
+  "type": "module",
+  "main": "./schema/index.ts",
+  "types": "./schema/index.ts",
+  "exports": {
+    ".": "./schema/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  }
+}

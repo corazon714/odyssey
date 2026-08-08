@@ -1,0 +1,25 @@
+{
+  // Extends Expo's base rather than the repo's tsconfig.base.json: the app needs
+  // jsx: react-jsx, lib DOM, and Expo's generated route types (.expo/types), none of
+  // which belong in the pure-TypeScript packages. The strict flags from CLAUDE.md 6 are
+  // repeated here so the app is held to the same standard.
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "useUnknownInCatchVariables": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  "exclude": ["node_modules", "ios", "android", ".expo"]
+}

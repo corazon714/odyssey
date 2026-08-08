@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Reproducible installs: no lockfile drift, no interactive build-script prompts.
+  CI: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # pnpm/action-setup MUST run before setup-node. setup-node's `cache: pnpm` shells
+      # out to pnpm to locate the store; with the order reversed the cache step fails
+      # because pnpm is not yet on PATH.
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  # Executable proof of CLAUDE.md rule 2.2: the engine must run under plain Node so it
+  # can be simulated 20,000 times.
+  #
+  # Note on what this does NOT do. The obvious check — install only the engine and assert
+  # react-native is absent from node_modules — does not work here: with
+  # `nodeLinker: hoisted`, `pnpm install --filter @odyssey/engine` still materialises the
+  # whole workspace closure into the flat root node_modules. Verified, not assumed. So the
+  # proof is made positively instead: execute the engine under a bare Node process with no
+  # bundler, no Babel and no Metro, and let the engine's own manifest/source scan
+  # (src/__tests__/purity.test.ts) cover the dependency question.
+  engine-under-plain-node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Execute the engine entry under bare Node (no bundler, no transpile step)
+        # Node strips TypeScript types natively; if the engine ever imports React Native
+        # or touches a DOM/native global at module scope, this fails here with a plain
+        # module-resolution or ReferenceError.
+        run: node packages/engine/src/index.ts
+      - run: pnpm --filter @odyssey/engine test
+
+  # Development happens on Windows. Monorepo path-separator and CRLF bugs surface on no
+  # other runner, and finding them here is much cheaper than finding them locally.
+  typecheck-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
