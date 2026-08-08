@@ -48,15 +48,95 @@ the seed corpus.
 
 Baseline regenerated; `pnpm sim:diff -- --runs=2000` reports no change. 863 Vitest + 3 Jest.
 
-### Next: M2A.1 — schema foundations
+### M2A.1 — schema foundations + the conformance harness. Four commits.
 
-**Run the three experiments first**, before writing eleven schemas against an unproven idiom:
-(a) does `Equals<z.infer<z.intersection(A,B)>, A & B>` hold under TS 6.0.3; (b) are
-`Awaited<EventId>` / `NoUndefined<EventId>` identity-equal to `EventId`; (c) **the load-bearing
-one** — can Zod 4.4.3's getter recursion express the terse→canonical `Predicate` transform
-_without_ a `z.ZodType` annotation? If not, the ADR 0009 assertion is **vacuous** for `Predicate`
-and `Effect` (and transitively for `GameEvent`/`Choice`/`Outcome`), and the L1' input-side
-assertion described in the plan is what has to carry it.
+**The three experiments were run first, and the load-bearing one came back NO.** Zod 4.4.3
+cannot infer a recursive transforming schema (TS7022), and the annotation that fixes it
+(`z.ZodType<Predicate>`) makes ADR 0009's assertion a **tautology** — `z.infer` of an annotated
+schema IS the annotation, so it passes on a schema that parses nothing, and because `Equals` is
+deep it poisons `GameEvent`/`Choice`/`Outcome` too: five of twelve, including the four that
+matter. Fix: annotate **only the recursive back-reference**, leave the union inferred.
+
+The anti-vacuity guard is better than the one the plan proposed. Hand-mirroring a terse input
+type is brittle (the readonly boundary differs between annotated and inferred arms). What works
+is `Equals<z.input<S>, unknown> = false` — an annotated schema's input collapses to `unknown`.
+
+**The harness, four layers, each verified failing on a deliberate violation:**
+
+| Layer                                     | Catches                          | Proven by                                          |
+| ----------------------------------------- | -------------------------------- | -------------------------------------------------- |
+| L1 `Equals<z.infer<S>, T>`                | shape drift                      | a new field on `GameEvent` → TS2741 at the builder |
+| L1' `Equals<z.input<S>, unknown> = false` | annotating a schema into vacuity | annotating `effectSchema` → red                    |
+| L2 runtime barrel enumeration             | a type with **no** schema        | removing `BEAT_TYPES` → named                      |
+| L3 27-case terse→canonical corpus         | semantics `Equals` is blind to   | `gte`→`lte` → 7 cases fail                         |
+
+Other findings worth keeping:
+
+- **`.default()` does not fire on `null`,** and YAML `weather:` parses as null. `z.array().default([])`
+  would leave the field null at runtime while every type assertion passed. Every default is
+  `.nullish().transform(v => v ?? …)`.
+- **`.brand()` is unusable** (Zod's symbol, not the engine's); `.readonly()` on a branded scalar
+  yields `Readonly<EventId>`. `z.string().transform(engineCtor)` is the only idiom.
+- **`z.intersection` DOES infer identity-equal** — my plan's stated reason for flattening
+  `SkillCheck` was wrong. The real reason: `.strictObject` on either half rejects the other
+  half's keys, so an intersection can never be sealed.
+- All settled in `packages/content/__tests__/zod-idioms.test.ts`, which is the regression guard
+  for the next Zod upgrade.
+
+**Authoring form is 36% of canonical** (10.3KB/496 lines vs 28.3KB/1182) and **no event file
+contains a text field at all** — keys are derived from ids, so rule 2.4 is true by construction.
+Two escape hatches the fixtures forced: explicit `textVariants` (`out.onward_again` reads better
+than `out.onward.v2`) and explicit `labelKey` (a choice with id `fix_it_yourself` keyed
+`choice.fix`).
+
+### M2A.2 — declaration registries. One commit.
+
+`flags` `items` `npcs` `traits` `endings` + schemas + loader, all in `packages/content`.
+
+- **Deviated from the plan: `ContentRegistries` was NOT widened.** ADR 0007 §4 says a missing
+  flag is deliberately not `unknown-ref`; endings are the same. Widening would contradict that
+  ADR and move `contentVersion` for no behavioural gain. ADR 0009 §4 already assigns the walk to
+  `content-lint`, so the cross-reference checks live in the content package.
+- **The liability rule is decidable now.** "Is this outcome bad?" is not statically checkable, so
+  each item names the events where carrying it hurts and the schema refuses an empty list.
+- **The reverse checks caught two of my own mistakes**: I copied `ration` and `light_sleeper`
+  from the engine fixture's registry block without checking any event reads them. Neither does,
+  and `ration` had a liability I had annotated as unbacked. Both removed rather than explained.
+
+`pnpm sim:diff` reports no change for both milestones. 950 Vitest + 3 Jest.
+
+### Next: M2A.3 — check tags, modifier registry, resolution pipeline
+
+**⚠ This is the first milestone that moves sim numbers.** M2A.0–M2A.2 were all
+`sim:diff`-neutral; from here the baseline is regenerated per milestone, one reason each.
+
+The plan is at `~/.claude/plans/phase-2a-plan-mode-precious-elephant.md`. The parts that will
+bite, in order:
+
+1. **A correlated-randomness bug is live today.** `effects/modifier-source.ts:45` calls
+   `evaluatePredicate(modifier.when, ctx)` with no `path`, so every `when` evaluates at the
+   default root `'r'` — meaning **every `{chance}` gate in every modifier, in one event on one
+   leg, shares one address and returns one answer**. Harmless with Phase 1's single source;
+   catastrophic with a registry. Fix with a content-addressed path (`m:<source>:<modifier>`),
+   never positional — positional resurrects ADR 0005 §2.
+2. **`contentVersion` must cover the registry**, so put it INSIDE `ContentRegistries` rather
+   than as a sibling field on `ContentPack`. `contentVersion()` hashes
+   `canonicalJson({ events, registries })`; a sibling field would leave `pack.version` unmoved
+   when `modifiers.yaml` changes, `replayRun`'s refusal would never fire, and every golden run
+   would silently replay against different modifier maths with a green suite. Add the test that
+   asserts the version moves when one `delta` changes by 1.
+3. **DR must be computed once over the tail sum**, not per entry: `trunc(delta*3/5)` per entry
+   makes four `+1`s cost `+3` — every modifier past the third is free in exactly the
+   many-small-modifiers case DR exists for.
+4. **Clamp attribution by largest remainder** so the chips always sum to the shown total
+   (pillar 2). Reject float-proportional and trim-smallest-first; the latter deletes chips, and
+   a modifier that vanished is unreconstructable.
+5. **Widen `collectFlagUsage` and `collectRefs` to walk the registry.** Both walk `events` only,
+   so a flag read only by a registry modifier reports as `writtenNeverRead` — a false positive
+   on the most valuable line in the sim report.
+6. Fix the three phantom `scoring-order.test.ts` references (`director/score-event.ts:12`,
+   `director/scoring-factors.ts:108`, this file above) — the pinning actually lives in
+   `director/__tests__/scoring.test.ts`.
 
 ---
 
