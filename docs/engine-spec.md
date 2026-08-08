@@ -296,3 +296,112 @@ money  leg5: 12/98/340   leg15: 0/31/210   leg25: 0/8/160
 
 Bu raporun kendisi bir spec. Claude Code'a "şu formatta rapor üret" demek, "iyi bir rapor üret"
 demekten çok daha iyi sonuç verir.
+
+---
+
+# PART II — AS BUILT (Phase 1, 2026-08-08)
+
+> Everything above this line is the ORIGINAL SPEC and is left unedited, including where the
+> implementation diverged from it. This part is written **from the code**, not from the plan,
+> and every list below was printed out of the built barrel rather than transcribed.
+>
+> Where Part I and Part II disagree, **Part II is what runs**. Each divergence names the ADR
+> that authorised it. `packages/content/schema/` is still empty (Phase 2); until it exists the
+> engine's TypeScript types are the only authority on shape — see ADR 0009.
+
+## II.1 Vocabularies, as exported
+
+```
+RNG_STREAMS       eventPick · outcomeRoll · skillCheck · npcGen · encounterFlavor
+                  worldTick · routeGen · chanceGate            ← 8, spec §5 listed 7
+EFFECT_OPS        resource · skill · flag · clearFlag · relationship · advanceTime
+                  scheduleEvent · unlockEnding · item · transport · document · route
+                                                                ← 12, spec implied 11
+EVENT_PRIORITIES  filler · normal · beat · critical
+BEAT_TYPES        departure · border_crossing · ferry_boarding · midpoint_crisis
+                  approach · finale
+LOCATION_TYPES    border_crossing · checkpoint · city · town · village · roadside
+                  rest_stop · station · port · wilderness
+RESOURCE_KEYS     money · energy · health · morale · hunger · hygiene · heat · reputation
+SKILL_KEYS        negotiation · stealth · mechanics · streetwise · endurance
+TRANSPORT_MODES   foot · bus · train · car · truck · ferry · rideshare
+ROUTE_PROFILES    fastest · cheapest · safest · scenic · illicit
+RUN_STATUSES      preparing · travelling · ended
+PREDICATE kinds   27, kind-tagged (ADR 0007)
+ERROR CODES       11, all RETURNED — the engine never throws
+```
+
+`SAVE_VERSION = 1` · `CHECK_DIE_SIDES = 20` · `MAX_PENDING = 32` / 3 per event · 159 barrel
+exports.
+
+## II.2 Divergences from Part I
+
+| Part I says | As built | Why |
+| --- | --- | --- |
+| 7 RNG streams | **8** — adds `chanceGate` | A `{chance:p}` drawing from `eventPick` would make the draw COUNT depend on pool size, so adding one event would shift every later draw. ADR 0005 §2 |
+| `rngCursors` over a stateful PRNG | **Counter-based**: `drawWord(streamKey, counter)`, murmur3 x86_32, no BigInt | Stream isolation becomes structural, not probabilistic. Hermes-safe, published vectors. ADR 0005 §1 |
+| `tensionBand` gates eligibility | **Soft scoring factor**, `[0.25, 1.50]` | Hard-gating a continuous signal is the fastest way to blow §6's own <2% empty-pool target. ADR 0005 §5 |
+| Terse `{resource:money, gte:30}` predicates | **Canonical `kind`-tagged union** in the engine; content normalises | Key-as-discriminant cannot narrow in TypeScript. ADR 0007 §1 |
+| `requires?`, `payload?`, `condition?` optional | **`\| null`**, no optional properties in state | `exactOptionalPropertyTypes` + `undefined` does not survive `JSON.stringify`. ADR 0006 §1 |
+| `resolveChoice(state, choiceId, rng)` | **`resolveChoice(state, pack, choiceId)`** — rng derived from state | An injected generator whose cursors are not in state breaks replay. ADR 0005 |
+| — | **`RunState.presentation`** added | `resolveChoice` needs to know what was presented; without it engine state leaks to the UI. ADR 0006 §4 |
+| — | **`RouteState.legLocations`** added | `context.locationTypes` is unevaluable without per-leg location. Found at M6 |
+| Schemas are the single source of truth | **Engine owns types; schema owns semantics**, held equal by a bidirectional assertion | `z.infer` would invert the layering. ADR 0009 §1, CLAUDE.md §9 amended |
+
+## II.3 The director, as implemented
+
+```
+score = weight × contextAffinity × tensionFit × novelty × recency × tagSaturation × priorityBoost
+pickWeight = clampInt(round(score), 1, 1_000_000)
+```
+
+**The multiplication order is part of the replay contract** — float multiplication is not
+associative, so reordering changes `Math.round`, which changes the pick. `SCORING_FACTORS`
+declares it as data and a test folds over it. **`pickWeight >= 1` is the invariant** separating
+filtering from scoring: the product's lower bound is ~0.000125 and rounds to zero.
+
+Relaxation ladder — 6 rungs, then filler (6), then `uneventful` (7):
+
+```
+0 nothing · 1 beatGate · 2 exclusiveGroup · 3 softContext · 4 cooldown · 5 locationTypes
+```
+
+**`requires` and `maxOccurrences` appear on NO rung.** Asserted across all six, plus a third
+test proving the ladder does relax what it should — otherwise the first two pass vacuously.
+
+## II.4 What Part I promised that Phase 1 does NOT ship
+
+- **Route generation** — k-shortest paths, candidate routes, `legCountFor`. The route is
+  caller-supplied via `RunInit.route`, including `legCount`, `beatSchedule` and `legLocations`.
+- **Beat schedule GENERATION** — the engine consumes and validates a supplied schedule.
+- **The four registries** (`modifiers`, `complications`, `universal-choices`, `quirks`) — the
+  two integration SEAMS ship empty and tested; the content does not exist.
+- **`packages/content`** — no schemas, no YAML, no seed events. Phase 1 fixtures are JSON under
+  `packages/engine/src/__tests__/__fixtures__/`.
+
+## II.5 §6 report — what the sim actually prints
+
+Implemented in `packages/tools/sim/format-report.ts`, verified against 20,000 runs. Adds four
+lines Part I did not specify, each because it made a real bug visible:
+
+- **Beat fill rate** — routes can schedule beat types no event fills
+- **Unresolved threads** — promises a run ended owing (found a queue leak at M8)
+- **Flags written-but-never-read / read-but-never-written** — the second found `wanted`, a gate
+  that can never open
+- **Dangling content references** — with the event each was found in
+
+`pnpm sim:diff` compares against `docs/sim-baseline.md`, which is committed and Prettier-ignored
+so the fixed-width report is not reflowed.
+
+## II.6 Known gaps, carried into Phase 2 deliberately
+
+1. **Four engine mechanisms have never executed in any run** — skill-check modifier gating,
+   outcome `requires` + `unlockEnding`, the `passport` predicate, and **`hiddenUnless`** (one
+   instance in the pack, unreachable). See `docs/PROGRESS.md`.
+2. **Determinism is proven on V8 only.** Golden runs will not catch a Hermes divergence until
+   something runs them there.
+3. **`worldTick`'s drift constants are structurally wrong**, not merely untuned: at 20,000 runs
+   health's p10/p50/p90 collapse to `0/1/1` together, so the dominant failure mode is
+   unaffected by player choice.
+4. **`CHECK_DIE_SIDES = 20` is a placeholder.** Part I shows `dc: 5` with ±2–3 modifiers; a d20
+   makes each modifier worth 5% while the skill swamps them.
