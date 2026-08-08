@@ -1,0 +1,15 @@
+{
+  // The project ESLint and the editor resolve for this package: it must cover EVERY
+  // file, tests included, or typescript-eslint's project service reports them as
+  // "not found by the project service" and type-aware linting silently stops.
+  //
+  // The hard purity guarantee lives in tsconfig.src.json, which is what `pnpm typecheck`
+  // runs against src/ proper. Note `lib` still omits "DOM" here, so `document` and
+  // `window` fail to typecheck everywhere in this package regardless.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "vitest.config.ts"]
+}
