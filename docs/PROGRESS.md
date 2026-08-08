@@ -80,8 +80,23 @@ layer 1 for a whole subtree.
 Windows `typecheck` + `test` job. Actions pinned to `checkout@v7`, `setup-node@v7`,
 `pnpm/action-setup@v6`, with action-setup **before** setup-node (the cache footgun).
 
-**CI has never actually run** — nothing has been pushed. The workflow is unverified against
-a real runner.
+**CI is green on a real runner.** `dev` was pushed and
+[PR #1](https://github.com/corazon714/odyssey/pull/1) opened; all 5 jobs passed on both the
+`push` and `pull_request` runs (10 checks total). Run
+[31242944764](https://github.com/corazon714/odyssey/actions/runs/31242944764).
+
+| Job                       | Result       |
+| ------------------------- | ------------ |
+| `typecheck`               | pass (30s)   |
+| `lint`                    | pass (37s)   |
+| `test`                    | pass (29s)   |
+| `engine-under-plain-node` | pass (38s)   |
+| `typecheck-windows`       | pass (1m23s) |
+
+Notably `typecheck-windows` and `engine-under-plain-node` both passed first time — the
+Windows job proves no path-separator or CRLF assumptions leaked in, and the plain-Node job
+is the executable proof of `CLAUDE.md` rule 2.2. `--frozen-lockfile` also held, so the
+lockfile is not drifting.
 
 ### Claude Code extension layer (`.claude/`)
 
@@ -136,8 +151,8 @@ markers exist, and the working tree is clean apart from the commits made this se
 
 The honest gaps are _unverified_, not _broken_:
 
-- **CI has never executed.** `.github/workflows/ci.yml` has not run on a real runner. First
-  push will be the first test of it.
+- ~~CI has never executed.~~ **Resolved** — all 5 jobs green on GitHub Actions, including
+  the Windows and plain-Node jobs. See the CI section above.
 - **The app has never run on a device or simulator.** `expo export` bundles cleanly on both
   platforms (android 1226 modules, ios 1097) and `pnpm dev` starts Metro on port 8081 — that
   is the real test of pnpm's hoisted `node_modules` against Metro resolution. But no
@@ -192,9 +207,10 @@ All four must be green before writing anything. `docs/engine-spec.md` §5 is the
 1. **PRNG algorithm.** I would use a small, well-understood counter-based generator
    (SplitMix64 or PCG-32) implemented in pure TS over `BigInt`/`Uint32Array`, so a run is
    reproducible across JS engines. Any preference, or shall I pick and record it in an ADR?
-2. **Push and CI.** Nothing has been pushed, so CI is unverified. Do you want the `dev`
-   branch pushed so the workflow gets its first real run? (`git push` is `ask`, not
-   pre-approved, so I will not do it unprompted.)
+2. ~~Push and CI.~~ **Resolved** — `dev` pushed, PR #1 open, CI green on all 5 jobs. The
+   live question that replaces it: **does Phase 1 continue on `dev`, or does PR #1 merge to
+   `main` first?** The engine work is large enough that stacking it on an unmerged `dev`
+   will make PR #1 hard to review.
 3. **Rive vs Lottie.** `docs/adr/0004` defaults to Lottie because it is in Expo SDK 57's
    `bundledNativeModules` and Rive is not — Rive additionally forces a hand-pinned
    `react-native-nitro-modules@0.35.10` if MMKV is also used. Confirm Lottie as the default,
