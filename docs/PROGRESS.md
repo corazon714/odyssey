@@ -5,10 +5,34 @@
 
 ---
 
-## Current state: Phase 1 — M0–M10 shipped. M11 (versioning) is the last milestone.
+## Current state: **PHASE 1 COMPLETE.** M0–M11 shipped.
 
-**Golden-run replay is live.** 814 Vitest + 3 Jest. `pnpm sim` writes the full engine-spec §6
-report; `pnpm sim:diff` compares it against `docs/sim-baseline.md`.
+851 Vitest + 3 Jest. The engine plays a full run, replays it bit-for-bit, reports on itself,
+and migrates its own saves. `pnpm sim -- --runs=1000` completes a thousand journeys; every
+number is diffable against `docs/sim-baseline.md`.
+
+**M11 moved no sim numbers, which is the point** — versioning is machinery around the loop,
+not inside it. `pnpm sim:diff` reports no change.
+
+### What Phase 1 built
+
+| Milestone | Delivers                                                           |
+| --------- | ------------------------------------------------------------------ |
+| M0        | `.ts` module specifiers; cross-engine purity guard                 |
+| M1        | Counter-based RNG, eight substreams                                |
+| M2        | `RunState`, `createRunState`, `stateDigest`                        |
+| M3        | 27 predicate kinds + the frozen reason trace                       |
+| M4        | 12 effect ops, pure applier, `ModifierSource` seam                 |
+| M5        | Content model, `createContentPack`, fixtures                       |
+| M6        | The walking skeleton — a run that runs                             |
+| M7        | Six scoring factors, seven-rung ladder, tension, complication seam |
+| M8        | Consequence queue: caps, eviction, expiry, rebasing                |
+| M9        | Beat consumption: fill, slide, expire                              |
+| M10       | Golden-run replay, full engine-spec §6 report, `sim:diff`          |
+| M11       | Save migration ladder, shape guard, content reconciliation         |
+
+**Both Phase 2 seams ship empty and tested as seams:** `ModifierSource` (M4) and the
+complication hook (M7). Each has a test that appends a stub and asserts it reaches the output.
 
 ### What M10's instruments found, all at once
 
@@ -27,6 +51,29 @@ They are recorded rather than tuned away: the fixture pack exists to exercise th
 balancing against nine events would be fitting to a fixture. Revisit with the Phase 2 seed
 corpus.
 
+### ⚠ UNTESTED ENGINE SURFACE — carried into Phase 2 deliberately
+
+Findings 1–3 above are not balance questions. They are **coverage gaps**, and the distinction
+was missed when they were first recorded. Four engine mechanisms have **never executed in any
+of the 2,000 simulated runs**, because the fixture cannot reach them:
+
+| Mechanism                                   | Why unreachable in the fixture                                |
+| ------------------------------------------- | ------------------------------------------------------------- |
+| Skill-check modifier gating                 | `check.modifier.wanted` — the flag is never set by any effect |
+| Outcome `requires` + `unlockEnding`         | `out.flagged_in_system` gates on `wanted`                     |
+| The `passport` predicate (all three fields) | No fixture scenario grants a passport                         |
+| **`hiddenUnless`**                          | `turn_back` needs `heat >= 6`; observed runs peak at 3        |
+
+`hiddenUnless` is the sharpest: it has **exactly one instance in the whole pack**, and it is
+dead — so engine-spec §2's "reward for state" mechanism has never run inside the loop. Unit
+tests cover these paths in isolation; the golden runs and the sim corpus do not touch them.
+
+**Decision (2026-08-08): accepted as a known limitation and carried to Phase 2.** Closing it is
+content work — grant a passport on one route, add an effect that sets `wanted`, let heat reach
+6 — and belongs with the seed corpus rather than with a fixture built for the engine. **When
+that corpus lands, verify these four paths appear in the sim before treating the coverage as
+complete.**
+
 ---
 
 ## Superseded — current state before M10
@@ -38,7 +85,44 @@ corpus.
 
 ## Next step (ONE task, start here)
 
-**M11 — save versioning and content reconciliation. The last Phase 1 milestone.**
+**Phase 1 is done. Before Phase 2 starts, three things need a human decision.**
+
+1. **Push and open a PR.** 17 commits sit on local `dev`, unpushed. **The `sim-smoke` CI job
+   has never run on a real runner** — it is the only Phase 1 addition with no green build
+   behind it.
+2. **Close the untested engine surface** (see the ⚠ section above). Four mechanisms have never
+   executed in a run, `hiddenUnless` among them. Accepted deliberately, but it needs doing with
+   the seed corpus rather than being forgotten.
+3. **Hermes.** Determinism is proven on V8 only — Linux and Windows in CI. Golden runs will not
+   catch a Hermes divergence until something runs them there. Named as a Phase 2 gap since M1.
+
+Then Phase 2, roughly: `packages/content` schemas + the terse→canonical Zod transform, the 12
+seed events, i18n wiring, the four registries, persistence, and route generation.
+
+---
+
+## M11 shipped — save versioning and content reconciliation
+
+`src/migrate/`. Engine tests 814 → 851. **No sim numbers moved.**
+
+- **`MIGRATIONS` is empty, and that is correct** rather than an omission: `SAVE_VERSION` is 1,
+  so no save format has ever been superseded. Inventing a fake schema change to exercise the
+  machinery would put a lie in the ladder. It is proven against a SYNTHETIC list instead, which
+  tests chaining, ordering and gap detection without pretending history happened.
+- **The fixture-completeness meta-test** is what makes the ladder enforceable: it fails the
+  moment someone bumps `SAVE_VERSION` without adding a fixture, in CI rather than on a device.
+- **A gap in the ladder is a distinct error from a corrupt save** — one is a build defect, the
+  other is a bad file, and they need different fixes.
+- **`isRunStateShape` checks the rng cursors exhaustively** and everything else shallowly,
+  because a missing cursor is silently catastrophic (every draw reads `undefined` → NaN) while
+  a malformed history entry is merely wrong.
+- **`reconcileContent` TOLERATES a `contentVersion` mismatch where `replayRun` REFUSES one.**
+  Both are correct: content ships in every app update, so refusing would delete in-progress
+  runs; but a tolerant replay would prove nothing about determinism.
+
+---
+
+## Superseded — M11 brief
 
 The two version axes from ADR 0006 §Consequences, with opposite policies:
 

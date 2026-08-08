@@ -237,3 +237,9 @@ export {
 } from './director/beat-slots.ts';
 
 export { replayRun, type ReplayResult } from './loop/replay-run.ts';
+
+export { type Migration } from './migrate/migration.ts';
+export { MIGRATIONS } from './migrate/migrations.ts';
+export { isRunStateShape } from './migrate/run-state-shape.ts';
+export { migrateSave, type MigrateResult } from './migrate/migrate-save.ts';
+export { reconcileContent, type ContentReconciliation } from './migrate/reconcile-content.ts';
