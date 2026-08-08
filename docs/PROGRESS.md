@@ -105,7 +105,44 @@ than `out.onward.v2`) and explicit `labelKey` (a choice with id `fix_it_yourself
 
 `pnpm sim:diff` reports no change for both milestones. 950 Vitest + 3 Jest.
 
-### Next: M2A.3 — check tags, modifier registry, resolution pipeline
+### M2A.3 — check tags, modifier registry, pipeline. `docs/adr/0015`.
+
+- **A correlated-randomness bug was live.** `modifier-source.ts` called `evaluatePredicate`
+  with no `path`, so every `{chance}` gate in every modifier, in one event on one leg, shared
+  one RNG address and returned one answer. Both paths are now content-addressed.
+- **DR is computed once over the tail sum, and rounds half-up.** Per-entry `trunc(d×3/5)` makes
+  four `+1`s and eight `+1`s both total `+3`; a test then caught that truncation still zeroes a
+  single `+1`.
+- **Clamp attributes by largest remainder** so chips sum to the total exactly (pillar 2).
+- 18 tags: dropped `border` (a location — replaced by the `locationType` predicate kind, the
+  28th), added `bribery`/`documents`/`search`/`language`.
+- Registry lives INSIDE `ContentRegistries` so `contentVersion` covers it.
+- **`sim:diff` no longer ignores the report header** — a `contentVersion` change was invisible.
+
+### M2A.4 — three-tier money, first real migration. `docs/adr/0016`.
+
+- `money` → `cash`, plus `bank`. `SAVE_VERSION` 2. **`MIGRATIONS` is no longer empty.**
+- **The migration is not a field rename**: `key: 'money'` is persisted inside
+  `pendingEvents[].requires`, so the predicate tree is rewritten recursively. A _flag_ named
+  `money` is left alone; `history` is not rewritten at all.
+- Closed a NaN hazard: `isRunStateShape` checked `resources` only as an object.
+- Sim delta: two lines, neither a number.
+
+### M2A.5 — container inventory. `docs/adr/0017`. **← second review gate**
+
+- Four containers; `SAVE_VERSION` 3. Documents record their container; **visas deliberately do
+  not** (a visa is a stamp in the passport).
+- **Fixed the predicate-sums / applier-first-matches divergence**, which containers made
+  reachable: the player paid less than the price they were shown, silently.
+- `isRunStateShape`'s `inventory` array check moved in the same commit — otherwise every save
+  becomes unloadable with the error blaming the migration.
+- **`searchContainer` is deferred and named as a gap**: the `search` check tag has registry
+  rows and no caller. The data (searchDC, concealability) exists and is inert until 2B.
+
+1029 Vitest + 3 Jest. Sim delta for M2A.3/4/5 is `contentVersion` only — no behavioural number
+has moved since M2A.0.
+
+### Next: M2A.6 — `pnpm content:lint`
 
 **⚠ This is the first milestone that moves sim numbers.** M2A.0–M2A.2 were all
 `sim:diff`-neutral; from here the baseline is regenerated per milestone, one reason each.
