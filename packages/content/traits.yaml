@@ -1,0 +1,10 @@
+# Declared traits. Permanent modifiers granted by preparation choices (CLAUDE.md §9).
+#
+# Only traits the fixture events reference. `light_sleeper` appears in the engine fixture's
+# own registry block but no event reads it — the two lists are different things, and this one
+# declares what content may reference rather than what `ContentRefs` will answer for.
+
+- id: smooth_talker
+  description: Reads a room quickly. Helps wherever persuasion rather than force is the tool.
+  category: social
+  tags: [social, negotiation]

@@ -1,0 +1,35 @@
+# Declared items.
+#
+# THE LIABILITY RULE. Every item names at least one event where CARRYING it hurts. That is
+# not decoration: an item that is purely good is not an item, it is a number, and the schema
+# refuses an empty list. "Is this outcome bad?" is not statically decidable, so the judgement
+# sits here with the author and `content:lint` checks what it can — that the events exist and
+# that they really do read the item.
+#
+# Only items the fixture events actually reference are declared. `ration` appears in the
+# engine fixture's own registry block but no event reads it, and declaring it here would have
+# meant inventing a liability for an item nothing can be liable for.
+
+- id: cash_belt
+  description: Holds cash close. Harder to pickpocket, and obvious to anyone who pats you down.
+  category: carry
+  size: 1
+  concealability: 3
+  legality: legal
+  value: 15
+  tags: [money, concealment]
+  liability:
+    # Wearing one is what a search finds; it marks you as someone worth searching.
+    - border.bribe_attempt
+
+- id: spare_tyre
+  description: One roadside repair's worth of self-sufficiency. Bulky, and worth stealing.
+  category: vehicle
+  size: 4
+  concealability: 0
+  legality: legal
+  value: 40
+  tags: [mechanics, bulky]
+  liability:
+    # Bulk is the cost: it fills a container and it is the visible thing a thief takes first.
+    - rest.pickpocket_victim

@@ -1,0 +1,21 @@
+# Declared NPCs. ARCHETYPES, never people, and never nationalities — CLAUDE.md §11 forbids
+# attaching behaviour to a real group, and an NPC named for one would do that through the
+# back door. "A border guard" is a role anyone can occupy; corruption is a situation.
+
+- id: border_guard
+  description: The official at a crossing. Remembers a bribe, and remembers being refused.
+  category: authority
+  archetype: official
+  tags: [authority, border]
+
+- id: roadside_mechanic
+  description: Fixes what broke, for a price that depends on how stranded you look.
+  category: trade
+  archetype: tradesperson
+  tags: [mechanics, commerce]
+
+- id: pickpocket
+  description: Works crowds at rest stops and stations. Takes cash, not conversation.
+  category: criminal
+  archetype: opportunist
+  tags: [crime, rest]

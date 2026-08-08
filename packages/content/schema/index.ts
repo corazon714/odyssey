@@ -46,3 +46,18 @@ export {
 export { predicateSchema, type TersePredicate } from './predicate.ts';
 export { effectSchema } from './effect.ts';
 export { gameEventSchema } from './event.ts';
+
+export {
+  REGISTRY_FILES,
+  endingDeclarationSchema,
+  flagDeclarationSchema,
+  itemDeclarationSchema,
+  npcDeclarationSchema,
+  traitDeclarationSchema,
+  type EndingDeclaration,
+  type FlagDeclaration,
+  type ItemDeclaration,
+  type NpcDeclaration,
+  type RegistryFile,
+  type TraitDeclaration,
+} from './declarations.ts';
