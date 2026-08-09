@@ -287,7 +287,13 @@ lever. Median legs is 13, so runs COMPLETE rather than survive, and the remainin
 route length, not recovery. Corpus routes want route generation (`engine/src/route/`).
 
 Beat fill 30.3%: the corpus fills `border_crossing` and `midpoint_crisis`; the fixture routes
-also schedule `departure`, `ferry_boarding`, `approach` and `finale`.
+also schedule `departure`, `approach` and `finale`.
+
+> **Corrected at Phase 3 M3.1: `ferry_boarding` was in that list and no fixture route schedules
+> it.** `grep -c ferry_boarding packages/engine/src/__tests__/__fixtures__/routes.json` → 0. The
+> 13 slots are departure ×3, border_crossing ×2, midpoint_crisis ×3, approach ×2, finale ×3. The
+> error originated in the M9 note far below and propagated into three places. Measured inventory
+> and the resulting beat-fill ceiling: `docs/adr/0027` Decision 5.
 
 ### The `en` locale — the game has words now
 
@@ -471,8 +477,16 @@ ADR 0023 decisions 2-3.
 ### 4. Beat fill 30.6%
 
 The corpus fills `border_crossing` and `midpoint_crisis`. The fixture routes also schedule
-`departure`, `ferry_boarding`, `approach` and `finale`. This is not a director fault and not
-tunable — it wants corpus routes, which want route generation.
+`departure`, `approach` and `finale` — **not `ferry_boarding`, which no fixture route schedules
+at all** (corrected at Phase 3 M3.1). This is not a director fault and not tunable — it wants
+corpus routes, which want route generation.
+
+**And route generation alone will not close it.** Measured at Phase 3 M3.0: 5 of the 13 fixture
+slots are of a type the corpus can fill, so the ceiling is 38.5% and the observed 30.1% is 78% of
+what is reachable. A generated route with 2–4 border crossings lands at 39–49%. The rest needs
+`departure`, `approach` and `finale` events — and `finale` is the one to write first, because it
+is scheduled on every route and the corpus lost it when it replaced the fixture pack, which does
+have `arrival.final_stretch`. See `docs/adr/0027` Decision 5.
 
 ### 5. `MISSING_IMAGE_MANIFEST` — the one remaining lint warning
 
@@ -1328,8 +1342,11 @@ Queue departures               18
   class of silent bug: the slot opens, nothing is eligible, it slides, it expires, and the only
   trace is a beat-miss rate that reads like a balance problem.
 
-**Open finding — the 47.8% fill rate is a fixture gap, not an engine fault.** The fixture routes
-schedule `departure`, `approach` and `ferry_boarding`; the nine-event pack has events for none
+**Open finding — the 47.8% fill rate is a fixture gap, not an engine fault.** _[Corrected at Phase 3
+M3.1: `ferry_boarding` is wrong here and this sentence is where the error started. No fixture route
+schedules it. The nine-event fixture pack also DOES have a `finale` event, `arrival.final_stretch`.
+Left in place as the origin of a claim that propagated into three later documents.]_ The fixture
+routes schedule `departure`, `approach` and `ferry_boarding`; the nine-event pack has events for none
 of them, so those slots can only expire. The sim now prints the unfillable types under the
 number so it is self-explaining. Fixing it is content work — either events for those beats or
 routes that do not schedule them — and belongs with the Phase 2 seed corpus, not with a fixture

@@ -58,8 +58,8 @@ export const PRIORITY_BOOST: Readonly<Record<EventPriority, number>> = {
  * Authored weight bounds, and the integer window `weightedPick` accumulates over.
  *
  * The floor of 1 is the invariant that separates scoring from filtering: however badly an
- * event scores, if it survived the filters it remains pickable. `scoring-bounds.test.ts`
- * asserts it.
+ * event scores, if it survived the filters it remains pickable.
+ * `__tests__/scoring.test.ts:86` asserts it, over every event in the pack.
  */
 export const WEIGHT_MIN = 1;
 export const WEIGHT_MAX = 1000;
