@@ -143,7 +143,7 @@ packages/tools/                                                      ✅
   content-lint/             15 rules, file:line:col, --fix           ✅ CI job
   content-stats/            counts + 4-axis coverage report          ✅
   imagegen/ · i18n-check/                                              (empty)
-docs/                       adr/0001-0022 · engine-spec · PROGRESS   ✅
+docs/                       adr/0001-0023 · engine-spec · PROGRESS   ✅
   enforcement.md            what enforces each §2 rule               ✅
   stack-notes.md            the dependency traps, in full            ✅
   content-style-guide.md    how to author; registry-vs-event         ✅
