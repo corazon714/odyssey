@@ -74,6 +74,10 @@ These have caused real damage in similar projects when broken. Do not "improve" 
    `title: "You lost your passport"` is a bug. `titleKey: "events.passport_lost.title"` is correct.
    _Enforcement: **live, by construction** — an event file has no text fields at all; keys are
    derived from ids. `content:lint` errors on a key missing from `en/`._
+   **Exactly two exemptions exist, both enumerated so neither spreads:** the `name` field on a geo
+   node, which holds a real place's proper noun (`adr/0028`), and the data-attribution block, which
+   ships in English in every locale because a translated licence notice is a modified one
+   (`adr/0024`). Anything else user-visible is a key. `GEO_NAME_FIELD_MISPLACED` enforces the first.
 
 5. **No text rendered inside generated images.** Ever. The game ships in 4 languages.
    _Enforcement: **(planned)** — `imagegen/` is empty and no images exist._
@@ -295,30 +299,13 @@ without having actually run it.
 
 ## 9. The content model in one page
 
-> **A summary, not a specification.** Where this disagrees with the code, the code wins and
-> `docs/engine-spec.md` Part II is the written authority. The sketch is kept because it reads
-> as one page.
-
-```
-RunState
-├─ seed, rngCursors            deterministic randomness
-├─ clock  { day, hour, weekday }
-├─ route  { nodes[], edges[], legIndex, legCount, progressKm, montageLegs[] }
-│                              leg count scales SUB-linearly with distance, capped 22-48
-│                              (10-16 for short-trip mode); overflow becomes montage legs
-├─ transport { mode, vehicleId?, condition, fuel }
-├─ resources { cash, bank, energy, health, morale, hunger, hygiene, heat, reputation }
-├─ skills   { negotiation, stealth, mechanics, streetwise, languages[] }
-├─ traits[]                    from preparation choices; permanent modifiers
-├─ inventory { person, bag|null, vehicle|null, stash|null }  slots + searchDC each
-├─ documents { passport, visas{}, tickets[] }  each records its carrying container
-├─ flags    { id -> { value, setAtLeg, expiresAtLeg? } }     ← memory
-├─ relationships { npcId -> { trust, met, lastSeenLeg } }    ← memory
-├─ eventMemory   { eventId -> { count, lastLeg } }           ← memory
-├─ pendingEvents []            consequence queue              ← memory
-├─ history[]                   journal entries + ending inputs
-└─ tension                     director pacing signal
-```
+> **`RunState`'s shape is NOT sketched here any more.** It was, for six sessions, and the sketch
+> was wrong in four ways at once — it showed a `montageLegs[]` that did not exist, omitted
+> `totalKm`, `beatSchedule`, `legLocations`, `weather`, `presentation` and `status`, and listed
+> four skills against `SKILL_KEYS`' five. A duplicate that must be maintained will not be.
+> **`packages/engine/src/state/run-state.ts` is the shape; `docs/engine-spec.md` Part II is the
+> prose, printed from the built barrel rather than transcribed.** Do not paste a sketch into
+> either.
 
 An **Event** = `{ id, weight, requires, context, cooldown, priority, textKeys, imageRef, choices[] }`
 A **Choice** = `{ id, labelKey, requires?, hiddenUnless?, costs?, skillCheck? | search?, outcomes[] }`
@@ -390,6 +377,13 @@ behaviour to a specific real country or nationality, and no data file may carry 
 "danger index" per country. Difficulty comes from the route PROFILE (illicit, night crossing,
 missing documents) and the player's STATE (heat, reputation, resources), never from where the
 player happens to be. An event fires at "a border crossing", not at a named country's border.
+
+**This binds the geo data too, where it is mechanically checkable.** No file in
+`packages/content/geo/` may carry a country code or a per-country risk, danger or corruption field —
+a node's `services` and `terrain` are physical facts derived from settlement size and elevation, never
+behavioural judgements, and a border-crossing node is typed and never named. `adr/0024` records the
+derivations; `GEO_NAMED_BORDER` and `GEO_PLACE_BEHAVIOUR` are errors rather than warnings because
+they are structural and admit no false positive.
 
 When in doubt, flag the event for human review with `review: needed` instead of guessing.
 
