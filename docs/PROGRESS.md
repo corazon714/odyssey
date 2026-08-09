@@ -904,14 +904,24 @@ instruments for writing it; author against `docs/engine-spec.md` Part II. The 12
 
 ## Open questions for the human
 
-1. **`CLAUDE.md` is now 491 lines against its own stated ~400-line cap** (it was 481 last
-   session; §9's conformance correction added the rest) — and it is a cap the file argues for
-   ("this is a constitution, not documentation"). It grew because every rule in §2 now carries
-   an `_Enforcement:_` note, which is genuinely the most useful thing in the file and also ~90
-   lines of it. **Proposal: move the enforcement notes to `docs/enforcement.md` and leave each
-   rule with a one-line pointer.** Raised five sessions running without an answer; I have not
-   acted on it because reorganising the constitution unasked is not my call. **It is getting
-   worse, not better — each session that corrects a claim adds lines.**
+1. ~~**`CLAUDE.md` over its own ~400-line cap.**~~ **CLOSED 2026-08-09, after six sessions.**
+   It had reached 502. Now **405**, and everything was MOVED rather than deleted:
+
+   - §2's `_Enforcement:_` notes -> **`docs/enforcement.md`**, each rule keeping a one-line
+     status. That was the proposal raised five sessions running; it is done.
+   - §4's dependency caveats (moti, rive, the wildcard-peer trap, the Hermes plural risk) ->
+     **`docs/stack-notes.md`**.
+   - §1's status block, §3's layout, §5's planned commands and §9's type-ownership block
+     compressed to pointers at the docs that already own them.
+
+   The audit that came with it found **six stale claims** in a file whose whole job is to be
+   true: Zod "not yet used", DoD item 6 saying the sim harness does not exist, `content-lint`
+   at 13 rules (15), `adr/0001-0021` (0022), `src/route/ (planned — Phase 2B)` after 2B
+   shipped, and §9 asserting complications and universal-choices did not exist. Every numeric
+   claim left in the file was then checked against ground truth.
+
+   **The lesson worth keeping: the cap is not about tidiness.** A file that grows past what
+   anyone re-reads is a file whose claims stop being audited, and six of them had rotted.
 
 2. **`CHECK_DIE_SIDES = 20` is still the Phase 1 placeholder**, and 2A made the question sharp
    rather than answering it. With the clamp at +6/−8 and skill bypassing it, one point of

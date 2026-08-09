@@ -23,25 +23,16 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status as of 2026-08-09 — Phase 1, 2A and 2B complete.** Steps 5, 6 and 7 RUN: the leg
-> loop, event selection from a filtered and scored pool, choices resolving to weighted
-> outcomes, and all four memory mechanisms. `pnpm sim -- --runs=20000` completes twenty
-> thousand journeys.
+> **Status: Phase 1, 2A and 2B complete (2026-08-09).** Steps **5-7 RUN** against a real
+> corpus — 13 events, 137 modifiers, 25 complications, 15 universal choices, a complete `en`
+> locale, `content:lint` clean, and `--pack=corpus` completing 44.1% inside engine-spec 6's
+> 30-50% band. **Steps 1-4 do NOT**: no map, no route generation, no preparation screen; the
+> route is caller-supplied via `RunInit.route`. Three of §9's four registries are live —
+> `quirks.yaml` is not.
 >
-> Steps 1-4 do NOT: no map, no route generation, no preparation screen. The route is
-> caller-supplied via `RunInit.route`.
->
-> **The seed corpus exists and plays inside its design band.** `packages/content/events/` holds
-> **13 events**; the registries hold **137 modifiers, 25 complications and 15 universal
-> choices**; `i18n/en/` is complete. `pnpm content:lint` reports 0 errors and 1 warning.
-> `pnpm sim -- --pack=corpus` completes 44.1% of runs, inside engine-spec 6's 30-50%.
-> The nine Phase 1 fixtures moved to `packages/content/__fixtures__/events/` and are the
-> stable control the golden runs are still built on (ADR 0022).
->
-> Of CLAUDE.md §9's four registries, three are live. `quirks.yaml` is the one that is not.
->
-> `docs/PROGRESS.md` is the authority on current state; `docs/engine-spec.md` Part II is the
-> authority on what the engine actually does, written from the code.
+> **`docs/PROGRESS.md` is the authority on current state and this paragraph is not** — it is a
+> pointer with a date on it. `docs/engine-spec.md` Part II is the authority on what the engine
+> does, written from the code.
 
 ---
 
@@ -51,157 +42,113 @@ These have caused real damage in similar projects when broken. Do not "improve" 
 
 > **All ten rules are binding now** — they govern code as it is written, not only once the
 > subsystems exist. What varies is whether a rule is **mechanically enforced** today or rests
-> on review. Each rule below states which. `(planned)` on an enforcement mechanism means the
-> rule still applies; nothing will catch you breaking it. Verified 2026-08-07.
+> on review, and each rule says which in one line. **`(planned)` means nothing will catch you
+> breaking it, not that you may.**
+>
+> **The evidence for every rule — what enforces it, and that the guard was verified failing on
+> a deliberate violation — is `docs/enforcement.md`.** It lives there because it had grown to
+> ~90 lines of a file that argues for a ~400-line cap. Nothing was lost in the move.
 
 1. **Events never reference other events by ID as a required next step.**
    The narrative graph is emergent, not authored. Events declare `requires` (a predicate over world
    state) and a `weight`. The director picks from the eligible pool. If you find yourself wanting
    `nextEventId`, use a **flag** plus a `requires` on the target event, or the **consequence queue**.
    The single exception is `scheduleEvent`, which is a _soft_ pointer resolved by the director.
-   _Enforcement: **live.** The event schema is `z.strictObject`, so `nextEventId` is not a
-   rule the linter has to know about — it is an unknown key and the file fails to parse. The
-   engine also has NO field an event could point with: `GameEvent` has no
-   successor, and `scheduleEvent` is a queue entry the director may decline. The sim reports
-   scheduled-vs-fired, so a soft pointer that never resolves is visible. Rationale: `adr/0001`._
+   _Enforcement: **live** — `z.strictObject` + no successor field on `GameEvent`. `adr/0001`._
 
 2. **`packages/engine` must never import React, React Native, Expo, or any DOM/native API.**
    It is pure TypeScript. It must run under plain Node so it can be simulated 20,000 times.
    No `Date.now()`, no `Math.random()`, no `fetch` inside the engine — all injected.
-   _Enforcement: **live, four independent layers.** ESLint `no-restricted-imports` +
-   `no-restricted-globals` scoped to `packages/engine/**`; `tsconfig.src.json` with
-   `types: []` and no `DOM` in `lib` (so `document`/`process` do not typecheck);
-   `src/__tests__/purity.test.ts` scanning source and manifest; and the CI job
-   `engine-under-plain-node`, which executes the engine entry under bare Node. All verified
-   failing on a deliberate violation before being trusted._
+   _Enforcement: **live, four independent layers** — ESLint, tsconfig, a purity test, and a CI
+   job that runs the engine under bare Node._
 
-3. **`Math.random()` and `Date.now()` are banned repo-wide**, enforced by a three-rule ESLint
-   stack: `no-restricted-properties` (dot access and destructuring), `no-restricted-syntax`
-   (argless `new Date()`, computed `Math['random']`), and `no-restricted-globals` (DOM/native
-   globals inside the engine). `no-restricted-globals` alone cannot express this — it matches
-   bare global identifiers, so it could only ban all of `Math`. See `docs/adr/0002`.
-   Randomness comes from the seeded `Rng` service. Time comes from the injected `Clock`; the
-   only sanctioned wall-clock read is `apps/mobile/src/clock/system-clock.ts`.
-   Everything about a run must be reproducible from `(seed, choiceSequence, contentVersion)`.
-   _Enforcement: **live** — verified catching `Math.random()`, `Math['random']`,
-   `const { random } = Math`, `Date.now()`, `Date['now']`, `new Date()` and `Date()`.
-   The `Rng` service and golden-run replay are now **live** — `replayRun` reproduces a run
-   byte-for-byte from `(seed, choiceSequence, contentVersion)`, which is the backstop that
-   catches obfuscated nondeterminism. `purity.test.ts` additionally bans implementation-
-   approximated and locale-dependent APIs. **Proven on V8 only; Hermes is untested — ADR 0012.**
-   The `Clock` port remains **(planned)**: the engine takes no clock, it advances its own._
+3. **`Math.random()` and `Date.now()` are banned repo-wide.** Randomness comes from the seeded
+   `Rng`; time from the injected `Clock`, whose only sanctioned wall-clock read is
+   `apps/mobile/src/clock/system-clock.ts`. Everything about a run must be reproducible from
+   `(seed, choiceSequence, contentVersion)`.
+   _Enforcement: **live** — a three-rule ESLint stack (`docs/adr/0002`), backstopped by
+   golden-run replay, which is what catches nondeterminism a regex cannot see. **Proven on V8
+   only; Hermes is untested (ADR 0012).** The `Clock` port is **(planned)**._
 
 4. **No user-visible string literals in code or content data.** Only i18n keys.
    `title: "You lost your passport"` is a bug. `titleKey: "events.passport_lost.title"` is correct.
-   _Enforcement: **live, and by construction.** An event file has NO text fields at all —
-   `titleKey`, `labelKey` and `textKey` are DERIVED from ids by the schema transform, so there
-   is nowhere to type prose. Explicit keys are accepted as an escape hatch and must still match
-   the i18n-key shape. `pnpm content:lint` additionally checks every derived key resolves in
-   `en/`, and scans the locale for §11 patterns. ADR 0015/0017._
+   _Enforcement: **live, by construction** — an event file has no text fields at all; keys are
+   derived from ids. `content:lint` errors on a key missing from `en/`._
 
 5. **No text rendered inside generated images.** Ever. The game ships in 4 languages.
-   _Enforcement: **(planned)** — `packages/tools/imagegen/` is empty and no images exist.
-   Human review of the contact sheet is the intended mechanism._
+   _Enforcement: **(planned)** — `imagegen/` is empty and no images exist._
 
 6. **Content is data, not code.** Events live in `packages/content/events/**.yaml`, validated by Zod
    at build time and in tests. Never hardcode an event in a `.ts` file.
-   _Enforcement: **live.** Thirteen YAML events under `packages/content/events/`, validated by Zod
-   and held identical to the engine types by the conformance harness in
-   `packages/content/__tests__/conformance.test.ts` (ADR 0009). `pnpm content:lint` is the
-   build-time gate and runs in CI. The engine fixture is JSON DATA, never `.ts`, and a
-   round-trip test proves the YAML produces it byte-for-byte._
+   _Enforcement: **live** — Zod schemas held identical to the engine's types (ADR 0009/0019),
+   `content:lint` in CI, and a round-trip test against the JSON fixture._
 
 7. **Every state mutation goes through an `Effect`.** No direct mutation of `RunState` from UI code.
    The UI dispatches a choice; the engine returns a new state plus a list of applied effects.
-   _Enforcement: **live.** `applyEffects` is the only writer; `RunState` is deeply readonly,
-   and `effects/__tests__/purity-and-sharing.test.ts` deep-freezes the input and applies all
-   12 ops. Module code is strict, so an in-place write throws. The freeze is itself guarded._
+   _Enforcement: **live** — `applyEffects` is the only writer and `RunState` is deeply readonly._
 
 8. **The engine is deterministic and pure.** Shipped as two functions rather than one
    `resolve`: `advanceLeg(state, pack)` and `resolveChoice(state, pack, choiceId)`, each
    returning a new state plus a log. Side effects (persistence, audio, haptics, analytics)
    happen in the app layer by observing the log.
-   _Enforcement: **live.** Package purity per rule 2; both entry points RETURN a typed
-   `EngineError` and never throw; the RNG is derived from state and drained back, never
-   injected, so a caller cannot desynchronise replay. See `docs/engine-spec.md` Part II._
+   _Enforcement: **live** — both entry points RETURN a typed `EngineError` and never throw; the
+   RNG is derived from state and drained back, never injected._
 
 9. **Animation is presentation, never mechanics.** The engine resolves the outcome and the
    state is persisted _before_ any animation starts. A die is shown landing on a number the
    engine already rolled. No animation may gate, delay, or influence a state change, and
    killing an animation mid-play must never corrupt state.
-   _Enforcement: **(planned)** — no animation code exists. This is an architectural
-   constraint on Phase 3+, not something the toolchain can check._
+   _Enforcement: **(planned)** — no animation code exists._
 
 10. **Every animation is skippable and speed-scaled.** All durations derive from motion
-    tokens passed through the global speed scale. A hardcoded duration in a component is a
-    lint error. Any information conveyed only through movement must also survive Instant
-    mode and reduce-motion as a static presentation.
-    _Enforcement: **(planned)** — "a hardcoded duration in a component is a lint error" is
-    **not true today**: no such rule exists in `eslint.config.mjs`, and there are no motion
-    tokens and no speed scale. Writing that rule is part of the phase that introduces
-    motion tokens; until then this is review-only._
+    tokens passed through the global speed scale. Any information conveyed only through
+    movement must also survive Instant mode and reduce-motion as a static presentation.
+    _Enforcement: **(planned)** — the "hardcoded duration is a lint error" clause is aspirational;
+    no such rule exists yet. Review-only._
 
 ---
 
 ## 3. Repository layout
 
-This is the **target** layout. `(planned)` marks a path that does not exist on disk today;
-`(empty)` marks a directory that exists but holds only a `.gitkeep`. Verified 2026-08-07.
-Do not assume a `(planned)` path exists — create it in the phase that needs it.
+**Target** layout. `(planned)` = does not exist on disk; `(empty)` = only a `.gitkeep`. Do not
+assume a `(planned)` path exists — create it in the phase that needs it. Verified 2026-08-09.
 
 ```
 apps/mobile/                Expo app (UI only — no game rules here)
-  app/                      expo-router routes                          ✅ _layout.tsx, index.tsx
-  src/clock/                the ONE sanctioned wall-clock read          ✅ (not in original layout)
-  src/features/             map, preparation, journey, journal, settings   (planned)
-  src/design/               tokens, theme, mood system, primitives         (planned)
-  src/audio/                ambience + sfx manager                         (planned)
-packages/engine/            Pure TS game engine                         ✅ package exists
-  src/index.ts              public barrel, 159 exports                  ✅ Phase 1 complete
-  src/ids/                  Brand<> + 12 branded content id types       ✅
-  src/errors/               EngineError — RETURNED, never thrown        ✅ (not in original layout)
-  src/rng/                  counter-based PRNG + 8 named substreams     ✅
-  src/state/                RunState, clamping, digest, flag access     ✅
-  src/predicate/            requires-DSL, 27 kinds + reason trace       ✅
-  src/effects/              effect-DSL applier, 12 ops, ModifierSource  ✅
-  src/content/              GameEvent types + ContentPack               ✅ (not in original layout)
-  src/director/             filters, scoring, ladder, beats, tension    ✅
-  src/queue/                consequence queue: caps, eviction, rebase   ✅ (not in original layout)
-  src/loop/                 advanceLeg · resolveChoice · replayRun      ✅ (not in original layout)
-  src/migrate/              save migration ladder + content reconcile   ✅ (not in original layout)
-  src/modifiers/            check tags, registry, resolution pipeline   ✅ ADR 0015
-  src/state/container-state.ts  four containers + drain order           ✅ ADR 0017
-  src/route/                route graph traversal, k-shortest paths        (planned — Phase 2B)
-packages/content/                                                       ✅ package exists
-  events/                   *.yaml event definitions (grouped by category) ✅ 13 seed events
-  __fixtures__/events/      the 9 Phase 1 fixtures, frozen; ADR 0022        ✅ unlinted on purpose
-  complications.yaml        25 situational layers                          ✅ ADR 0021
-  universal-choices.yaml    15 injected choices                            ✅ ADR 0022
-  geo/                      nodes.json, edges.json, world.simplified.geojson (empty)
-  i18n/en/                  complete: 157 event keys + 146 chip keys        ✅
-  i18n/                     tr/, ru/, de/                                  (empty)
-  images/                   asset directory                                (empty)
-  images/manifest.json      image spec -> asset mapping                    (planned)
-  schema/                   Zod schemas + terse->canonical transform    ✅ ADR 0009
-  loader/                   YAML -> GameEvent, file:line:col issues     ✅ separate export
-  flags/items/npcs/traits/endings.yaml   declaration registries         ✅
-  modifiers.yaml            the global check-modifier registry          ✅ ADR 0015
-packages/tools/                                                         ✅ package exists
-  shared/                   cross-tool helpers (findWorkspaceRoot)      ✅ (not in original layout)
-  sim/                      headless sim harness + engine-spec 6 report  ✅ 11 files
-  content-lint/             13 rules, file:line:col, --fix              ✅ CI job
-  content-stats/            counts + 4-axis coverage report             ✅
-  imagegen/                 build-time AI image pipeline                   (empty)
-  i18n-check/               key coverage, pseudo-loc, length audit         (empty)
-docs/                       ADRs, design docs, content style guide      ✅ engine-spec, PROGRESS, adr/0001-0021
-  content-style-guide.md    how to author; registry-vs-event is its subject ✅ Phase 2B
-  sim-baseline.md           FIXTURE pack balance baseline                ✅
-  sim-baseline-corpus.md    CORPUS pack baseline — one per pack          ✅ Phase 2B M-D
-.claude/                    Claude Code extension layer                 ✅ (not in original layout)
-  settings.json             permissions + hook wiring                   ✅ committed, shared
-  hooks/                    4 guard scripts (Node .mjs)                 ✅ see docs/adr/0003
-  skills/handoff/           context-reset handoff note                  ✅ /handoff
-  agents/code-reviewer.md   reviews a diff against section 2            ✅
+  app/                      expo-router routes                       ✅ _layout.tsx, index.tsx
+  src/clock/                the ONE sanctioned wall-clock read       ✅
+  src/{features,design,audio}/  map · prep · journey · journal · tokens · sfx   (planned)
+packages/engine/            Pure TS game engine                      ✅
+  src/index.ts              public barrel                            ✅
+  src/{ids,errors,rng}/     Brand<> ids · EngineError (returned) · PRNG + 8 substreams   ✅
+  src/state/                RunState, clamping, digest, containers   ✅ ADR 0017
+  src/predicate/            requires-DSL, 28 kinds + reason trace     ✅
+  src/effects/              effect-DSL applier, 15 ops               ✅
+  src/content/              GameEvent, ContentPack, the 2 registries ✅ ADR 0021/0022
+  src/director/             filters, scoring, ladder, beats, tension ✅
+  src/{queue,loop,migrate}/ consequence queue · advanceLeg/resolveChoice/replayRun · saves  ✅
+  src/modifiers/            check tags, registry, resolution pipeline ✅ ADR 0015
+  src/route/                route graph, k-shortest paths               (planned — NEXT)
+packages/content/                                                    ✅
+  events/                   13 seed events, grouped by category      ✅
+  __fixtures__/events/      the 9 Phase 1 fixtures, frozen, UNLINTED ✅ ADR 0022
+  modifiers · complications · universal-choices .yaml   137 · 25 · 15   ✅
+  flags/items/npcs/traits/endings.yaml   declaration registries      ✅
+  schema/ · loader/         Zod + terse->canonical · YAML w/ file:line:col   ✅ ADR 0009
+  i18n/en/                  complete — 157 event keys + 146 chip keys ✅
+  i18n/{tr,ru,de}/ · geo/ · images/                                     (empty)
+  images/manifest.json      image spec -> asset mapping                 (planned)
+packages/tools/                                                      ✅
+  shared/ · sim/            helpers · headless sim + engine-spec 6 report  ✅
+  content-lint/             15 rules, file:line:col, --fix           ✅ CI job
+  content-stats/            counts + 4-axis coverage report          ✅
+  imagegen/ · i18n-check/                                              (empty)
+docs/                       adr/0001-0022 · engine-spec · PROGRESS   ✅
+  enforcement.md            what enforces each §2 rule               ✅
+  stack-notes.md            the dependency traps, in full            ✅
+  content-style-guide.md    how to author; registry-vs-event         ✅
+  sim-baseline{,-corpus}.md one balance baseline PER PACK            ✅
+.claude/                    settings · 4 hooks · skills · agents     ✅ ADR 0003
 ```
 
 > **`.claude/` is committed on purpose** so the guardrails are shared, not per-developer.
@@ -222,33 +169,14 @@ re-verified against Expo SDK 57.0.11 on 2026-08-07; SDK 57.0.11 is still npm `la
   what Expo SDK 57 ships. **Read `docs/adr/0002` before changing any of those three.**)
 - State: Zustand + Immer **(planned)** · Persistence: `react-native-mmkv` **(planned)**
 - Animation: `react-native-reanimated` (v4+, foundation) ✅ 4.5.1 + `react-native-worklets` ✅ 0.10.1
-  - ~~`moti` (declarative layer)~~ — **DO NOT ADD. Verified incompatible 2026-08-07.**
-    Use **Reanimated 4's built-in CSS animations/transitions API** instead (`animationName`,
-    `animationDuration`, `transitionProperty`, …). It is first-party, needs no extra
-    dependency, and covers moti's entire purpose. Reasons moti is out, in order of severity:
-    (a) moti value-imports `framer-motion@6` (`import { usePresence, PresenceContext }` in the
-    HOC behind every moti component); framer-motion 6 peers `react: >=16.8 || ^17 || ^18`, so
-    **React 19.2.3 satisfies none of them**; (b) framer-motion 6 depends on `@motionone/dom` —
-    the engine that became web `motion`, which the line below explicitly bans; (c) moti is
-    self-described as "powered by Reanimated 3", last published 2025-01-29, with issue #391
-    ("Expo 54 and Reanimated 4 support") open and unanswered. Its peer is `*`, so **it installs
-    without complaint and fails at runtime** — that is why it needs a hard note here.
-  - `@shopify/react-native-skia` (canvas: dice, particles, ambient) **(planned)** — compatible.
-    Install the **SDK pin `2.6.2`** via `npx expo install`, not npm-latest 2.11.0. Peers
-    `react-native-reanimated >=4.0.0` + `react-native-worklets >=0.7.0`, which this repo
-    already satisfies. In Expo Go.
-  - `rive-react-native` (parameterised set pieces) **(planned — see caveat before adopting)**.
-    Not in SDK 57 `bundledNativeModules`, so `npx expo install` will not pin it and it needs a
-    dev client. `rive-react-native@9.8.5` declares only wildcard peers (no RN 0.86 claim
-    either way). Its successor `@rive-app/react-native@0.4.19` peers
-    `react-native-nitro-modules >=0.35.10 <0.36`, which **collides with `react-native-mmkv`**:
-    mmkv peers nitro `*` and resolves to 0.36.5 by default. Using both means pinning nitro to
-    `0.35.10` by hand. **Alternative if that is not worth it: `lottie-react-native`, which IS
-    in SDK 57 bundledNativeModules (`~7.3.8`)** and is therefore version-managed by
-    `npx expo install` like every other Expo dependency.
-  - `react-native-gesture-handler` ✅ ~2.32.0
-    **Not usable here: `anime.js`, web `motion` — both target the DOM.**
-- Lists: `@shopify/flash-list` **(planned** — SDK pin `2.0.2`, not npm-latest 2.3.2**)** ·
+  · `react-native-gesture-handler` ✅ ~2.32.0
+  - **`moti` — DO NOT ADD** (verified incompatible; use Reanimated 4's built-in CSS
+    animations API). `@shopify/react-native-skia` **(planned** — SDK pin `2.6.2`**)**.
+    `rive-react-native` **(planned, has a nitro-modules collision with mmkv)**;
+    `lottie-react-native` is the cheaper alternative. **Not usable: `anime.js`, web `motion`.**
+    **The reasoning for every one of those is `docs/stack-notes.md` — read it before adopting
+    or rejecting any of them.**
+- Lists: `@shopify/flash-list` **(planned** — SDK pin `2.0.2`**)** ·
   Images: `expo-image` ✅ · Map: `react-native-svg` **(planned** — SDK pin `15.15.4`**)**
 - Validation: Zod ✅ 4.4.3 (`packages/content/schema/` — 8 modules; see `docs/adr/0009`) ·
   i18n: `i18next` + `react-i18next` + `expo-localization` **(planned)**
@@ -256,21 +184,11 @@ re-verified against Expo SDK 57.0.11 on 2026-08-07; SDK 57.0.11 is still npm `la
   `@testing-library/react-native` ✅ 14.x (**`render()` is async in v14 — `await render(...)`**)
 - Package manager: pnpm workspaces ✅ 11.20.0
 
-> **New Architecture is not optional.** RN 0.82 removed the legacy (Paper) architecture —
-> setting `newArchEnabled=false` is ignored. This repo is on RN 0.86.2, so every native
-> dependency must support Fabric/TurboModules. There is no fallback to negotiate.
-
-> **Two traps when adding anything from the list above.** (1) Prefer the Expo SDK pin over
-> npm-latest — `bundledNativeModules.json` pins Skia to 2.6.2 and FlashList to 2.0.2, both
-> well behind latest, and `npx expo install` is what respects that. (2) A wildcard peer
-> (`"*"`) is the _absence_ of a compatibility claim, not a promise of one. moti, rive and
-> mmkv all declare wildcards; all three install silently regardless of whether they work.
-
-> **Known open risk — i18n plurals (planned work, flag now).** i18next's own docs state the
-> Hermes engine does not implement `Intl.PluralRules`. Russian has four plural forms, so
-> without a polyfill (`@formatjs/intl-pluralrules`, pure JS) ru and likely de pluralisation
-> will silently fall back to English one/other. Not yet measured against the Hermes build in
-> RN 0.86 — verify before writing plural keys.
+> **New Architecture is not optional** (RN 0.82 removed Paper; this repo is on 0.86.2), and
+> **a wildcard peer (`"*"`) is the ABSENCE of a compatibility claim, not a promise of one** —
+> moti, rive and mmkv all declare one and all three install silently regardless of whether they
+> work. Prefer the Expo SDK pin over npm-latest. **`docs/stack-notes.md` has the detail, plus
+> the open Hermes `Intl.PluralRules` risk that will bite the first translated plural key.**
 
 > **Version rule:** My training data has a cutoff. Before adding or upgrading any dependency,
 > check the actual current version (`npm view <pkg> version`, `npx expo install --check`,
@@ -299,15 +217,12 @@ pnpm content:lint -- --fix    # sort registries by id, dedupe list fields (nothi
 pnpm content:stats            # counts by category/tag/check-tag + a 4-axis coverage report  ✅
 pnpm sim -- --runs=20000      # headless balance simulation (fixture pack)                 ✅
 pnpm sim -- --pack=corpus     # sim against packages/content/ — the REAL registries         ✅
-pnpm sim:diff                 # compare latest sim to docs/sim-baseline.md                ✅
+pnpm sim -- --json            # per-run TRACE (fired events + picks in order) not the report ✅
+pnpm sim:diff                 # compare latest sim to its pack's baseline                ✅
 pnpm golden:update            # regenerate golden-runs.json from the engine — REVIEW the diff ✅
 
-pnpm images:plan              # what would be generated/regenerated (dry run, cost)     (planned)
-pnpm images:gen               # generate missing/stale images                           (planned)
-pnpm images:sheet             # build reports/contact-sheet.html for human review       (planned)
-
-pnpm i18n:check               # missing keys, unused keys, length overflow risk          (planned)
-pnpm i18n:pseudo              # run app with pseudo-localized strings                    (planned)
+pnpm images:{plan,gen,sheet}  # build-time AI image pipeline                           (planned)
+pnpm i18n:{check,pseudo}      # key coverage, length audit, pseudo-localization        (planned)
 ```
 
 If a command in this list does not exist yet, that means the corresponding phase has not shipped.
@@ -380,15 +295,9 @@ without having actually run it.
 
 ## 9. The content model in one page
 
-> **Status: SHIPPED, and this section is now a summary rather than a specification.**
-> `RunState`, `GameEvent`/`Choice`/`Outcome`, the Zod schemas and `modifiers.yaml` all exist.
-> The sketch below is kept because it reads as one page; where it disagrees with the code, the
-> code wins and `docs/engine-spec.md` Part II is the written authority.
->
-> Three things below are now WRONG as written and are corrected in place: `resources` has
-> `cash` and `bank`, not `money` (ADR 0016); `inventory` is four containers, not a flat array
-> (ADR 0017); and of the four registries only `modifiers.yaml` exists — complications,
-> universal-choices and quirks are Phase 2B.
+> **A summary, not a specification.** Where this disagrees with the code, the code wins and
+> `docs/engine-spec.md` Part II is the written authority. The sketch is kept because it reads
+> as one page.
 
 ```
 RunState
@@ -412,46 +321,36 @@ RunState
 ```
 
 An **Event** = `{ id, weight, requires, context, cooldown, priority, textKeys, imageRef, choices[] }`
-A **Choice** = `{ id, labelKey, requires?, costs?, skillCheck?, outcomes: Weighted<Outcome>[] }`
+A **Choice** = `{ id, labelKey, requires?, hiddenUnless?, costs?, skillCheck? | search?, outcomes[] }`
 An **Outcome** = `{ weight, requires?, textKey|textVariants[], effects[], schedule?[] }`
 
-Diversity is combinatorial, not authored. Four registries multiply a small authoring corpus
-into a large play space, and they are declared once rather than per event:
-`modifiers.yaml` (global check modifiers, auto-injected by check tag),
-`complications.yaml` (situational layers attached to a selected event),
-`universal-choices.yaml` (choices injected into any event whose tags match),
-`quirks.yaml` (NPC personality traits that register as modifiers).
-Writing a modifier or complication into a single event's YAML, when it belongs in a
-registry, is the content anti-pattern that caps this game's replayability.
+**Diversity is combinatorial, not authored.** Four registries multiply a small corpus into a
+large play space, declared once rather than per event: **`modifiers.yaml`** ✅ 137 (check
+modifiers, injected by check tag) · **`complications.yaml`** ✅ 25 (situational layers on a
+selected event) · **`universal-choices.yaml`** ✅ 15 (choices injected by tag match) ·
+`quirks.yaml` **(planned)** (NPC traits that register as modifiers).
+
+Writing a modifier or complication into one event's YAML, when it belongs in a registry, is the
+content anti-pattern that caps this game's replayability. `docs/content-style-guide.md` is the
+working guide, and its subject is exactly that call.
 
 Full spec: `docs/engine-spec.md`.
 
-**Who owns these types** — amended 2026-08-08, see `docs/adr/0009`. The earlier wording said
-the Zod schemas were authoritative in a way that implied engine types are `z.infer`red from
-them. That cannot hold: `z.infer` types are owned by whichever package declares the schema, so
-the engine would become a consumer of `packages/content` and would need a Zod dependency —
-inverting the layering and making every schema tweak an engine API change. The rule is:
+**Who owns these types.** `packages/engine/src/content/` owns the TypeScript types.
+`packages/content/schema/` owns the Zod schemas and is authoritative over _content semantics_ —
+which fields a YAML file may have, which values are legal, what an omitted key defaults to. The
+two cannot disagree about a field's presence, type or nullability without failing the build.
 
-- **`packages/engine/src/content/` owns the TypeScript types.** ✅ shipped in Phase 1 M5.
-- **`packages/content/schema/` owns the Zod schemas** and is authoritative over _content
-  semantics_: which fields a YAML file may have, which values are legal, what an omitted key
-  defaults to. ✅ shipped in Phase 2A M2A.1.
-- The two cannot disagree about a field's **presence, type or nullability** without failing the
-  build. They _can_ disagree about `readonly`, in the direction that does not matter. See
-  **`docs/adr/0019`** — the mechanism is two mechanisms, and the earlier wording here
-  ("a bidirectional compile-time assertion (mutual-extends)") was wrong twice over: it was
-  never mutual-extends, and for most types it is not an assertion. Corrected 2026-08-08 by
-  measurement, one deliberate break at a time.
-  - Schemas ending in a **transform** are held by the transform's return annotation, checked by
-    assignability at the builder — which is what produces `TS2741`/`TS2353`/`TS2322` and the
-    error message naming the field.
-  - Schemas that are a **bare `z.enum`** are held by `Equals` identity in `conformance.test.ts`.
-  - A vocabulary is better still: `z.enum(BEAT_TYPES)` is _derived_ from the engine array, so
-    it cannot drift. **Derive rather than assert wherever the shape allows it.**
+**The mechanism is not what ADR 0009 originally claimed**, and the difference matters when you
+are debugging a conformance failure: it is the builders' `: GameEvent` return annotations that
+catch drift, not the `Equals` assertions, most of which are tautologies. **Read `docs/adr/0019`
+before touching the harness** — it was measured one deliberate break at a time, and it records
+which of eight failure kinds each layer actually catches. Derive a vocabulary rather than assert
+it wherever the shape allows (`z.enum(BEAT_TYPES)` cannot drift).
 
 So if `docs/engine-spec.md` and the schema disagree about what content _means_, the schema is
-right and the doc is a bug. If the schema and the engine type disagree about _shape_, the
-build fails and neither is right.
+right and the doc is a bug. If the schema and the engine type disagree about _shape_, the build
+fails and neither is right.
 
 ---
 
