@@ -1,0 +1,86 @@
+id: authority.the_file_catches_up
+category: authority
+tags: [authority, documents, risk, corruption]
+priority: normal
+tensionBand: [0.5, 1]
+context:
+  locationTypes: [checkpoint, city, town, station, border_crossing, rest_stop]
+cooldownLegs: 12
+maxOccurrences: 1
+image: authority/the_file_catches_up
+# MEMORY, form 1: this event CANNOT fire unless border.night_crossing set the flag. It is also
+# the target of that event's scheduleEvent, which is form 2 — the soft pointer.
+requires:
+  flag: night_crossing
+choices:
+  - id: answer_the_questions
+    check:
+      skill: negotiation
+      dc: 13
+      tags: [social, documents, authority, deception]
+    outcomes:
+      - id: nothing_further
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: advanceTime, hours: 3 }
+          - { op: resource, key: heat, delta: -1 }
+      - id: it_goes_in_the_file
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: flag, id: papers_questioned }
+          - { op: resource, key: heat, delta: 2 }
+          - { op: advanceTime, hours: 5 }
+      - id: held_overnight
+        weight: 1
+        onCheck: failure
+        requires: { resource: heat, gte: 5 }
+        effects:
+          - { op: flag, id: detained }
+          - { op: flag, id: wanted }
+          - { op: advanceTime, hours: 16 }
+          - { op: resource, key: morale, delta: -3 }
+
+  - id: stand_your_ground
+    check:
+      skill: endurance
+      dc: 12
+      tags: [endurance, intimidate, authority]
+    outcomes:
+      - id: they_lose_interest
+        weight: 2
+        onCheck: success
+        effects:
+          - { op: resource, key: reputation, delta: 1 }
+          - { op: advanceTime, hours: 2 }
+      - id: they_do_not
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: flag, id: detained }
+          - { op: resource, key: heat, delta: 3 }
+          - { op: advanceTime, hours: 10 }
+
+  - id: make_it_go_away
+    hiddenUnless: { resource: cash, gte: 80 }
+    costs:
+      - { op: resource, key: cash, delta: -80 }
+    check:
+      skill: negotiation
+      dc: 14
+      tags: [social, bribery, authority, crime]
+    outcomes:
+      - id: file_misplaced
+        weight: 2
+        onCheck: success
+        effects:
+          - { op: flag, id: bribed_this_border, ttlLegs: 1 }
+          - { op: resource, key: heat, delta: -2 }
+      - id: now_it_is_two_files
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: flag, id: bribe_on_record }
+          - { op: flag, id: wanted }
+          - { op: resource, key: heat, delta: 3 }

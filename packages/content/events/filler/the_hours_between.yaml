@@ -1,0 +1,42 @@
+id: filler.the_hours_between
+category: filler
+tags: [filler, road, quiet]
+priority: filler
+cooldownLegs: 2
+image: filler/the_hours_between
+choices:
+  - id: watch_the_road
+    check:
+      skill: stealth
+      dc: 9
+      tags: [stealth, perception, luck]
+    outcomes:
+      - id: noticed_something
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: resource, key: morale, delta: 1 }
+      - id: nothing_at_all
+        weight: 4
+        onCheck: failure
+        effects:
+          - { op: resource, key: energy, delta: -1 }
+      # Reads lucky_charm — its declared liability. It costs a slot and does nothing you can
+      # point at, which IS the liability.
+      - id: turned_it_over_again
+        weight: 2
+        onCheck: failure
+        requires: { item: lucky_charm, gte: 1 }
+        effects:
+          - { op: resource, key: morale, delta: 1 }
+          - { op: resource, key: energy, delta: -1 }
+
+  # A small, unreliable food source so a quiet leg is not purely a drain.
+  - id: eat_something
+    hiddenUnless: { resource: hunger, gte: 4 }
+    outcomes:
+      - id: whatever_was_left
+        weight: 1
+        effects:
+          - { op: resource, key: hunger, delta: -1 }
+          - { op: advanceTime, hours: 2 }

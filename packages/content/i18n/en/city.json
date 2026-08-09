@@ -1,0 +1,17 @@
+{
+  "events.city.the_address_that_moved.title": "The Address That Moved",
+  "events.city.the_address_that_moved.body": "The number on the paper is a shutter with a padlock through it, and the shutter has been down long enough for someone to have painted over it twice. The street carries on either way. Nobody in sight looks like they are from here either.",
+
+  "events.city.the_address_that_moved.choice.work_it_out_yourself": "Work it out on foot",
+  "events.city.the_address_that_moved.out.found_it": "You walk the block twice, spot the same name over a doorway two streets across, and someone there is expecting you. Roughly.",
+  "events.city.the_address_that_moved.out.an_hour_lost": "You walk the wrong way with real conviction for the better part of an hour, and arrive back at the same shutter from the other side.",
+  "events.city.the_address_that_moved.out.conspicuous_with_a_map": "Standing on a corner with a map open is an advertisement, and it is read. Nothing happens, exactly. You simply become someone people have noticed.",
+
+  "events.city.the_address_that_moved.choice.ask_in_the_shop": "Ask in the shop on the corner",
+  "events.city.the_address_that_moved.out.pointed_the_right_way": "The woman behind the counter knows exactly where they went, why, and what she thinks about it. You get the address and most of the opinion.",
+  "events.city.the_address_that_moved.out.mutual_incomprehension": "You have the word for the street and the word for the number and nothing to put between them. She is patient. It does not help.",
+  "events.city.the_address_that_moved.out.sent_the_wrong_way": "He is certain, and he is wrong, and you find that out at the far end of a long road.",
+
+  "events.city.the_address_that_moved.choice.pay_a_kid_to_take_you": "Pay someone to walk you there",
+  "events.city.the_address_that_moved.out.straight_there": "It costs less than the hour would have and takes six minutes. You are led there without a word and left at the door."
+}

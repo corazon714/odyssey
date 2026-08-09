@@ -8,7 +8,14 @@ import { runMany } from '../run-many.ts';
 
 const PACK = loadFixturePack();
 const SCENARIOS = loadFixtureScenarios();
-const SUMMARY = runMany(PACK, SCENARIOS, { runs: 200, seed: 'report', policies: [], diff: false });
+const SUMMARY = runMany(PACK, SCENARIOS, {
+  runs: 200,
+  seed: 'report',
+  policies: [],
+  diff: false,
+  json: false,
+  pack: 'fixture',
+});
 const REPORT = formatReport(SUMMARY, PACK, { seed: 'report', runs: 200, elapsedMs: 42 });
 
 describe('percentile', () => {

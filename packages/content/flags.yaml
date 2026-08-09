@@ -1,9 +1,14 @@
 # Declared flags. engine-spec §3: "the anti-pattern is making everything a flag; a 400-flag
 # system is unmanageable". Every flag a predicate reads or an effect writes must appear here,
-# and `content:lint` rejects one that is written and never read — the number one content bug.
+# and `content:lint` rejects one that is read and never written — the number one content bug.
 #
-# FIXTURE SET. These are the five flags the Phase 1 fixture pack uses, not a seed corpus.
+# THE CONSTRAINT THAT SIZES THIS FILE. A modifier reading a flag counts as a READ, but
+# `FLAG_READ_NEVER_WRITTEN` is an ERROR — so every flag the registry reads must be WRITTEN by
+# an event in the corpus. That is why there are twenty here and not fifty: each one is backed
+# by a real outcome somebody can reach. Adding a flag means adding the event outcome that sets
+# it, in the same commit.
 
+# ── border and papers ───────────────────────────────────────────────────────────────────
 - id: bribed_this_border
   description: Set after any bribe at the current crossing; suppresses a second attempt.
   category: border
@@ -11,21 +16,104 @@
     ttlLegs: 1
 
 - id: bribe_on_record
-  description: A refused bribe was logged. Intended to raise later authority scrutiny.
+  description: A refused bribe was logged. Raises later authority scrutiny.
   category: border
   lifetime: permanent
 
-- id: detained
-  description: Held by authorities this leg. Read by arrival and journal logic.
-  category: authority
+- id: night_crossing
+  description: Crossed after dark and it was logged. The gate the file-catches-up payoff needs.
+  category: border
   lifetime: permanent
 
-- id: took_the_long_way
-  description: Turned back from a crossing and detoured; colours the journal's route summary.
-  category: route
+- id: papers_questioned
+  description: An official held your documents longer than they needed to. They remember.
+  category: border
+  lifetime: permanent
+
+- id: papers_lost
+  description: Your passport is gone, not merely invalid. Opens the recovery storyline.
+  category: documents
+  lifetime: permanent
+
+- id: ticket_purchased
+  description: You hold a ticket for the leg you are on, rather than riding on nerve.
+  category: documents
+  lifetime: permanent
+
+# ── heat and the authorities ────────────────────────────────────────────────────────────
+- id: detained
+  description: Held by authorities. Read by arrival, journal and later authority checks.
+  category: authority
   lifetime: permanent
 
 - id: wanted
   description: Actively sought by authorities. Gates border, transit and rest-stop branches.
   category: heat
+  lifetime: permanent
+
+- id: made_a_scene
+  description: You raised your voice somewhere public. Faces remember before names do.
+  category: heat
+  lifetime: permanent
+
+- id: caught_lying
+  description: A story of yours came apart in front of someone. Costs every later bluff.
+  category: heat
+  lifetime: permanent
+
+# ── the road behind you ─────────────────────────────────────────────────────────────────
+- id: took_the_long_way
+  description: Turned back and detoured; colours the journal's route summary and later navigation.
+  category: route
+  lifetime: permanent
+
+- id: travelling_light
+  description: You are carrying almost nothing. Easier to move, nothing to fall back on.
+  category: route
+  lifetime: permanent
+
+# ── people ──────────────────────────────────────────────────────────────────────────────
+- id: owed_a_favour
+  description: Somebody owes you one. Cashable in social and haggling situations.
+  category: social
+  lifetime: permanent
+
+- id: paid_a_local
+  description: You paid someone for help rather than earning it. Cheaper now, thinner later.
+  category: social
+  lifetime: permanent
+
+- id: helped_a_stranger
+  description: You went out of your way for somebody. Word travels on a road this narrow.
+  category: social
+  lifetime: permanent
+
+- id: burned_a_bridge
+  description: You left someone worse off than you found them, and they talk.
+  category: social
+  lifetime: permanent
+
+- id: smuggler_contact
+  description: You are known to people who move things. Useful and dangerous in equal measure.
+  category: crime
+  lifetime: permanent
+
+- id: stash_used
+  description: You have hidden something in a compartment recently. Suppresses a second attempt.
+  category: crime
+  lifetime:
+    ttlLegs: 6
+
+# ── companions ──────────────────────────────────────────────────────────────────────────
+# `companion` is a MODIFIER SOURCE KIND with no state behind it: `RunState` has no companion
+# field, and preparation is Phase 3. These two flags are what the kind keys on until it does.
+# Written by content today, by a preparation screen later. See the content style guide §4.
+- id: companion_present
+  description: Somebody is travelling with you. Two sets of eyes, and twice the appetite.
+  category: companion
+  lifetime: permanent
+
+- id: companion_local
+  description: Your companion knows the ground and the language here.
+  category: companion
   lifetime: permanent

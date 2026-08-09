@@ -124,7 +124,46 @@ describe('migrateSave', () => {
     const loaded = readSave('save-v1-loaded.json');
     const result = migrateSave(loaded);
     if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
-    expect(result.state).toEqual(readSave('save-v3-loaded.json'));
+    expect(result.state).toEqual(readSave('save-v4-loaded.json'));
+  });
+
+  it('writes complicationId: null onto a save caught mid-event', () => {
+    // THE BRANCH NO FIXTURE REACHES. Every checked-in save has `presentation: {kind:'none'}`,
+    // because they were captured between legs — so the fixture-completeness meta-test is
+    // satisfied while `migrate_3_to_4`'s only real behaviour never runs.
+    //
+    // Leaving the key ABSENT rather than null is the failure being guarded: `isRunStateShape`
+    // does not inspect `presentation`, so the save would load clean, `complicationId` would
+    // read `undefined`, and `undefined !== null` sends resolveChoice looking up a complication
+    // by an undefined id. Silent, and it would look like a content bug.
+    const midEvent = {
+      ...readSave('save-v3.json'),
+      presentation: {
+        kind: 'event',
+        eventId: 'border.bribe_attempt',
+        presentedAtLeg: 4,
+        rung: 0,
+      },
+    };
+
+    const result = migrateSave(midEvent);
+    if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
+
+    expect(result.state.presentation).toEqual({
+      kind: 'event',
+      eventId: 'border.bribe_attempt',
+      presentedAtLeg: 4,
+      rung: 0,
+      complicationId: null,
+    });
+  });
+
+  it('leaves a between-legs presentation alone', () => {
+    // The other half: `none` and `uneventful` carry no complication, and adding the key to
+    // them would put a field in a union arm that does not have it.
+    const result = migrateSave(readSave('save-v3.json'));
+    if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
+    expect(result.state.presentation).toEqual({ kind: 'none' });
   });
 
   it('rewrites `money` inside a PERSISTED predicate tree, not just in resources', () => {

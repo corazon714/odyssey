@@ -1,5 +1,6 @@
 import { type ContentPack, type EventId } from '@odyssey/engine';
 import { type FixtureScenario } from './load-pack.ts';
+import { type PackName } from './parse-args.ts';
 import { POLICY_NAMES, type PolicyName } from './policy.ts';
 import { runOne, type SimRun } from './run-one.ts';
 
@@ -8,6 +9,8 @@ export type SimOptions = {
   readonly seed: string;
   readonly policies: readonly PolicyName[];
   readonly diff: boolean;
+  readonly json: boolean;
+  readonly pack: PackName;
 };
 
 export type SimSummary = {
@@ -26,6 +29,13 @@ export type SimSummary = {
   readonly unresolvedThreads: number;
   readonly queueDrops: number;
   readonly beatsFilled: number;
+  /** Share of presented legs that got a complication. Measures ATTACH_PERCENT against play. */
+  readonly complicationRate: number;
+  readonly meanChipsPerCheck: number;
+  readonly checksRolled: number;
+  readonly checksUnderTwoChips: number;
+  readonly universalOfferRate: number;
+  readonly universalPickRate: number;
   readonly beatsExpired: number;
   readonly beatFillRate: number;
   readonly unfillableBeatTypes: readonly string[];
@@ -68,6 +78,13 @@ export function summarise(runs: readonly SimRun[], pack: ContentPack): SimSummar
   const queueFires = usable.reduce((sum, r) => sum + r.queueFires, 0);
   const filled = usable.reduce((sum, r) => sum + r.beatsFilled, 0);
   const expiredBeats = usable.reduce((sum, r) => sum + r.beatsExpired, 0);
+  const complicated = usable.reduce((sum, r) => sum + r.complicatedLegs, 0);
+  const checksRolled = usable.reduce((sum, r) => sum + r.checksRolled, 0);
+  const chipsTotal = usable.reduce((sum, r) => sum + r.chipsTotal, 0);
+  const choicesOffered = usable.reduce((sum, r) => sum + r.choicesOffered, 0);
+  const universalOffered = usable.reduce((sum, r) => sum + r.universalOffered, 0);
+  const picks = usable.reduce((sum, r) => sum + r.picks, 0);
+  const universalPicked = usable.reduce((sum, r) => sum + r.universalPicked, 0);
 
   return {
     runs,
@@ -87,6 +104,12 @@ export function summarise(runs: readonly SimRun[], pack: ContentPack): SimSummar
     beatsFilled: filled,
     beatsExpired: expiredBeats,
     beatFillRate: rate(filled, filled + expiredBeats),
+    complicationRate: rate(complicated, totalLegs - uneventful),
+    meanChipsPerCheck: checksRolled === 0 ? 0 : chipsTotal / checksRolled,
+    checksRolled,
+    checksUnderTwoChips: usable.reduce((sum, r) => sum + r.checksUnderTwoChips, 0),
+    universalOfferRate: rate(universalOffered, choicesOffered),
+    universalPickRate: rate(universalPicked, picks),
     unfillableBeatTypes: pack.unfillableBeatTypes,
   };
 }

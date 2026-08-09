@@ -1,0 +1,50 @@
+id: filler.the_long_quiet_stretch
+category: filler
+tags: [filler, road, quiet]
+priority: filler
+cooldownLegs: 2
+image: filler/the_long_quiet_stretch
+# THE SECOND FILLER, and it is a structural requirement rather than a creative one: the
+# relaxation ladder's rung-6 floor needs at least two, or a leg the director cannot fill any
+# other way becomes `uneventful`. Twelve categories give one; this is the thirteenth event.
+choices:
+  - id: keep_going
+    outcomes:
+      - id: kilometres
+        weight: 4
+        effects:
+          - { op: advanceTime, hours: 3 }
+          - { op: resource, key: energy, delta: -1 }
+      - id: a_good_stretch
+        weight: 2
+        effects:
+          - { op: advanceTime, hours: 3 }
+          - { op: resource, key: morale, delta: 1 }
+
+  - id: stop_and_rest
+    outcomes:
+      - id: an_hour_off_your_feet
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 2 }
+          - { op: resource, key: energy, delta: 1 }
+          - { op: resource, key: hunger, delta: 2 }
+
+  - id: listen_to_the_engine
+    hiddenUnless: { transportMode: [car, truck] }
+    check:
+      skill: mechanics
+      dc: 10
+      tags: [mechanics, perception]
+    outcomes:
+      - id: caught_it_early
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: transport, change: { field: condition, delta: 1 } }
+          - { op: advanceTime, hours: 2 }
+      - id: nothing_you_can_hear
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: advanceTime, hours: 2 }

@@ -1,0 +1,474 @@
+# THE COMPLICATION REGISTRY.
+#
+# A row layers onto an already-selected event: one extra sentence, a shift in difficulty, and
+# usually a different set of things to do. Thirteen events crossed with twenty-five
+# complications are three hundred situations for the price of authoring twenty-five rows
+# (08-DIVERSITY-SYSTEMS D2). At most one attaches per event.
+#
+# `textKey` derives as `complication.<id>.text` and is a SEPARATE SENTENCE APPENDED to the body,
+# never interpolated into it — a clause spliced into someone else's sentence cannot be made to
+# agree grammatically across four languages, and the body's translator cannot see what will be
+# put inside it.
+#
+# `checkDelta`, not `dcDelta`. It enters the modifier pipeline as a synthetic `context` row, so
+# it is conflict-resolved, collapsed, diminished, CLAMPED and rendered as a chip. Sign follows
+# the roll: harder is NEGATIVE. Zero is rejected.
+#
+# THE RULE THE SCHEMA ENFORCES: a row must add or remove a choice. A complication that only
+# shifts a number is a modifier wearing a sentence, and it belongs in `modifiers.yaml` — which
+# applies by check tag and costs nothing per event.
+#
+# Selection is CURSOR-FREE, so adding a row here shifts no other event's complication and no
+# golden digest can move because one was drawn. `ATTACH_PERCENT` is the single tunable for how
+# often one attaches at all; the sim reports the measured rate against it.
+
+# ── queues, waiting, and running out of time ────────────────────────────────────────────
+- id: queue_is_enormous
+  appliesTo: [cat:border, authority, documents]
+  weight: 3
+  checkDelta: -1
+  removesChoice: make_yourself_useful
+  addsChoice:
+    id: buy_a_place_in_line
+    hiddenUnless: { resource: cash, gte: 20 }
+    costs:
+      - { op: resource, key: cash, delta: -20 }
+    outcomes:
+      - id: bought_forward
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 1 }
+          - { op: resource, key: heat, delta: 1 }
+
+- id: shift_change
+  appliesTo: [cat:border, cat:authority, authority]
+  weight: 2
+  checkDelta: -2
+  # Whoever you had started to get somewhere with has gone home.
+  removesChoice: make_yourself_useful
+  addsChoice:
+    id: start_again_with_the_new_one
+    outcomes:
+      - id: from_the_top
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 2 }
+          - { op: resource, key: morale, delta: -1 }
+
+- id: you_are_running_late
+  appliesTo: [cat:transit, cat:border, transit, road]
+  weight: 2
+  checkDelta: -2
+  addsChoice:
+    id: abandon_this_and_run
+    outcomes:
+      - id: made_it_just
+        weight: 2
+        effects:
+          - { op: resource, key: energy, delta: -2 }
+          - { op: resource, key: heat, delta: 1 }
+      - id: missed_it_anyway
+        weight: 1
+        effects:
+          - { op: resource, key: energy, delta: -2 }
+          - { op: resource, key: morale, delta: -2 }
+          - { op: advanceTime, hours: 4 }
+
+# ── being watched ───────────────────────────────────────────────────────────────────────
+- id: second_officer_watching
+  appliesTo: [cat:border, cat:authority, authority, corruption]
+  weight: 3
+  checkDelta: -3
+  # The whole point: every bribery row in the registry becomes unreachable here.
+  removesChoice: offer_something
+  addsChoice:
+    id: keep_it_strictly_correct
+    outcomes:
+      - id: by_the_book
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 3 }
+          - { op: resource, key: heat, delta: -1 }
+
+- id: a_crowd_has_gathered
+  appliesTo: [cat:city, cat:transit, city, social, transit]
+  weight: 2
+  checkDelta: -1
+  addsChoice:
+    id: use_the_crowd
+    check:
+      skill: stealth
+      dc: 11
+      tags: [stealth, crime, perception]
+    outcomes:
+      - id: gone_in_the_press
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: resource, key: heat, delta: -1 }
+      - id: jostled_and_noticed
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: flag, id: made_a_scene }
+          - { op: resource, key: cash, delta: -20 }
+
+- id: a_second_vehicle_pulls_in
+  appliesTo: [cat:crime, cat:road, crime, road, risk]
+  weight: 2
+  checkDelta: -2
+  removesChoice: put_it_somewhere_they_will_not_look
+  addsChoice:
+    id: wait_for_them_to_leave
+    outcomes:
+      - id: outlasted_them
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 2 }
+          - { op: resource, key: energy, delta: -1 }
+
+- id: the_radio_is_describing_you
+  appliesTo: [cat:authority, cat:border, authority, risk]
+  requires: { flag: wanted }
+  weight: 4
+  checkDelta: -3
+  addsChoice:
+    id: cover_your_face
+    check:
+      skill: stealth
+      dc: 12
+      tags: [stealth, crime, deception]
+    outcomes:
+      - id: not_the_one_they_want
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: resource, key: heat, delta: -1 }
+      - id: exactly_the_one
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: resource, key: heat, delta: 3 }
+          - { op: flag, id: made_a_scene }
+
+# ── weather and light ───────────────────────────────────────────────────────────────────
+- id: it_starts_raining
+  appliesTo: [cat:road, cat:city, cat:filler, road, city, quiet]
+  weight: 3
+  checkDelta: -1
+  addsChoice:
+    id: shelter_until_it_passes
+    outcomes:
+      - id: waited_under_a_canopy
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 2 }
+          - { op: resource, key: hunger, delta: 1 }
+
+- id: it_is_almost_dark
+  appliesTo: [cat:road, cat:rest, cat:breakdown, road, rest, breakdown]
+  weight: 3
+  checkDelta: -1
+  addsChoice:
+    id: wait_for_full_dark
+    outcomes:
+      - id: better_in_the_dark
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 3 }
+          - { op: resource, key: hunger, delta: 1 }
+          - { op: resource, key: energy, delta: -1 }
+
+- id: the_power_is_out
+  appliesTo: [cat:border, cat:city, documents, authority, city]
+  weight: 2
+  # Nothing can be verified, which cuts in your favour.
+  checkDelta: 2
+  removesChoice: ask_in_the_shop
+  addsChoice:
+    id: wait_for_the_lights
+    outcomes:
+      - id: back_on_in_an_hour
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 2 }
+
+# ── things about you, right now ─────────────────────────────────────────────────────────
+- id: your_papers_are_wet
+  appliesTo: [cat:border, cat:authority, documents]
+  weight: 2
+  checkDelta: -2
+  addsChoice:
+    id: explain_the_damage
+    check:
+      skill: negotiation
+      dc: 12
+      tags: [social, documents, authority]
+    outcomes:
+      - id: accepted_with_a_sigh
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: advanceTime, hours: 1 }
+      - id: not_good_enough
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: flag, id: papers_questioned }
+          - { op: advanceTime, hours: 3 }
+
+- id: your_hands_are_shaking
+  appliesTo: [cat:border, cat:crime, cat:breakdown, risk, crime, mechanics]
+  requires:
+    any:
+      - { resource: energy, lte: 2 }
+      - { resource: health, lte: 3 }
+  weight: 3
+  checkDelta: -2
+  addsChoice:
+    id: sit_down_first
+    outcomes:
+      - id: five_minutes
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 1 }
+          - { op: resource, key: energy, delta: 2 }
+
+- id: nobody_here_speaks_your_language
+  appliesTo: [cat:city, cat:encounter, social, language, city]
+  requires: { not: { language: local } }
+  weight: 3
+  checkDelta: -2
+  removesChoice: ask_in_the_shop
+  addsChoice:
+    id: point_and_hope
+    check:
+      skill: negotiation
+      dc: 12
+      tags: [social, language, luck]
+    outcomes:
+      - id: understood_eventually
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: advanceTime, hours: 1 }
+      - id: gestured_past_each_other
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: advanceTime, hours: 3 }
+          - { op: resource, key: morale, delta: -1 }
+
+# ── money ───────────────────────────────────────────────────────────────────────────────
+- id: the_price_just_went_up
+  appliesTo: [cat:breakdown, cat:rest, cat:opportunity, money, mechanics]
+  weight: 3
+  checkDelta: -1
+  addsChoice:
+    id: refuse_the_new_price
+    outcomes:
+      - id: walked_on_principle
+        weight: 1
+        effects:
+          - { op: resource, key: morale, delta: -1 }
+          - { op: advanceTime, hours: 2 }
+          - { op: flag, id: burned_a_bridge }
+
+- id: they_want_local_currency
+  appliesTo: [cat:border, cat:city, money, corruption]
+  requires: { resource: cash, lte: 60 }
+  weight: 2
+  checkDelta: -2
+  removesChoice: offer_something
+  addsChoice:
+    id: find_a_way_to_change_money
+    outcomes:
+      - id: changed_at_a_bad_rate
+        weight: 1
+        effects:
+          - { op: resource, key: cash, delta: -15 }
+          - { op: advanceTime, hours: 2 }
+
+# ── people who turn up ──────────────────────────────────────────────────────────────────
+- id: someone_recognises_you
+  appliesTo: [cat:rest, cat:city, cat:encounter, social, rest, city]
+  requires: { npcMet: long_haul_driver }
+  weight: 3
+  checkDelta: 2
+  addsChoice:
+    id: greet_them_properly
+    outcomes:
+      - id: caught_up
+        weight: 1
+        effects:
+          - { op: relationship, npc: long_haul_driver, trustDelta: 1, meet: true, addTags: [] }
+          - { op: advanceTime, hours: 1 }
+          - { op: resource, key: morale, delta: 1 }
+
+- id: another_traveller_in_the_same_trouble
+  appliesTo: [cat:border, cat:transit, cat:breakdown, risk, transit, breakdown]
+  weight: 3
+  checkDelta: 1
+  addsChoice:
+    id: go_in_together
+    check:
+      skill: negotiation
+      dc: 11
+      tags: [social, haggle]
+    outcomes:
+      - id: better_as_two
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: flag, id: owed_a_favour }
+          - { op: resource, key: morale, delta: 1 }
+      - id: dragged_down_with_them
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: resource, key: heat, delta: 1 }
+          - { op: advanceTime, hours: 2 }
+
+- id: your_companion_speaks_up
+  appliesTo: [cat:border, cat:city, cat:encounter, social, companion, authority]
+  requires: { flag: companion_present }
+  weight: 3
+  checkDelta: 1
+  addsChoice:
+    id: let_them_handle_it
+    check:
+      skill: negotiation
+      dc: 10
+      tags: [social, language]
+    outcomes:
+      - id: handled
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: advanceTime, hours: 1 }
+      - id: made_it_worse_for_you
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: resource, key: reputation, delta: -1 }
+          - { op: advanceTime, hours: 2 }
+
+- id: an_argument_ahead
+  appliesTo: [cat:border, cat:transit, cat:city, authority, transit, city]
+  weight: 2
+  checkDelta: 1
+  addsChoice:
+    id: slip_past_while_they_shout
+    check:
+      skill: stealth
+      dc: 11
+      tags: [stealth, crime, perception]
+    outcomes:
+      - id: straight_through
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: advanceTime, hours: 1 }
+      - id: pulled_into_it
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: flag, id: made_a_scene }
+          - { op: advanceTime, hours: 3 }
+
+# ── search pressure ─────────────────────────────────────────────────────────────────────
+- id: there_are_dogs
+  appliesTo: [cat:border, cat:crime, authority, crime, risk]
+  weight: 3
+  checkDelta: -3
+  # Concealment stops being the answer.
+  removesChoice: keep_it_out_of_sight
+  addsChoice:
+    id: get_it_away_from_you
+    hiddenUnless: { item: contraband, gte: 1 }
+    outcomes:
+      - id: left_it_in_the_ditch
+        weight: 1
+        effects:
+          - { op: item, id: contraband, countDelta: -1, condition: null, container: null }
+          - { op: resource, key: heat, delta: -1 }
+          - { op: resource, key: morale, delta: -1 }
+
+- id: your_bag_is_already_open
+  appliesTo: [cat:rest, cat:transit, theft, rest, transit]
+  weight: 2
+  checkDelta: -1
+  addsChoice:
+    id: take_inventory_first
+    outcomes:
+      - id: counted_it_all
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 1 }
+          - { op: resource, key: morale, delta: -1 }
+
+# ── the vehicle ─────────────────────────────────────────────────────────────────────────
+- id: the_engine_is_still_running
+  appliesTo: [cat:border, cat:crime, cat:breakdown, road, crime, breakdown]
+  requires: { transportMode: [car, truck] }
+  weight: 2
+  checkDelta: -1
+  addsChoice:
+    id: just_drive_off
+    costs:
+      - { op: resource, key: heat, delta: 2 }
+    outcomes:
+      - id: gone_before_anyone_moved
+        weight: 3
+        effects:
+          - { op: advanceTime, hours: 1 }
+          - { op: flag, id: burned_a_bridge }
+      - id: chased_for_a_while
+        weight: 2
+        effects:
+          - { op: resource, key: heat, delta: 2 }
+          - { op: transport, change: { field: condition, delta: -1 } }
+
+- id: the_road_ahead_is_closed
+  appliesTo: [cat:road, cat:weather, cat:filler, road, weather, quiet]
+  weight: 3
+  checkDelta: -1
+  addsChoice:
+    id: take_the_long_way_round
+    outcomes:
+      - id: hours_added
+        weight: 1
+        effects:
+          - { op: flag, id: took_the_long_way }
+          - { op: advanceTime, hours: 5 }
+          - { op: resource, key: morale, delta: -1 }
+
+# ── memory ──────────────────────────────────────────────────────────────────────────────
+- id: you_have_been_here_before
+  appliesTo: [cat:border, cat:rest, cat:city, authority, rest, city]
+  requires: { eventSeen: border.night_crossing, gte: 1 }
+  weight: 2
+  checkDelta: 2
+  addsChoice:
+    id: do_what_worked_last_time
+    outcomes:
+      - id: same_again
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 1 }
+          - { op: resource, key: morale, delta: 1 }
+
+- id: the_official_is_new
+  appliesTo: [cat:border, cat:authority, authority, documents]
+  weight: 2
+  # Easier to move, and thorough about everything else.
+  checkDelta: 1
+  removesChoice: present_papers
+  addsChoice:
+    id: let_them_check_everything
+    outcomes:
+      - id: every_page_twice
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 4 }
+          - { op: resource, key: energy, delta: -1 }

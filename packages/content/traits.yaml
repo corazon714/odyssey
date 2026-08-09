@@ -1,10 +1,59 @@
 # Declared traits. Permanent modifiers granted by preparation choices (CLAUDE.md §9).
 #
-# Only traits the fixture events reference. `light_sleeper` appears in the engine fixture's
-# own registry block but no event reads it — the two lists are different things, and this one
-# declares what content may reference rather than what `ContentRefs` will answer for.
+# Preparation is Phase 3, so nothing GRANTS these yet. They are declared and read by the
+# modifier registry, which is what makes them the cheapest declaration in the corpus: a trait
+# needs no event write (unlike a flag) and no event read (unlike an item's liability). What it
+# needs is a reason to exist, which is a row in `modifiers.yaml` that changes a real check.
+#
+# Ten, paired so no trait is strictly good: each is an edge in one kind of contest and silence
+# in every other. `road_sense` does nothing in an argument.
 
 - id: smooth_talker
   description: Reads a room quickly. Helps wherever persuasion rather than force is the tool.
   category: social
   tags: [social, negotiation]
+
+- id: hard_stare
+  description: Comfortable letting a silence run. Useful exactly once per person.
+  category: social
+  tags: [social, intimidate]
+
+- id: haggler
+  description: Treats the first price as an opening remark rather than information.
+  category: social
+  tags: [social, commerce]
+
+- id: honest_face
+  description: People believe you slightly longer than they should. Not the same as being trusted.
+  category: social
+  tags: [social, deception]
+
+- id: light_sleeper
+  description: Wakes at the wrong sort of quiet. Costs rest, buys warning.
+  category: instinct
+  tags: [perception, rest]
+
+- id: quick_hands
+  description: Good with a latch, a pocket and a hand of cards. Not good with an audience.
+  category: instinct
+  tags: [stealth, crime]
+
+- id: road_sense
+  description: Knows which of two identical turnings is the one people take.
+  category: instinct
+  tags: [navigation, perception]
+
+- id: mechanically_minded
+  description: Hears the fault before seeing it. Cannot always afford to fix it.
+  category: craft
+  tags: [mechanics]
+
+- id: iron_stomach
+  description: Eats what is offered and keeps moving. The cheapest kind of resilience.
+  category: body
+  tags: [endurance, medical]
+
+- id: stubborn
+  description: Will finish a bad idea rather than admit it was one. Sometimes that is enough.
+  category: body
+  tags: [endurance, intimidate]

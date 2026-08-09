@@ -140,6 +140,11 @@ const NOT_CONTENT: Readonly<Record<string, string>> = {
     'engine ordering policy, not an authored vocabulary — same members as CONTAINER_KINDS',
   EMPTY_COMPLICATIONS: 'empty constant',
   EMPTY_MODIFIER_REGISTRY: 'empty constant',
+  // Empty INSTANCES of a registry, not vocabularies. The rows they will hold are checked by
+  // their own schemas in M-B and M-C, the way modifiers.yaml is — see MODIFIER_SOURCE_KINDS
+  // above, which is the precedent for "a registry's shape is checked elsewhere".
+  EMPTY_COMPLICATION_REGISTRY: 'empty constant',
+  EMPTY_UNIVERSAL_CHOICE_REGISTRY: 'empty constant',
   EMPTY_REASONS: 'empty constant',
   NO_CLAMPS: 'empty constant',
   NO_DROPS: 'empty constant',

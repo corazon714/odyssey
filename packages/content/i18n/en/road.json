@@ -1,0 +1,21 @@
+{
+  "events.road.the_hitchhiker.title": "Somebody Wants a Lift",
+  "events.road.the_hitchhiker.body": "A figure on the verge with one bag and no coat, arm out, not waving. There is nothing behind them for twenty kilometres and nothing ahead for thirty. They do not look desperate. They look like they have done this before and expect it to work.",
+
+  "events.road.the_hitchhiker.choice.pull_over": "Pull over",
+  "events.road.the_hitchhiker.out.good_company": "They talk for an hour, then stop talking, which is the better trick. They know which fuel stop is open late and why the short way is not.",
+  "events.road.the_hitchhiker.out.good_company.v1": "The second one is easier. You know what to ask, and they know you are not going to ask anything else.",
+  "events.road.the_hitchhiker.out.good_company.v2": "By now you have a system. They get in, you say where you are going, and either it suits them or it does not.",
+  "events.road.the_hitchhiker.out.long_silence": "Neither of you finds anything to say for ninety kilometres. It is not hostile. It is just very long.",
+  "events.road.the_hitchhiker.out.long_silence.v1": "The same silence as last time, with a different person in it. You are starting to think it might be you.",
+  "events.road.the_hitchhiker.out.long_silence.v2": "You stop trying after the first ten minutes and put the radio on instead.",
+  "events.road.the_hitchhiker.out.they_take_something": "They get out at a junction with more than they got in with, and you work out which pocket about a kilometre later.",
+
+  "events.road.the_hitchhiker.choice.drive_on": "Keep going",
+  "events.road.the_hitchhiker.out.watched_in_the_mirror": "They do not lower the arm. You watch them get smaller for a long time, which is longer than you expected to.",
+  "events.road.the_hitchhiker.out.watched_in_the_mirror.v1": "You have got better at not looking in the mirror. Not good, but better.",
+  "events.road.the_hitchhiker.out.watched_in_the_mirror.v2": "You do not slow down this time, and you do not look, and it bothers you rather more than the first one did.",
+
+  "events.road.the_hitchhiker.choice.leave_them_at_the_junction": "Put them out at the junction",
+  "events.road.the_hitchhiker.out.parted_badly": "You stop somewhere that is not anywhere and say you are turning off. They know you are not. Neither of you argues about it."
+}

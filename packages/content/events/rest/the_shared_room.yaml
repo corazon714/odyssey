@@ -1,0 +1,96 @@
+id: rest.the_shared_room
+category: rest
+tags: [rest, theft, risk, crime]
+context:
+  locationTypes: [rest_stop, town, village, station]
+cooldownLegs: 5
+image: rest/the_shared_room
+choices:
+  # Reads spare_tyre, first_aid_kit and cash_belt — all three liabilities backed here.
+  - id: sleep_on_your_bag
+    check:
+      skill: stealth
+      dc: 11
+      tags: [stealth, perception, search]
+    outcomes:
+      - id: undisturbed
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: resource, key: energy, delta: 2 }
+          - { op: resource, key: hygiene, delta: 1 }
+      - id: bag_gone_through
+        weight: 2
+        onCheck: failure
+        requires: { item: first_aid_kit, gte: 1 }
+        effects:
+          - { op: item, id: first_aid_kit, countDelta: -1, condition: null, container: null }
+          - { op: relationship, npc: pickpocket, trustDelta: -1, meet: true, addTags: [theft] }
+          - { op: resource, key: energy, delta: 1 }
+      - id: the_bulky_thing_walks
+        weight: 2
+        onCheck: failure
+        requires: { item: spare_tyre, gte: 1 }
+        effects:
+          - { op: item, id: spare_tyre, countDelta: -1, condition: null, container: null }
+          - { op: relationship, npc: pickpocket, trustDelta: -1, meet: true, addTags: [theft] }
+          - { op: resource, key: morale, delta: -2 }
+      - id: light_purse_heavy_sleep
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: resource, key: cash, delta: -25 }
+          - { op: resource, key: energy, delta: 2 }
+
+  # Strip down to what you can carry on you. Safer, and you lose the rest.
+  - id: leave_the_bulk_behind
+    hiddenUnless: { item: cash_belt, gte: 1 }
+    outcomes:
+      - id: travelling_light_now
+        weight: 1
+        effects:
+          - { op: flag, id: travelling_light }
+          - { op: resource, key: energy, delta: 3 }
+          - { op: resource, key: morale, delta: -1 }
+
+  - id: pay_for_a_private_room
+    hiddenUnless: { resource: cash, gte: 30 }
+    costs:
+      - { op: resource, key: cash, delta: -30 }
+    check:
+      skill: negotiation
+      dc: 10
+      tags: [social, haggle, intimidate]
+    outcomes:
+      - id: a_door_that_locks
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: resource, key: energy, delta: 4 }
+          - { op: resource, key: hygiene, delta: 2 }
+          - { op: relationship, npc: innkeeper, trustDelta: 1, meet: true, addTags: [] }
+      - id: nothing_free_tonight
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: resource, key: energy, delta: 2 }
+
+  - id: see_to_your_feet
+    hiddenUnless: { resource: health, lte: 7 }
+    check:
+      skill: endurance
+      dc: 10
+      tags: [endurance, medical]
+    outcomes:
+      - id: patched_up
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: resource, key: health, delta: 2 }
+          - { op: resource, key: energy, delta: 2 }
+      - id: worse_in_the_morning
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: resource, key: health, delta: -1 }
+          - { op: resource, key: energy, delta: 2 }

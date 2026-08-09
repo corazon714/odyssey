@@ -2,7 +2,13 @@ import { sortIssues, type LintIssue } from './issue.ts';
 import { loadContent, type ContentBundle } from './load-content.ts';
 import { contentSafety } from './rules-safety.ts';
 import { itemLiability, orphanFlags, undeclaredReferences } from './rules-references.ts';
-import { localModifiers, missingCheckTags, tagCoverage } from './rules-registry.ts';
+import {
+  localModifiers,
+  missingCheckTags,
+  regionModifiers,
+  tagCoverage,
+} from './rules-registry.ts';
+import { universalChoices } from './rules-universal.ts';
 import {
   contradictoryRequires,
   duplicateIds,
@@ -32,6 +38,8 @@ export const RULES: readonly {
   { name: 'local-modifiers', run: localModifiers },
   { name: 'check-tags', run: missingCheckTags },
   { name: 'tag-coverage', run: tagCoverage },
+  { name: 'region-modifiers', run: regionModifiers },
+  { name: 'universal-choices', run: universalChoices },
   { name: 'i18n', run: i18nCoverage },
   { name: 'word-counts', run: wordCounts },
   { name: 'images', run: imageRefs },

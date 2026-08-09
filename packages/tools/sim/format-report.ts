@@ -1,4 +1,4 @@
-import { collectFlagUsage, type ContentPack } from '@odyssey/engine';
+import { ATTACH_PERCENT, collectFlagUsage, type ContentPack } from '@odyssey/engine';
 import { ascending, percentile } from './percentile.ts';
 import { type SimSummary } from './run-many.ts';
 import { type SimRun } from './run-one.ts';
@@ -48,6 +48,11 @@ export function formatReport(summary: SimSummary, pack: ContentPack, meta: Repor
     `Long-range payoff rate     ${pct(summary.payoffRate).padStart(6)}   (target 80%)`,
     `Beat fill rate             ${pct(summary.beatFillRate).padStart(6)}`,
     `Repeat-event rate          ${pct(repeatRate(usable)).padStart(6)}`,
+    `Complication rate          ${pct(summary.complicationRate).padStart(6)}   (target ${String(ATTACH_PERCENT)}%)`,
+    `Modifier chips / check     ${summary.meanChipsPerCheck.toFixed(1).padStart(6)}   (target 3-7, over ${String(summary.checksRolled)} checks)`,
+    `Checks under 2 chips       ${String(summary.checksUnderTwoChips).padStart(6)}   (each one draws nothing the registry exists for)`,
+    `Universal choices offered  ${pct(summary.universalOfferRate).padStart(6)}   (share of choices shown)`,
+    `Universal choices picked   ${pct(summary.universalPickRate).padStart(6)}   (over ~30% means they are flattening the corpus)`,
     `Unresolved threads         ${String(summary.unresolvedThreads).padStart(6)}`,
     '',
     `Wall clock                 ${String(meta.elapsedMs)} ms   (${(meta.elapsedMs / meta.runs).toFixed(2)} ms/run)`,

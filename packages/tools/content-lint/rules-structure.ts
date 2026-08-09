@@ -60,7 +60,11 @@ export function unreachableOutcomes(bundle: ContentBundle): readonly LintIssue[]
       // An outcome gated on a check result where the check cannot produce it. The schema
       // already refuses `onCheck` with no check at all; this catches the subtler half — every
       // outcome gated on one side, so the other side of the roll selects nothing.
-      if (choice.skillCheck !== null && choice.outcomes.length > 0) {
+      //
+      // A `search` counts as rolling: it lands in the same `check` slot and `onCheck` reads it
+      // identically, so a search whose outcomes are all `onCheck: success` has the same dead
+      // half a skill check would.
+      if ((choice.skillCheck !== null || choice.search !== null) && choice.outcomes.length > 0) {
         const sides = new Set(choice.outcomes.map((o) => o.onCheck));
         if (!sides.has(null) && sides.size === 1) {
           issues.push(
@@ -272,6 +276,25 @@ export function i18nCoverage(bundle: ContentBundle): readonly LintIssue[] {
       }
     }
   }
+
+  // Universal choices are spliced in at PACK construction, which the linter's `bundle.events`
+  // has not been through — so their keys would be invisible here. They are also the keys most
+  // worth checking: one missing `universal.<id>.label` is a blank button in every event the
+  // row lands in, not just one.
+  for (const row of bundle.universalChoices) {
+    const keys = [
+      row.choice.labelKey,
+      ...row.choice.outcomes.flatMap((o) => [o.textKey, ...o.textVariants]),
+    ];
+    for (const key of keys) {
+      if (!locale.has(key)) {
+        issues.push(
+          error('MISSING_I18N_KEY', 'universal-choices.yaml', `\`${key}\` is not in en/`),
+        );
+      }
+    }
+  }
+
   return issues;
 }
 

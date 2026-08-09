@@ -1,0 +1,57 @@
+{
+  "_comment": "Universal choices. Keys derive from the ROW, not the event, so each string is written once however many events the row is spliced into. That is the whole economy of the registry.",
+
+  "universal.walk_away.label": "Leave it",
+  "universal.walk_away.out.left_it": "You decide it is not worth what it is going to cost and go, before anybody has finished making the offer. It nags at you for an hour.",
+
+  "universal.run.label": "Run",
+  "universal.run.out.got_clear": "You are moving before you have finished deciding to. Four streets, two corners, and a long walk back to the road by a different way.",
+  "universal.run.out.caught_up_with": "You do not get far enough. Somebody is faster or the road runs out, and the conversation afterwards is worse than it would have been.",
+
+  "universal.wait_it_out.label": "Wait",
+  "universal.wait_it_out.out.waited": "You sit it out. Three hours, and the situation resolves itself the way situations do when nobody does anything about them.",
+
+  "universal.bribe.label": "Offer something",
+  "universal.bribe.out.taken_quietly": "It is taken without either of you acknowledging that it happened, which is the correct way to do it and faintly depressing.",
+  "universal.bribe.out.refused_and_noted": "It is not taken, and it is not forgotten. Something gets written down that will still be written down in a month.",
+
+  "universal.pay_the_asking_price.label": "Pay what they ask",
+  "universal.pay_the_asking_price.out.settled_in_full": "You pay the number without arguing about it, which costs roughly three times what arguing would have and takes about a tenth as long.",
+
+  "universal.bluff_with_documents.label": "Let the papers speak",
+  "universal.bluff_with_documents.out.they_did_not_look_closely": "They glance at the top sheet, decide it is somebody else's problem, and hand it back.",
+  "universal.bluff_with_documents.out.looked_closely": "They look at it properly, and then at you, and then write a number on it. That number will be there every time from now on.",
+
+  "universal.lie_about_destination.label": "Say you are going elsewhere",
+  "universal.lie_about_destination.out.story_held": "You name somewhere plausible and boring and nobody has any follow-up questions about it.",
+  "universal.lie_about_destination.out.story_did_not": "They have been to the place you named, recently, and would like to talk about it. You would not.",
+
+  "universal.threaten.label": "Make it their problem",
+  "universal.threaten.out.they_backed_down": "You stop being reasonable and stay stopped. It works, and you are not welcome here again.",
+  "universal.threaten.out.they_did_not_back_down": "It turns out they have been shouted at by better, and now everyone in the room is watching you find that out.",
+
+  "universal.plead_ignorance.label": "Play the lost traveller",
+  "universal.plead_ignorance.out.treated_as_a_fool": "You are believed completely, treated accordingly, and sent on your way about two hours poorer in dignity.",
+  "universal.plead_ignorance.out.waved_off_as_harmless": "You are waved off as somebody else's problem, which is exactly what you were going for and still stings slightly.",
+
+  "universal.ask_for_help.label": "Ask somebody",
+  "universal.ask_for_help.out.somebody_helped": "Somebody stops, listens, and does the thing. You will be paying that back for a while, in ways nobody will specify.",
+  "universal.ask_for_help.out.nobody_wanted_to_know": "Three people say no in three different polite ways, and the fourth does not slow down.",
+
+  "universal.let_the_companion_handle_it.label": "Let them do the talking",
+  "universal.let_the_companion_handle_it.out.they_sorted_it": "You stand there holding the bags while somebody who knows how this works makes it take four minutes.",
+  "universal.let_the_companion_handle_it.out.they_resent_being_used": "It gets done, and afterwards there is a silence in which it is established that you will not be doing that again.",
+
+  "universal.share_what_you_have.label": "Share what you have",
+  "universal.share_what_you_have.out.shared_out": "You split it without being asked twice. It costs more than you had to spare and buys something you cannot count.",
+
+  "universal.offer_to_work_for_it.label": "Offer to work it off",
+  "universal.offer_to_work_for_it.out.worked_it_off": "Six hours of somebody else's job, done badly at first and then properly. The debt is settled and the day is gone.",
+
+  "universal.create_a_distraction.label": "Give them something else",
+  "universal.create_a_distraction.out.everyone_looked_the_other_way": "Something falls over somewhere it should not, everybody turns, and by the time they turn back the thing is done.",
+  "universal.create_a_distraction.out.everyone_looked_at_you": "Something falls over and everybody turns, and what they are all looking at, unmistakably, is you.",
+
+  "universal.use_an_item.label": "Use what you brought",
+  "universal.use_an_item.out.had_the_right_thing": "You have exactly the right thing in the bag, and using it uses it up. Worth it, and you will want it again in a week."
+}

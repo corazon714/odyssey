@@ -1,0 +1,136 @@
+id: border.night_crossing
+category: border
+tags: [authority, documents, money, risk, corruption]
+priority: beat
+beatType: border_crossing
+tensionBand: [0.4, 1]
+context:
+  locationTypes: [border_crossing, checkpoint]
+  timeOfDay: [evening, night]
+cooldownLegs: 8
+exclusiveGroup: border_resolution
+image: border/night_crossing
+requires:
+  not: { flag: bribed_this_border }
+choices:
+  # The straight option. Cheap if your papers are good, ruinous if they are not.
+  - id: present_papers
+    check:
+      skill: negotiation
+      dc: 12
+      tags: [social, documents, authority]
+    outcomes:
+      - id: waved_through
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: advanceTime, hours: 2 }
+          - {
+              op: document,
+              change: { field: visa, region: transit_zone, valid: true, expiresDay: null },
+            }
+      - id: held_and_questioned
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: flag, id: papers_questioned }
+          - { op: flag, id: night_crossing }
+          - { op: advanceTime, hours: 5 }
+          - { op: resource, key: morale, delta: -1 }
+          # The soft pointer. A window wide enough that the director can place it.
+          - { op: scheduleEvent, eventId: authority.the_file_catches_up, inLegs: [4, 14] }
+      - id: papers_taken
+        weight: 1
+        onCheck: failure
+        requires: { resource: heat, gte: 4 }
+        effects:
+          - { op: flag, id: papers_lost }
+          - { op: document, change: { field: losePassport } }
+          - { op: flag, id: night_crossing }
+          - { op: resource, key: morale, delta: -3 }
+
+  # Money, and a permanent record if it lands wrong.
+  - id: offer_something
+    hiddenUnless: { resource: cash, gte: 40 }
+    costs:
+      - { op: resource, key: cash, delta: -40 }
+    check:
+      skill: negotiation
+      dc: 13
+      tags: [social, bribery, authority, crime]
+    outcomes:
+      - id: understood
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: flag, id: bribed_this_border, ttlLegs: 1 }
+          - { op: relationship, npc: border_guard, trustDelta: 1, meet: true, addTags: [bribed] }
+          - { op: advanceTime, hours: 1 }
+      - id: refused
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: flag, id: bribe_on_record }
+          - { op: flag, id: night_crossing }
+          - { op: relationship, npc: border_guard, trustDelta: -1, meet: true, addTags: [] }
+          - { op: resource, key: heat, delta: 2 }
+      - id: detained_here
+        weight: 1
+        onCheck: failure
+        requires: { resource: heat, gte: 5 }
+        effects:
+          - { op: flag, id: detained }
+          - { op: flag, id: wanted }
+          - { op: advanceTime, hours: 14 }
+          - { op: resource, key: morale, delta: -3 }
+          - { op: unlockEnding, id: ending.detained_at_border }
+
+  # The search. Success means it stayed hidden — see content/search-spec.ts.
+  - id: keep_it_out_of_sight
+    hiddenUnless: { item: contraband, gte: 1 }
+    search:
+      container: person
+      dc: 12
+      item: contraband
+      tags: [stealth, search, crime]
+    outcomes:
+      - id: not_found
+        weight: 1
+        onCheck: success
+        effects:
+          - { op: resource, key: heat, delta: 1 }
+          - { op: advanceTime, hours: 2 }
+      - id: found
+        weight: 1
+        onCheck: failure
+        effects:
+          - { op: item, id: contraband, countDelta: -1, condition: null, container: null }
+          - { op: resource, key: heat, delta: 3 }
+          - { op: flag, id: wanted }
+          - { op: flag, id: night_crossing }
+
+  # Reads the two carried things a guard notices, so both liabilities are backed.
+  - id: make_yourself_useful
+    hiddenUnless:
+      any:
+        - { item: cigarettes, gte: 1 }
+        - { item: toolkit, gte: 1 }
+        - { item: cash_belt, gte: 1 }
+    check:
+      skill: negotiation
+      dc: 11
+      tags: [social, haggle, authority]
+    outcomes:
+      - id: small_talk
+        weight: 2
+        onCheck: success
+        effects:
+          - { op: relationship, npc: border_guard, trustDelta: 1, meet: true, addTags: [] }
+          - { op: advanceTime, hours: 2 }
+      - id: searched_anyway
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: flag, id: papers_questioned }
+          - { op: advanceTime, hours: 4 }
+          - { op: resource, key: hygiene, delta: -1 }

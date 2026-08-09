@@ -10,6 +10,7 @@ import { type TransportMode } from '../state/transport-state.ts';
 import { type BeatType } from './beat-type.ts';
 import { type EventPriority } from './event-priority.ts';
 import { type LocationType } from './location-type.ts';
+import { type SearchSpec } from './search-spec.ts';
 
 /**
  * An authored event, as the engine sees it AFTER parsing.
@@ -107,6 +108,17 @@ export type Choice = {
   /** Paid on selection, before outcomes resolve. */
   readonly costs: readonly Effect[];
   readonly skillCheck: SkillCheck | null;
+  /**
+   * A container search, as an ALTERNATIVE to `skillCheck` — never both.
+   *
+   * Both produce the single `RollResult` that `onCheck` branches on, so allowing both would
+   * leave `onCheck: success` with two possible referents. The schema rejects the pair rather
+   * than picking a precedence, for the same reason `variants` and `textVariants` together are
+   * an error: a precedence rule is a puzzle an author has to remember.
+   *
+   * Success means it stayed HIDDEN — see `search-spec.ts` for why that direction is forced.
+   */
+  readonly search: SearchSpec | null;
   readonly outcomes: readonly Outcome[];
 };
 

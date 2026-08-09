@@ -1,8 +1,10 @@
 import {
   evaluatePredicate,
+  presentedChoices,
   type Choice,
   type ContentPack,
   type GameEvent,
+  type RegistryComplication,
   type Rng,
   type RunState,
   createPredicateContext,
@@ -35,14 +37,27 @@ export type Policy = {
   choose(choices: readonly Choice[], state: RunState, rng: Rng): Choice | null;
 };
 
-/** Choices the engine would actually accept, in canonical order. */
+/**
+ * Choices the engine would actually accept, in canonical order.
+ *
+ * GOES THROUGH `presentedChoices`, and must. Reading `event.choices` directly was correct
+ * right up until a complication could REMOVE one: the sim then offered a choice
+ * `resolveChoice` refuses, and 2000 runs produced a crop of `loop/unknown-choice` errors.
+ *
+ * The engine refusing is the design working — CLAUDE.md 2.7 says the engine is the authority
+ * on legality, not the screen, and the sim is a screen. But it means every caller that renders
+ * a choice list has to derive it the same way, which is the entire reason `presentedChoices`
+ * is one exported function rather than two inline expressions. The app layer will need this
+ * too.
+ */
 export function selectableChoices(
   event: GameEvent,
   state: RunState,
   pack: ContentPack,
+  complication: RegistryComplication | null = null,
 ): readonly Choice[] {
   const ctx = createPredicateContext(state, pack.refs, `policy:${event.id}`);
-  return event.choices.filter((choice) => {
+  return presentedChoices(event, complication).filter((choice) => {
     if (choice.hiddenUnless !== null && !evaluatePredicate(choice.hiddenUnless, ctx).value) {
       return false;
     }

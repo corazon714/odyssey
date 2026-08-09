@@ -152,4 +152,27 @@ const migrate_2_to_3: Migration = {
   },
 };
 
-export const MIGRATIONS: readonly Migration[] = [migrate_1_to_2, migrate_2_to_3];
+/**
+ * v3 -> v4: a presented event records the complication attached to it.
+ *
+ * A v3 save cannot have had one, so `null` is the only correct value — and it must be WRITTEN
+ * rather than left absent. `isRunStateShape` does not inspect `presentation` (it checks what
+ * BREAKS, and a missing complication breaks nothing structural), so an absent key would load
+ * clean and read `undefined`. That compares `!== null` at every guard site, which would send
+ * `resolveChoice` to `registry.byId.get(undefined)` — silent, and it would present as a
+ * content bug rather than a migration one.
+ *
+ * Only the `event` branch is touched. `none` and `uneventful` have no complication to record,
+ * and adding the key to them would put a field in the union arm that does not carry it.
+ */
+const migrate_3_to_4: Migration = {
+  from: 3,
+  describe: 'v3->v4: a presented event records its complication id',
+  migrate(save) {
+    const presentation = asRecord(save['presentation']);
+    if (presentation['kind'] !== 'event') return save;
+    return { ...save, presentation: { ...presentation, complicationId: null } };
+  },
+};
+
+export const MIGRATIONS: readonly Migration[] = [migrate_1_to_2, migrate_2_to_3, migrate_3_to_4];

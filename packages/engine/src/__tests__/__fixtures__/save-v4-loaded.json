@@ -1,0 +1,351 @@
+{
+  "version": 4,
+  "contentVersion": "7f34f65d5e3fe51f70e5076af9b97b39",
+  "seed": "save-fixture",
+  "rngCursors": {
+    "eventPick": 6,
+    "outcomeRoll": 0,
+    "skillCheck": 2,
+    "npcGen": 0,
+    "encounterFlavor": 0,
+    "worldTick": 21,
+    "routeGen": 0,
+    "chanceGate": 0
+  },
+  "clock": {
+    "day": 3,
+    "hour": 19,
+    "weekday": 3
+  },
+  "weather": "rain",
+  "route": {
+    "id": "fixture.illicit",
+    "profile": "illicit",
+    "nodes": ["origin", "border_a", "waypoint_b", "border_b", "destination"],
+    "edges": [
+      "origin-border_a",
+      "border_a-waypoint_b",
+      "waypoint_b-border_b",
+      "border_b-destination"
+    ],
+    "legIndex": 7,
+    "legCount": 24,
+    "progressKm": 712,
+    "totalKm": 2140,
+    "beatSchedule": [
+      {
+        "legIndex": 0,
+        "type": "departure",
+        "slackLegs": 0,
+        "status": "expired"
+      },
+      {
+        "legIndex": 5,
+        "type": "border_crossing",
+        "slackLegs": 3,
+        "status": "filled"
+      },
+      {
+        "legIndex": 12,
+        "type": "midpoint_crisis",
+        "slackLegs": 3,
+        "status": "pending"
+      },
+      {
+        "legIndex": 17,
+        "type": "border_crossing",
+        "slackLegs": 3,
+        "status": "pending"
+      },
+      {
+        "legIndex": 20,
+        "type": "approach",
+        "slackLegs": 2,
+        "status": "pending"
+      },
+      {
+        "legIndex": 23,
+        "type": "finale",
+        "slackLegs": 0,
+        "status": "pending"
+      }
+    ],
+    "legLocations": [
+      "city",
+      "roadside",
+      "roadside",
+      "rest_stop",
+      "roadside",
+      "border_crossing",
+      "roadside",
+      "roadside",
+      "town",
+      "checkpoint",
+      "roadside",
+      "rest_stop",
+      "wilderness",
+      "checkpoint",
+      "station",
+      "roadside",
+      "roadside",
+      "border_crossing",
+      "roadside",
+      "roadside",
+      "town",
+      "checkpoint",
+      "rest_stop",
+      "city"
+    ]
+  },
+  "transport": {
+    "mode": "truck",
+    "vehicleId": "fixture.illicit-vehicle",
+    "condition": 10,
+    "fuel": 10,
+    "legal": false
+  },
+  "resources": {
+    "energy": 0,
+    "health": 10,
+    "morale": 4,
+    "hunger": 8,
+    "hygiene": 4,
+    "heat": 0,
+    "reputation": 0,
+    "cash": 320,
+    "bank": 0
+  },
+  "skills": {
+    "negotiation": 0,
+    "stealth": 0,
+    "mechanics": 0,
+    "streetwise": 0,
+    "endurance": 0,
+    "languages": []
+  },
+  "traits": [],
+  "inventory": {
+    "person": {
+      "slots": 6,
+      "searchDC": 2,
+      "items": [
+        {
+          "id": "cash_belt",
+          "count": 1,
+          "condition": null
+        },
+        {
+          "id": "ration",
+          "count": 3,
+          "condition": null
+        },
+        {
+          "id": "spare_tyre",
+          "count": 1,
+          "condition": 7
+        }
+      ]
+    },
+    "bag": null,
+    "vehicle": null,
+    "stash": null
+  },
+  "documents": {
+    "passport": {
+      "present": true,
+      "valid": true,
+      "flagged": true,
+      "container": "person"
+    },
+    "visas": {
+      "schengen": {
+        "valid": true,
+        "expiresDay": 40
+      },
+      "transit_zone": {
+        "valid": false,
+        "expiresDay": null
+      }
+    },
+    "tickets": [
+      {
+        "id": "ferry_a",
+        "forEdge": "e1",
+        "used": true,
+        "container": "person"
+      }
+    ]
+  },
+  "flags": {
+    "bribed_this_border": {
+      "value": true,
+      "setAtLeg": 5,
+      "expiresAtLeg": 6
+    }
+  },
+  "relationships": {
+    "pickpocket": {
+      "trust": -2,
+      "met": true,
+      "lastSeenLeg": 0,
+      "tags": ["thief"]
+    },
+    "border_guard": {
+      "trust": 1,
+      "met": true,
+      "lastSeenLeg": 5,
+      "tags": ["bribed"]
+    }
+  },
+  "eventMemory": {
+    "rest.pickpocket_victim": {
+      "count": 1,
+      "lastLeg": 0,
+      "lastChoiceId": "chase"
+    },
+    "filler.roadside_quiet": {
+      "count": 3,
+      "lastLeg": 6,
+      "lastChoiceId": "keep_going"
+    },
+    "filler.long_hours": {
+      "count": 3,
+      "lastLeg": 7,
+      "lastChoiceId": "push_on"
+    },
+    "border.bribe_attempt": {
+      "count": 1,
+      "lastLeg": 5,
+      "lastChoiceId": "offer_bribe"
+    }
+  },
+  "pendingEvents": [
+    {
+      "eventId": "border.guard_remembers",
+      "earliestLeg": 9,
+      "latestLeg": 17,
+      "scheduledAtLeg": 5,
+      "source": "border.bribe_attempt",
+      "requires": {
+        "kind": "all",
+        "of": [
+          {
+            "kind": "resource",
+            "key": "cash",
+            "cmp": {
+              "op": "gte",
+              "value": 30
+            }
+          },
+          {
+            "kind": "not",
+            "of": {
+              "kind": "resource",
+              "key": "cash",
+              "cmp": {
+                "op": "lt",
+                "value": 5
+              }
+            }
+          },
+          {
+            "kind": "flag",
+            "id": "money",
+            "cmp": {
+              "op": "isSet"
+            }
+          },
+          {
+            "kind": "item",
+            "id": "ration",
+            "cmp": {
+              "op": "gte",
+              "value": 1
+            }
+          }
+        ]
+      },
+      "payload": null
+    }
+  ],
+  "history": [
+    {
+      "legIndex": 0,
+      "day": 1,
+      "eventId": "rest.pickpocket_victim",
+      "choiceId": "chase",
+      "textKey": "events.rest.pickpocket_victim.out.recovered",
+      "params": {},
+      "tags": ["theft", "money", "crowd"]
+    },
+    {
+      "legIndex": 1,
+      "day": 1,
+      "eventId": "filler.roadside_quiet",
+      "choiceId": "keep_going",
+      "textKey": "events.filler.roadside_quiet.out.onward",
+      "params": {},
+      "tags": ["travel", "quiet"]
+    },
+    {
+      "legIndex": 2,
+      "day": 1,
+      "eventId": "filler.long_hours",
+      "choiceId": "push_on",
+      "textKey": "events.filler.long_hours.out.tired",
+      "params": {},
+      "tags": ["travel", "fatigue"]
+    },
+    {
+      "legIndex": 3,
+      "day": 2,
+      "eventId": "filler.roadside_quiet",
+      "choiceId": "keep_going",
+      "textKey": "events.filler.roadside_quiet.out.onward",
+      "params": {},
+      "tags": ["travel", "quiet"]
+    },
+    {
+      "legIndex": 4,
+      "day": 2,
+      "eventId": "filler.long_hours",
+      "choiceId": "push_on",
+      "textKey": "events.filler.long_hours.out.tired",
+      "params": {},
+      "tags": ["travel", "fatigue"]
+    },
+    {
+      "legIndex": 5,
+      "day": 3,
+      "eventId": "border.bribe_attempt",
+      "choiceId": "offer_bribe",
+      "textKey": "events.border.bribe_attempt.out.success",
+      "params": {},
+      "tags": ["authority", "money", "risk", "corruption"]
+    },
+    {
+      "legIndex": 6,
+      "day": 3,
+      "eventId": "filler.roadside_quiet",
+      "choiceId": "keep_going",
+      "textKey": "events.filler.roadside_quiet.out.onward",
+      "params": {},
+      "tags": ["travel", "quiet"]
+    },
+    {
+      "legIndex": 7,
+      "day": 3,
+      "eventId": "filler.long_hours",
+      "choiceId": "push_on",
+      "textKey": "events.filler.long_hours.out.tired",
+      "params": {},
+      "tags": ["travel", "fatigue"]
+    }
+  ],
+  "tension": 0.33055555555555555,
+  "unlockedEndings": [],
+  "status": "travelling",
+  "presentation": {
+    "kind": "none"
+  }
+}

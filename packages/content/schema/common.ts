@@ -12,6 +12,7 @@ import {
   SKILL_KEYS,
   TIMES_OF_DAY,
   TRANSPORT_MODES,
+  complicationId,
   endingId,
   eventId,
   flagId,
@@ -71,6 +72,7 @@ export const itemIdSchema = rawId.transform(itemId);
 export const traitIdSchema = rawId.transform(traitId);
 export const endingIdSchema = rawId.transform(endingId);
 export const regionIdSchema = rawId.transform(regionId);
+export const complicationIdSchema = rawId.transform(complicationId);
 export const languageIdSchema = rawId.transform(languageId);
 
 /**

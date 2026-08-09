@@ -6,18 +6,31 @@
 #
 # `labelKey` is derived from the id, so there is nowhere to type prose here either.
 #
-# FIXTURE SET — eight rows chosen to exercise every step of the resolution pipeline
-# (conflicts, non-stacking collapse, diminishing returns, both clamps), not a seed corpus.
-# The 160-modifier corpus is Phase 2B, written against the content bible.
+# ── READ THIS BEFORE ADDING A ROW ───────────────────────────────────────────────────────
+#
+# 1. `stacks` DEFAULTS TO FALSE, and every non-stacking row sharing a `sourceKind` collapses to
+#    exactly ONE survivor per check — the largest |delta|, ties by id ascending. Priority does
+#    not decide that; it decides `conflictsWith` only. So breadth for "3-7 modifiers on a
+#    check" comes from across the twelve sourceKinds, NOT from many rows within one. Rows in
+#    one kind should be alternative gradations of one idea (`exhausted` vs `running_on_fumes`),
+#    because two independent pressures in one kind will silently suppress each other.
+#    Write `stacks:` explicitly every time.
+#
+# 2. Priority ladder in use: 20 presentation · 30 place · 40 language and skill · 45-55 money
+#    and relationship · 60-65 heat and flags · 70 items and countermeasures. (80 is reserved
+#    for the synthetic row a complication injects.)
+#
+# 3. Every flag a row reads must be WRITTEN by a corpus event — `FLAG_READ_NEVER_WRITTEN` is an
+#    error. Every npc/item/trait must be declared. That is what sizes this file.
+#
+# `region` and `companion` are the two thin kinds, and honestly so: `RunState` has no current
+# region and no companion field. Region rows encode the player's PAPERS relative to a crossing,
+# never a place's character (CLAUDE.md §11); companion rows key on flags content sets today and
+# a preparation screen will set in Phase 3.
 
-# ── condition: how you present ──────────────────────────────────────────────────────────
-- id: dishevelled
-  appliesTo: [social, haggle, deception, intimidate, authority]
-  when: { resource: hygiene, lte: 3 }
-  delta: -2
-  sourceKind: condition
-  priority: 20
-  stacks: false
+# ════════════════════════════════════════════════════════════════════════════════════════
+# condition — how you are right now. Resource-keyed, so no declarations needed.
+# ════════════════════════════════════════════════════════════════════════════════════════
 
 - id: exhausted
   appliesTo: [physical, endurance, mechanics, perception, navigate]
@@ -27,23 +40,125 @@
   priority: 20
   stacks: false
 
-# ── the language row. `Skills.languages` exists in state and NOTHING read it before this. ──
-- id: no_shared_language
-  appliesTo: [social, haggle, deception, intimidate, authority, language]
-  when: { not: { language: local } }
-  delta: -2
-  sourceKind: skill
-  priority: 40
+- id: running_on_fumes
+  appliesTo: [physical, endurance, mechanics]
+  when: { resource: energy, lte: 5 }
+  delta: -1
+  sourceKind: condition
+  priority: 20
   stacks: false
 
-# ── heat: being wanted follows you ──────────────────────────────────────────────────────
-- id: wanted_by_authorities
-  appliesTo: [authority, bribery, documents, search]
-  when: { flag: wanted }
+- id: well_rested
+  appliesTo: [physical, endurance, perception, navigate]
+  when: { resource: energy, gte: 8 }
+  delta: 1
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: dishevelled
+  appliesTo: [social, haggle, deception, intimidate, authority]
+  when: { resource: hygiene, lte: 3 }
+  delta: -2
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: presentable
+  appliesTo: [social, haggle, authority, documents]
+  when: { resource: hygiene, gte: 8 }
+  delta: 1
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: starving
+  appliesTo: [physical, endurance, perception, medical]
+  when: { resource: hunger, gte: 8 }
+  delta: -2
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: hungry
+  appliesTo: [endurance, perception]
+  when: { resource: hunger, gte: 5 }
+  delta: -1
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: injured
+  appliesTo: [physical, endurance, stealth, medical]
+  when: { resource: health, lte: 4 }
+  delta: -2
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: badly_hurt
+  appliesTo: [physical, endurance, stealth, medical]
+  when: { resource: health, lte: 2 }
   delta: -3
-  sourceKind: flag
-  priority: 60
-  stacks: true
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: in_good_health
+  appliesTo: [physical, endurance, medical]
+  when: { resource: health, gte: 9 }
+  delta: 1
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: demoralised
+  appliesTo: [social, intimidate, endurance, luck]
+  when: { resource: morale, lte: 3 }
+  delta: -2
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: steady_nerves
+  appliesTo: [deception, intimidate, social, luck]
+  when: { resource: morale, gte: 8 }
+  delta: 2
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: visibly_nervous
+  appliesTo: [deception, authority, documents, search]
+  when: { resource: heat, gte: 5 }
+  delta: -2
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: radiating_calm
+  appliesTo: [deception, authority, social]
+  when: { all: [{ resource: heat, lte: 1 }, { resource: morale, gte: 6 }] }
+  delta: 2
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: known_troublemaker
+  appliesTo: [social, authority, haggle, bribery]
+  when: { resource: reputation, lte: -3 }
+  delta: -3
+  sourceKind: condition
+  priority: 20
+  stacks: false
+
+- id: good_name
+  appliesTo: [social, haggle, authority, medical]
+  when: { resource: reputation, gte: 3 }
+  delta: 2
+  sourceKind: condition
+  priority: 20
+  stacks: false
 
 # ── the money pair, and the conflict between them ───────────────────────────────────────
 # Carrying a lot of cash is what a search finds; concealing it is what stops the search
@@ -57,36 +172,26 @@
   priority: 50
   stacks: false
 
-- id: cash_concealed
-  appliesTo: [authority, search]
-  when: { item: cash_belt, gte: 1 }
-  delta: 2
-  sourceKind: item
-  priority: 70
+- id: flush_with_cash
+  appliesTo: [haggle, bribery, social]
+  when: { resource: cash, gte: 200 }
+  delta: 1
+  sourceKind: condition
+  priority: 45
   stacks: false
 
-# ── place, using the locationType predicate kind added alongside the registry ───────────
-- id: official_scrutiny
-  appliesTo: [authority, documents, deception]
-  when: { locationType: [border_crossing, checkpoint] }
-  delta: -1
-  sourceKind: context
-  priority: 30
-  stacks: true
+- id: pockets_empty
+  appliesTo: [haggle, bribery, luck]
+  when: { resource: cash, lte: 5 }
+  delta: -2
+  sourceKind: condition
+  priority: 45
+  stacks: false
 
-# ── a positive the player earns ─────────────────────────────────────────────────────────
-- id: guard_owes_you
-  appliesTo: [social, authority, bribery]
-  when: { relationship: border_guard, gte: 1 }
-  delta: 2
-  sourceKind: relationship
-  priority: 55
-  stacks: true
-
-# ── the three-tier money model, made visible to a check ─────────────────────────────────
-# Cash is stealable and VISIBLE; bank is neither. Someone who has moved their money into an
-# account looks broke to a guard, which is the whole mechanical point of the distinction —
-# without a row like this, `bank` would be a resource nothing ever reads.
+# The three-tier money model, made visible to a check. Cash is stealable and VISIBLE; bank is
+# neither. Someone who has moved their money into an account looks broke to a guard, which is
+# the mechanical point of the distinction — without a row like this, `bank` would be a resource
+# nothing ever reads.
 - id: looks_broke
   appliesTo: [authority, search, bribery]
   when: { all: [{ resource: cash, lte: 20 }, { resource: bank, gte: 200 }] }
@@ -95,9 +200,15 @@
   priority: 45
   stacks: false
 
-# The other side of it: a bribe you cannot fund. Below the threshold the choice should be
-# hidden by `hiddenUnless` rather than merely penalised, but until the seed corpus has those
-# choices this row makes the floor visible in the chip list rather than invisible.
+- id: bank_backed
+  appliesTo: [haggle, social]
+  when: { resource: bank, gte: 500 }
+  delta: 1
+  sourceKind: condition
+  priority: 45
+  stacks: false
+
+# The other side of it: a bribe you cannot fund.
 - id: cannot_cover_a_bribe
   appliesTo: [bribery]
   when: { resource: cash, lte: 10 }
@@ -105,3 +216,979 @@
   sourceKind: condition
   priority: 65
   stacks: true
+
+# ════════════════════════════════════════════════════════════════════════════════════════
+# context — place, hour, weather, route profile. No declarations needed.
+# ════════════════════════════════════════════════════════════════════════════════════════
+
+- id: official_scrutiny
+  appliesTo: [authority, documents, deception]
+  when: { locationType: [border_crossing, checkpoint] }
+  delta: -1
+  sourceKind: context
+  priority: 30
+  stacks: true
+
+- id: border_queue
+  appliesTo: [documents, authority, bribery, endurance]
+  when: { locationType: [border_crossing] }
+  delta: -1
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: after_dark
+  appliesTo: [stealth, crime, search, perception]
+  when: { timeOfDay: [night] }
+  delta: 2
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: first_light
+  appliesTo: [perception, navigate, social]
+  when: { timeOfDay: [morning] }
+  delta: 1
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: end_of_shift
+  appliesTo: [authority, bribery, social]
+  when: { timeOfDay: [evening] }
+  delta: 1
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: crowded_terminal
+  appliesTo: [stealth, crime, search, perception]
+  when: { locationType: [station, port] }
+  delta: 1
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: big_city_anonymity
+  appliesTo: [stealth, crime, deception]
+  when: { locationType: [city] }
+  delta: 1
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: small_village
+  appliesTo: [social, language, haggle]
+  when: { locationType: [village] }
+  delta: -1
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: rest_stop_regulars
+  appliesTo: [social, haggle, crime]
+  when: { locationType: [rest_stop] }
+  delta: 1
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: open_road
+  appliesTo: [navigate, mechanics, endurance]
+  when: { locationType: [roadside, wilderness] }
+  delta: -1
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: deep_wilderness
+  appliesTo: [navigate, medical, endurance, luck]
+  when: { locationType: [wilderness] }
+  delta: -2
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: driving_rain
+  appliesTo: [navigate, perception, mechanics, physical]
+  when: { weather: [rain, storm] }
+  delta: -2
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: heavy_fog
+  appliesTo: [navigate, perception, stealth]
+  when: { weather: [fog] }
+  delta: -2
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: baking_heat
+  appliesTo: [endurance, physical, medical]
+  when: { weather: [heat] }
+  delta: -2
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: hard_frost
+  appliesTo: [navigate, endurance, mechanics, medical]
+  when: { weather: [snow, ice] }
+  delta: -2
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: illicit_route
+  appliesTo: [crime, stealth, authority, search]
+  when: { routeProfile: [illicit] }
+  delta: -2
+  sourceKind: context
+  priority: 30
+  stacks: true
+
+- id: safest_route
+  appliesTo: [authority, documents, luck]
+  when: { routeProfile: [safest] }
+  delta: 1
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: scenic_detour
+  appliesTo: [navigate, perception, luck]
+  when: { routeProfile: [scenic] }
+  delta: 1
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+- id: cheapest_route
+  appliesTo: [haggle, endurance]
+  when: { routeProfile: [cheapest] }
+  delta: -1
+  sourceKind: context
+  priority: 30
+  stacks: false
+
+# ════════════════════════════════════════════════════════════════════════════════════════
+# item — what you are carrying. Every id declared in items.yaml.
+# ════════════════════════════════════════════════════════════════════════════════════════
+
+- id: cash_concealed
+  appliesTo: [authority, search]
+  when: { item: cash_belt, gte: 1 }
+  delta: 2
+  sourceKind: item
+  priority: 70
+  stacks: false
+
+- id: has_toolkit
+  appliesTo: [mechanics]
+  when: { item: toolkit, gte: 1 }
+  delta: 3
+  sourceKind: item
+  priority: 70
+  stacks: false
+
+- id: has_spare_parts
+  appliesTo: [mechanics]
+  when: { item: spare_tyre, gte: 1 }
+  delta: 2
+  sourceKind: item
+  priority: 70
+  stacks: false
+
+- id: has_first_aid
+  appliesTo: [medical]
+  when: { item: first_aid_kit, gte: 1 }
+  delta: 3
+  sourceKind: item
+  priority: 70
+  stacks: false
+
+- id: has_paper_map
+  appliesTo: [navigate]
+  when: { item: paper_map, gte: 1 }
+  delta: 2
+  sourceKind: item
+  priority: 70
+  stacks: false
+
+- id: has_phrasebook
+  appliesTo: [language, social, haggle]
+  when: { item: phrasebook, gte: 1 }
+  delta: 1
+  sourceKind: item
+  priority: 70
+  stacks: false
+
+- id: cigarettes_to_trade
+  appliesTo: [haggle, bribery, social]
+  when: { item: cigarettes, gte: 1 }
+  delta: 2
+  sourceKind: item
+  priority: 70
+  stacks: false
+
+- id: has_water
+  appliesTo: [endurance, medical]
+  when: { item: water_carrier, gte: 1 }
+  delta: 2
+  sourceKind: item
+  priority: 70
+  stacks: false
+
+- id: carrying_a_charm
+  appliesTo: [luck]
+  when: { item: lucky_charm, gte: 1 }
+  delta: 1
+  sourceKind: item
+  priority: 70
+  stacks: false
+
+# The pair that makes ADR 0017's container searchDC mean something. On your person it is what
+# they find; in the stash it is what they do not.
+- id: contraband_on_person
+  appliesTo: [search, authority, crime]
+  when: { item: contraband, in: person, gte: 1 }
+  delta: -4
+  sourceKind: item
+  conflictsWith: [contraband_in_stash]
+  priority: 68
+  stacks: false
+
+- id: contraband_in_stash
+  appliesTo: [search, crime]
+  when: { item: contraband, in: stash, gte: 1 }
+  delta: -1
+  sourceKind: item
+  priority: 70
+  stacks: false
+
+# ════════════════════════════════════════════════════════════════════════════════════════
+# flag — memory. Every one is WRITTEN by a corpus event; that is what makes them legal.
+# ════════════════════════════════════════════════════════════════════════════════════════
+
+- id: wanted_by_authorities
+  appliesTo: [authority, bribery, documents, search]
+  when: { flag: wanted }
+  delta: -3
+  sourceKind: flag
+  priority: 60
+  stacks: true
+
+- id: recently_detained
+  appliesTo: [authority, documents, intimidate]
+  when: { flag: detained }
+  delta: -2
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: bribe_on_record_here
+  appliesTo: [authority, bribery, documents]
+  when: { flag: bribe_on_record }
+  delta: -2
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: already_bribed_here
+  appliesTo: [bribery, authority]
+  when: { flag: bribed_this_border }
+  delta: -2
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: night_crossing_logged
+  appliesTo: [authority, documents, crime]
+  when: { flag: night_crossing }
+  delta: -1
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: papers_questioned_before
+  appliesTo: [documents, authority]
+  when: { flag: papers_questioned }
+  delta: -2
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: caught_lying_before
+  appliesTo: [deception, social]
+  when: { flag: caught_lying }
+  delta: -3
+  sourceKind: flag
+  priority: 62
+  stacks: false
+
+- id: made_a_scene_here
+  appliesTo: [social, intimidate, stealth]
+  when: { flag: made_a_scene }
+  delta: -2
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: known_to_smugglers
+  appliesTo: [crime, stealth, haggle]
+  when: { flag: smuggler_contact }
+  delta: 2
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: did_someone_a_favour
+  appliesTo: [social, haggle, luck]
+  when: { flag: owed_a_favour }
+  delta: 2
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: helped_a_stranger_once
+  appliesTo: [social, medical, luck]
+  when: { flag: helped_a_stranger }
+  delta: 1
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: burned_a_bridge_here
+  appliesTo: [social, haggle, luck]
+  when: { flag: burned_a_bridge }
+  delta: -2
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: paid_off_a_local
+  appliesTo: [social, haggle, bribery]
+  when: { flag: paid_a_local }
+  delta: 1
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: travelling_light_now
+  appliesTo: [stealth, endurance, search]
+  when: { flag: travelling_light }
+  delta: 2
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: took_the_long_way_round
+  appliesTo: [navigate, endurance]
+  when: { flag: took_the_long_way }
+  delta: -1
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: stash_recently_used
+  appliesTo: [search, crime]
+  when: { flag: stash_used }
+  delta: -1
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: ticket_in_hand
+  appliesTo: [documents, authority, social]
+  when: { flag: ticket_purchased }
+  delta: 2
+  sourceKind: flag
+  priority: 60
+  stacks: false
+
+- id: papers_lost_recently
+  appliesTo: [documents, authority, social]
+  when: { flag: papers_lost }
+  delta: -3
+  sourceKind: flag
+  priority: 62
+  stacks: false
+
+# ════════════════════════════════════════════════════════════════════════════════════════
+# trait — permanent, from preparation. Declared in traits.yaml; read only here, which is legal
+# for a trait (unlike a flag, which needs a writer).
+# ════════════════════════════════════════════════════════════════════════════════════════
+
+- id: is_smooth_talker
+  appliesTo: [social, haggle, deception]
+  when: { trait: smooth_talker }
+  delta: 2
+  sourceKind: trait
+  priority: 40
+  stacks: false
+
+- id: is_hard_stare
+  appliesTo: [intimidate, authority]
+  when: { trait: hard_stare }
+  delta: 2
+  sourceKind: trait
+  priority: 40
+  stacks: false
+
+- id: is_haggler
+  appliesTo: [haggle]
+  when: { trait: haggler }
+  delta: 3
+  sourceKind: trait
+  priority: 40
+  stacks: false
+
+- id: is_honest_face
+  appliesTo: [deception, authority, documents]
+  when: { trait: honest_face }
+  delta: 2
+  sourceKind: trait
+  priority: 40
+  stacks: false
+
+- id: is_light_sleeper
+  appliesTo: [perception, search, stealth]
+  when: { trait: light_sleeper }
+  delta: 2
+  sourceKind: trait
+  priority: 40
+  stacks: false
+
+- id: is_quick_hands
+  appliesTo: [stealth, crime, search]
+  when: { trait: quick_hands }
+  delta: 2
+  sourceKind: trait
+  priority: 40
+  stacks: false
+
+- id: is_road_sense
+  appliesTo: [navigate, perception]
+  when: { trait: road_sense }
+  delta: 2
+  sourceKind: trait
+  priority: 40
+  stacks: false
+
+- id: is_mechanically_minded
+  appliesTo: [mechanics]
+  when: { trait: mechanically_minded }
+  delta: 2
+  sourceKind: trait
+  priority: 40
+  stacks: false
+
+- id: is_iron_stomach
+  appliesTo: [endurance, medical, physical]
+  when: { trait: iron_stomach }
+  delta: 2
+  sourceKind: trait
+  priority: 40
+  stacks: false
+
+- id: is_stubborn
+  appliesTo: [endurance, intimidate]
+  when: { trait: stubborn }
+  delta: 2
+  sourceKind: trait
+  priority: 40
+  stacks: false
+
+# ════════════════════════════════════════════════════════════════════════════════════════
+# skill — CROSS-skill reads and language. The check's own skill is already added unclamped by
+# runSkillCheck, so a row restating it would double-count.
+# ════════════════════════════════════════════════════════════════════════════════════════
+
+- id: no_shared_language
+  appliesTo: [social, haggle, deception, intimidate, authority, language]
+  when: { not: { language: local } }
+  delta: -2
+  sourceKind: skill
+  priority: 40
+  stacks: false
+
+- id: speaks_the_language
+  appliesTo: [social, haggle, language, navigate]
+  when: { language: local }
+  delta: 2
+  sourceKind: skill
+  priority: 40
+  stacks: false
+
+- id: streetwise_read
+  appliesTo: [perception, search, crime]
+  when: { skill: streetwise, gte: 5 }
+  delta: 2
+  sourceKind: skill
+  priority: 40
+  stacks: false
+
+- id: mechanic_eye
+  appliesTo: [perception, search]
+  when: { skill: mechanics, gte: 5 }
+  delta: 1
+  sourceKind: skill
+  priority: 40
+  stacks: false
+
+- id: negotiator_read
+  appliesTo: [deception, intimidate]
+  when: { skill: negotiation, gte: 5 }
+  delta: 1
+  sourceKind: skill
+  priority: 40
+  stacks: false
+
+- id: stealth_trained
+  appliesTo: [search, perception]
+  when: { skill: stealth, gte: 5 }
+  delta: 1
+  sourceKind: skill
+  priority: 40
+  stacks: false
+
+- id: hardened
+  appliesTo: [physical, medical, intimidate]
+  when: { skill: endurance, gte: 6 }
+  delta: 1
+  sourceKind: skill
+  priority: 40
+  stacks: false
+
+- id: unskilled_negotiator
+  appliesTo: [social, haggle, bribery]
+  when: { skill: negotiation, lte: 1 }
+  delta: -2
+  sourceKind: skill
+  priority: 40
+  stacks: false
+
+- id: no_street_sense
+  appliesTo: [crime, search, stealth]
+  when: { skill: streetwise, lte: 1 }
+  delta: -2
+  sourceKind: skill
+  priority: 40
+  stacks: false
+
+- id: soft
+  appliesTo: [physical, endurance]
+  when: { skill: endurance, lte: 1 }
+  delta: -2
+  sourceKind: skill
+  priority: 40
+  stacks: false
+
+- id: clumsy
+  appliesTo: [stealth, crime]
+  when: { skill: stealth, lte: 1 }
+  delta: -2
+  sourceKind: skill
+  priority: 40
+  stacks: false
+
+- id: unskilled_mechanic
+  appliesTo: [mechanics]
+  when: { skill: mechanics, lte: 1 }
+  delta: -2
+  sourceKind: skill
+  priority: 40
+  stacks: false
+
+# ════════════════════════════════════════════════════════════════════════════════════════
+# relationship — who knows you. A never-met NPC reads trust 0, so every NEGATIVE row uses
+# `lte: -1` or lower, or pairs with npcMet. Otherwise it would fire on strangers.
+# ════════════════════════════════════════════════════════════════════════════════════════
+
+- id: guard_owes_you
+  appliesTo: [social, authority, bribery]
+  when: { relationship: border_guard, gte: 1 }
+  delta: 2
+  sourceKind: relationship
+  priority: 55
+  stacks: true
+
+- id: guard_remembers_badly
+  appliesTo: [authority, bribery, documents]
+  when: { relationship: border_guard, lte: -2 }
+  delta: -2
+  sourceKind: relationship
+  priority: 55
+  stacks: true
+
+- id: mechanic_trusts_you
+  appliesTo: [mechanics, haggle]
+  when: { relationship: roadside_mechanic, gte: 2 }
+  delta: 2
+  sourceKind: relationship
+  priority: 55
+  stacks: false
+
+- id: mechanic_burned
+  appliesTo: [mechanics, haggle]
+  when: { relationship: roadside_mechanic, lte: -2 }
+  delta: -2
+  sourceKind: relationship
+  priority: 55
+  stacks: false
+
+- id: known_to_the_fixer
+  appliesTo: [crime, haggle, bribery]
+  when: { relationship: fixer, gte: 1 }
+  delta: 2
+  sourceKind: relationship
+  priority: 55
+  stacks: false
+
+- id: fixer_wants_paying
+  appliesTo: [crime, haggle]
+  when: { relationship: fixer, lte: -1 }
+  delta: -2
+  sourceKind: relationship
+  priority: 55
+  stacks: false
+
+- id: driver_vouches
+  appliesTo: [social, navigate, endurance]
+  when: { relationship: long_haul_driver, gte: 2 }
+  delta: 2
+  sourceKind: relationship
+  priority: 55
+  stacks: false
+
+- id: innkeeper_friendly
+  appliesTo: [social, haggle, medical]
+  when: { relationship: innkeeper, gte: 1 }
+  delta: 1
+  sourceKind: relationship
+  priority: 55
+  stacks: false
+
+- id: met_the_pickpocket
+  appliesTo: [search, perception, crime]
+  when: { npcMet: pickpocket }
+  delta: 1
+  sourceKind: relationship
+  priority: 55
+  stacks: false
+
+- id: no_local_contacts
+  appliesTo: [social, haggle, crime]
+  when: { all: [{ npcMet: innkeeper, met: false }, { npcMet: fixer, met: false }] }
+  delta: -1
+  sourceKind: relationship
+  priority: 55
+  stacks: false
+
+# ════════════════════════════════════════════════════════════════════════════════════════
+# transport — how you are moving.
+# ════════════════════════════════════════════════════════════════════════════════════════
+
+- id: on_foot
+  appliesTo: [endurance, physical, stealth]
+  when: { transportMode: [foot] }
+  delta: -1
+  sourceKind: transport
+  priority: 35
+  stacks: false
+
+- id: in_a_vehicle
+  appliesTo: [navigate, search, mechanics]
+  when: { transportMode: [car, truck] }
+  delta: 1
+  sourceKind: transport
+  priority: 35
+  stacks: false
+
+- id: public_transport
+  appliesTo: [stealth, social, search]
+  when: { transportMode: [bus, train] }
+  delta: 1
+  sourceKind: transport
+  priority: 35
+  stacks: false
+
+- id: on_the_ferry
+  appliesTo: [documents, authority, endurance]
+  when: { transportMode: [ferry] }
+  delta: -1
+  sourceKind: transport
+  priority: 35
+  stacks: false
+
+- id: rideshare_stranger
+  appliesTo: [social, deception, crime]
+  when: { transportMode: [rideshare] }
+  delta: -1
+  sourceKind: transport
+  priority: 35
+  stacks: false
+
+- id: truck_cab_privacy
+  appliesTo: [stealth, crime, search]
+  when: { transportMode: [truck] }
+  delta: 1
+  sourceKind: transport
+  priority: 35
+  stacks: false
+
+- id: train_corridor
+  appliesTo: [stealth, perception, search]
+  when: { transportMode: [train] }
+  delta: 1
+  sourceKind: transport
+  priority: 35
+  stacks: false
+
+- id: nothing_to_search
+  appliesTo: [search]
+  when: { transportMode: [foot, bus, train] }
+  delta: 2
+  sourceKind: transport
+  priority: 35
+  stacks: false
+
+- id: vehicle_failing
+  appliesTo: [mechanics, navigate]
+  when: { transportStat: condition, lte: 3 }
+  delta: -2
+  sourceKind: transport
+  priority: 36
+  stacks: true
+
+- id: vehicle_sound
+  appliesTo: [mechanics, navigate]
+  when: { transportStat: condition, gte: 8 }
+  delta: 1
+  sourceKind: transport
+  priority: 36
+  stacks: true
+
+- id: running_on_empty
+  appliesTo: [navigate, endurance, mechanics]
+  when: { transportStat: fuel, lte: 2 }
+  delta: -2
+  sourceKind: transport
+  priority: 36
+  stacks: true
+
+- id: unregistered_vehicle
+  appliesTo: [authority, documents, search, crime]
+  when: { vehicleLegal: false }
+  delta: -3
+  sourceKind: transport
+  priority: 37
+  stacks: true
+
+# ════════════════════════════════════════════════════════════════════════════════════════
+# document — your papers. Passport predicates need no declarations.
+# ════════════════════════════════════════════════════════════════════════════════════════
+
+- id: no_passport
+  appliesTo: [documents, authority, bribery, search]
+  when: { passport: { present: false } }
+  delta: -4
+  sourceKind: document
+  priority: 66
+  stacks: false
+
+- id: passport_in_hand
+  appliesTo: [documents, authority]
+  when: { passport: { present: true, valid: true } }
+  delta: 2
+  sourceKind: document
+  priority: 64
+  stacks: false
+
+- id: expired_passport
+  appliesTo: [documents, authority, bribery]
+  when: { passport: { present: true, valid: false } }
+  delta: -3
+  sourceKind: document
+  priority: 66
+  stacks: false
+
+- id: passport_flagged
+  appliesTo: [documents, authority, search]
+  when: { passport: { flagged: true } }
+  delta: -3
+  sourceKind: document
+  priority: 66
+  stacks: true
+
+- id: papers_in_perfect_order
+  appliesTo: [documents, authority, search]
+  when: { passport: { present: true, valid: true, flagged: false } }
+  delta: 1
+  sourceKind: document
+  priority: 64
+  stacks: false
+
+# ════════════════════════════════════════════════════════════════════════════════════════
+# region — PAPERS RELATIVE TO A CROSSING, never a place's character (CLAUDE.md §11).
+#
+# `RunState` has no current region and the `visa` predicate needs a literal region id, so a
+# global row cannot ask "do you have a visa for where you are". `transit_zone` is an ABSTRACT
+# region the corpus grants visas for — it names no real place, and a row here reads the
+# player's paperwork rather than anything about a location.
+# ════════════════════════════════════════════════════════════════════════════════════════
+
+- id: transit_visa_valid
+  appliesTo: [documents, authority]
+  when: { visa: transit_zone }
+  delta: 2
+  sourceKind: region
+  priority: 63
+  stacks: false
+
+- id: transit_visa_expired
+  appliesTo: [documents, authority, bribery]
+  when: { visa: transit_zone, valid: false }
+  delta: -2
+  sourceKind: region
+  priority: 63
+  stacks: false
+
+- id: no_transit_visa
+  appliesTo: [documents, authority, bribery, search]
+  when: { not: { visa: transit_zone } }
+  delta: -2
+  sourceKind: region
+  priority: 63
+  stacks: false
+
+- id: papers_match_the_route
+  appliesTo: [documents, authority]
+  when: { all: [{ visa: transit_zone }, { passport: { valid: true } }] }
+  delta: 1
+  sourceKind: region
+  priority: 63
+  stacks: false
+
+# ════════════════════════════════════════════════════════════════════════════════════════
+# companion — keyed on flags, because RunState has no companion field and preparation is
+# Phase 3. Thin on purpose; see the style guide §4.
+# ════════════════════════════════════════════════════════════════════════════════════════
+
+- id: two_sets_of_eyes
+  appliesTo: [perception, search, navigate]
+  when: { flag: companion_present }
+  delta: 2
+  sourceKind: companion
+  priority: 52
+  stacks: false
+
+- id: companion_slows_you
+  appliesTo: [endurance, physical]
+  when: { flag: companion_present }
+  delta: -1
+  sourceKind: companion
+  priority: 52
+  stacks: true
+
+- id: travelling_with_a_local
+  appliesTo: [language, social, navigate, haggle]
+  when: { flag: companion_local }
+  delta: 2
+  sourceKind: companion
+  priority: 53
+  stacks: false
+
+- id: companion_vouches_for_you
+  appliesTo: [social, authority, documents]
+  when: { all: [{ flag: companion_present }, { resource: reputation, gte: 0 }] }
+  delta: 1
+  sourceKind: companion
+  priority: 52
+  stacks: false
+
+# ════════════════════════════════════════════════════════════════════════════════════════
+# momentum — how the run is going. Reads leg, day, tension and the meters together.
+# ════════════════════════════════════════════════════════════════════════════════════════
+
+- id: just_set_out
+  appliesTo: [endurance, physical, luck]
+  when: { leg: true, lte: 2 }
+  delta: 1
+  sourceKind: momentum
+  priority: 25
+  stacks: false
+
+- id: long_road_behind_you
+  appliesTo: [endurance, navigate, perception]
+  when: { leg: true, gte: 15 }
+  delta: -1
+  sourceKind: momentum
+  priority: 25
+  stacks: false
+
+- id: first_week_energy
+  appliesTo: [physical, endurance]
+  when: { day: true, lte: 3 }
+  delta: 1
+  sourceKind: momentum
+  priority: 25
+  stacks: false
+
+- id: days_on_the_road
+  appliesTo: [endurance, medical, social]
+  when: { day: true, gte: 7 }
+  delta: -1
+  sourceKind: momentum
+  priority: 25
+  stacks: false
+
+- id: high_tension
+  appliesTo: [deception, intimidate, perception]
+  when: { tension: true, gte: 70 }
+  delta: -1
+  sourceKind: momentum
+  priority: 25
+  stacks: false
+
+- id: calm_stretch
+  appliesTo: [social, haggle, luck]
+  when: { tension: true, lte: 20 }
+  delta: 1
+  sourceKind: momentum
+  priority: 25
+  stacks: false
+
+- id: on_a_roll
+  appliesTo: [social, luck, physical]
+  when: { all: [{ resource: morale, gte: 8 }, { resource: health, gte: 7 }] }
+  delta: 2
+  sourceKind: momentum
+  priority: 26
+  stacks: false
+
+- id: everything_going_wrong
+  appliesTo: [luck, social, endurance]
+  when: { all: [{ resource: morale, lte: 2 }, { resource: health, lte: 3 }] }
+  delta: -2
+  sourceKind: momentum
+  priority: 26
+  stacks: false
+
+- id: familiar_ground
+  appliesTo: [documents, authority, perception]
+  when: { eventSeen: border.night_crossing, gte: 1 }
+  delta: 1
+  sourceKind: momentum
+  priority: 25
+  stacks: false
+
+- id: night_run
+  appliesTo: [perception, navigate, endurance]
+  when: { all: [{ timeOfDay: [night] }, { leg: true, gte: 10 }] }
+  delta: -2
+  sourceKind: momentum
+  priority: 26
+  stacks: false

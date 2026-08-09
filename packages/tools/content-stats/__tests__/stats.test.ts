@@ -176,7 +176,15 @@ describe('the report', () => {
     // EventContext has no region field, geo/ is empty so there are no region ids to bucket by,
     // and region-gating events is what §11 warns against unless the regions are abstract
     // terrain bands. A region column would read as coverage data and be nothing of the kind.
-    expect(report).not.toContain('region');
+    //
+    // ASSERTS ON HEADINGS, not on the bare word. This used to be `not.toContain('region')`,
+    // which passed only because no modifier used `sourceKind: region` — the moment the seed
+    // corpus added four, the word appeared under "Modifiers by source kind" and the test
+    // failed while the property it names was still perfectly true. A substring match on a
+    // vocabulary member was never testing what the comment above it claims.
+    expect(report).not.toContain('## Events by region');
+    expect(report).not.toContain('x region');
+    expect(report).not.toContain('region x');
   });
 
   it('is deterministic', () => {

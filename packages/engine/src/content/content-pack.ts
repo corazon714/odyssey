@@ -1,5 +1,20 @@
-import { type EventId, type ItemId, type NpcId, type TraitId } from '../ids/content-ids.ts';
+import {
+  type ComplicationId,
+  type EventId,
+  type ItemId,
+  type NpcId,
+  type TraitId,
+} from '../ids/content-ids.ts';
 import { EMPTY_MODIFIER_REGISTRY, type ModifierRegistry } from '../modifiers/registry-modifier.ts';
+import {
+  EMPTY_COMPLICATION_REGISTRY,
+  type ComplicationRegistry,
+  type RegistryComplication,
+} from './registry-complication.ts';
+import {
+  EMPTY_UNIVERSAL_CHOICE_REGISTRY,
+  type UniversalChoiceRegistry,
+} from './universal-choice.ts';
 import { type ContentRefs } from '../predicate/predicate-context.ts';
 import { canonicalJson } from '../state/canonical-json.ts';
 import { digestOf } from '../state/state-digest.ts';
@@ -7,6 +22,7 @@ import { BEAT_TYPES, type BeatType } from './beat-type.ts';
 import { collectRefs, type ContentRef } from './collect-refs.ts';
 import { type EventPriority } from './event-priority.ts';
 import { type GameEvent } from './game-event.ts';
+import { injectUniversalChoices, type ShadowedInjection } from './inject-universal-choices.ts';
 
 /**
  * The loaded, indexed, canonically-ordered content.
@@ -40,6 +56,19 @@ export type ContentRegistries = {
    * one modifier's delta changes by 1.
    */
   readonly modifiers: ModifierRegistry;
+  /**
+   * Situational layers the director attaches to a selected event. INSIDE, for the reason
+   * spelled out above `modifiers` — a complication changes a DC and the choices on offer, so
+   * a pack whose complications changed but whose `version` did not would replay a golden run
+   * against different play with a green suite.
+   */
+  readonly complications: ComplicationRegistry;
+  /**
+   * Choices spliced into every event whose tags match, at pack construction. INSIDE for the
+   * same reason, and more urgently: these change `GameEvent.choices` itself, so they alter
+   * what `resolveChoice` will even accept.
+   */
+  readonly universalChoices: UniversalChoiceRegistry;
 };
 
 export const EMPTY_REGISTRIES: ContentRegistries = Object.freeze({
@@ -47,6 +76,8 @@ export const EMPTY_REGISTRIES: ContentRegistries = Object.freeze({
   items: [],
   traits: [],
   modifiers: EMPTY_MODIFIER_REGISTRY,
+  complications: EMPTY_COMPLICATION_REGISTRY,
+  universalChoices: EMPTY_UNIVERSAL_CHOICE_REGISTRY,
 });
 
 export type ContentPack = {
@@ -59,6 +90,16 @@ export type ContentPack = {
   readonly refs: ContentRefs;
   /** Surfaced from the registries so `resolveChoice` reaches it without a new parameter. */
   readonly modifiers: ModifierRegistry;
+  readonly complications: ComplicationRegistry;
+  /**
+   * Complications by id, for the one lookup `resolveChoice` makes.
+   *
+   * A `Map.get` that misses degrades to no-complication, which is the whole reason
+   * `Presentation` persists an ID rather than the row: after a content update the row a live
+   * save names may be gone, and `reconcileContent` tolerates that mismatch by policy. Same
+   * treatment the queue already gives a pending event whose target vanished.
+   */
+  readonly complicationById: ReadonlyMap<ComplicationId, RegistryComplication>;
   /**
    * References to content ids absent from the registries. Empty in a healthy pack; the sim
    * and the future content linter both report it, because ADR 0001's silent-content-bug
@@ -68,13 +109,31 @@ export type ContentPack = {
   readonly duplicateIds: readonly EventId[];
   /** Beat types no event in this pack can fill. A slot for one of these can only expire. */
   readonly unfillableBeatTypes: readonly BeatType[];
+  /**
+   * Universal choices dropped because their id collided with a hand-authored one.
+   *
+   * Should always be empty: `UNIVERSAL_CHOICE_PREFIX` uses a character `ID_PATTERN` forbids,
+   * so an author cannot write a colliding id. Reported anyway, beside `danglingRefs`, for the
+   * reason that field exists — the failure is SILENT if unreported (the player would pick the
+   * injected choice and get the authored one's outcomes), and "unreachable" is only worth
+   * saying if something checks it.
+   */
+  readonly shadowedInjections: readonly ShadowedInjection[];
 };
 
 export function createContentPack(
   events: readonly GameEvent[],
   registries: ContentRegistries = EMPTY_REGISTRIES,
 ): ContentPack {
-  const sorted = [...events].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const ordered = [...events].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+  // BEFORE everything below, and that ordering is the whole point. The spliced events are what
+  // gets indexed, walked for refs, and hashed — so `pack.version` fingerprints what the pack
+  // actually PLAYS rather than what was authored. Splicing after the hash would give a pack
+  // that offers different choices under an unchanged version, which is the failure the
+  // `ContentRegistries` docstring above describes.
+  const injected = injectUniversalChoices(ordered, registries.universalChoices);
+  const sorted = injected.events;
 
   const byId = new Map<EventId, GameEvent>();
   const duplicateIds: EventId[] = [];
@@ -128,9 +187,12 @@ export function createContentPack(
     fillers: byPriority.get('filler') ?? [],
     refs,
     modifiers: registries.modifiers,
+    complications: registries.complications,
+    complicationById: new Map(registries.complications.map((row) => [row.id, row])),
     danglingRefs,
     duplicateIds,
     unfillableBeatTypes: BEAT_TYPES.filter((type) => !byBeatType.has(type)),
+    shadowedInjections: injected.shadowed,
   };
 }
 

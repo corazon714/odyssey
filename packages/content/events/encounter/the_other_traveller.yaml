@@ -1,0 +1,76 @@
+id: encounter.the_other_traveller
+category: encounter
+tags: [encounter, social, road, food]
+cooldownLegs: 5
+image: encounter/the_other_traveller
+choices:
+  - id: share_what_you_have
+    hiddenUnless: { resource: hunger, lte: 6 }
+    costs:
+      - { op: resource, key: hunger, delta: 2 }
+    check:
+      skill: negotiation
+      dc: 10
+      tags: [social, language]
+    outcomes:
+      - id: a_meal_and_a_map
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: flag, id: helped_a_stranger }
+          - { op: flag, id: owed_a_favour }
+          - { op: resource, key: morale, delta: 2 }
+      - id: eaten_in_silence
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: resource, key: morale, delta: 1 }
+
+  # FOOD. The corpus needs hunger to go DOWN somewhere or health decline is irreversible.
+  - id: buy_a_meal_from_them
+    hiddenUnless: { resource: cash, gte: 12 }
+    costs:
+      - { op: resource, key: cash, delta: -12 }
+    outcomes:
+      - id: hot_and_enough
+        weight: 1
+        effects:
+          - { op: resource, key: hunger, delta: -3 }
+
+  - id: compare_routes
+    check:
+      skill: streetwise
+      dc: 11
+      tags: [crime, navigate, perception, luck]
+    outcomes:
+      - id: worth_knowing
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: relationship, npc: long_haul_driver, trustDelta: 1, meet: true, addTags: [] }
+          - { op: resource, key: morale, delta: 1 }
+      - id: nothing_you_did_not_know
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: advanceTime, hours: 1 }
+
+  - id: look_at_their_leg
+    check:
+      skill: endurance
+      dc: 11
+      tags: [endurance, medical, social]
+    outcomes:
+      - id: cleaned_and_bound
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: flag, id: helped_a_stranger }
+          - { op: resource, key: reputation, delta: 1 }
+          - { op: advanceTime, hours: 2 }
+      - id: out_of_your_depth
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: resource, key: morale, delta: -1 }
+          - { op: advanceTime, hours: 2 }

@@ -1,0 +1,16 @@
+{
+  "events.breakdown.the_roadside_repair.title": "It Has Been Making That Noise",
+  "events.breakdown.the_roadside_repair.body": "The noise it has been making since yesterday stops being a noise and becomes a smell. You get it onto the verge before it decides for you. The nearest town with anything useful in it is behind you, and the light is going.",
+
+  "events.breakdown.the_roadside_repair.choice.fix": "Get under it yourself",
+  "events.breakdown.the_roadside_repair.out.back_on_the_road": "It is not elegant and it will not last forever, but it turns over on the third try and you are moving before full dark.",
+  "events.breakdown.the_roadside_repair.out.made_it_worse": "You take the wrong thing off first, and putting it back does not put it back. Three hours on the verge and it runs worse than when you started.",
+  "events.breakdown.the_roadside_repair.out.used_the_spare": "You use the spare, which you had been saving for exactly this and are still annoyed to spend. It goes on in twenty minutes.",
+
+  "events.breakdown.the_roadside_repair.choice.find_someone_who_can": "Find somebody who can",
+  "events.breakdown.the_roadside_repair.out.fair_price": "He comes out, looks at it for ninety seconds, fixes it in forty minutes, and charges what it is worth. You did not expect that and it improves the whole day.",
+  "events.breakdown.the_roadside_repair.out.stranded_price": "He looks at the vehicle, then at the road, then at you, and names a number based entirely on the third thing. You pay it because the alternative is walking.",
+
+  "events.breakdown.the_roadside_repair.choice.nurse_it_along": "Nurse it along",
+  "events.breakdown.the_roadside_repair.out.limped_on": "You drive it like it is made of glass, in a low gear, with the window down to listen. It gets you somewhere. It is worse when you arrive."
+}

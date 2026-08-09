@@ -1,0 +1,73 @@
+id: city.the_address_that_moved
+category: city
+tags: [city, navigation, social, language]
+context:
+  locationTypes: [city, town]
+cooldownLegs: 6
+image: city/the_address_that_moved
+choices:
+  # Reads paper_map — its declared liability.
+  - id: work_it_out_yourself
+    check:
+      skill: streetwise
+      dc: 12
+      tags: [crime, navigate, perception]
+    outcomes:
+      - id: found_it
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: advanceTime, hours: 2 }
+          - { op: flag, id: owed_a_favour }
+      - id: an_hour_lost
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: advanceTime, hours: 4 }
+          - { op: resource, key: energy, delta: -2 }
+      - id: conspicuous_with_a_map
+        weight: 1
+        onCheck: failure
+        requires: { item: paper_map, gte: 1 }
+        effects:
+          - { op: resource, key: heat, delta: 1 }
+          - { op: advanceTime, hours: 3 }
+          - { op: relationship, npc: pickpocket, trustDelta: -1, meet: true, addTags: [] }
+
+  # Reads phrasebook — its declared liability.
+  - id: ask_in_the_shop
+    check:
+      skill: negotiation
+      dc: 11
+      tags: [social, language, haggle]
+    outcomes:
+      - id: pointed_the_right_way
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: advanceTime, hours: 1 }
+          - { op: resource, key: reputation, delta: 1 }
+      - id: mutual_incomprehension
+        weight: 2
+        onCheck: failure
+        requires: { item: phrasebook, gte: 1 }
+        effects:
+          - { op: advanceTime, hours: 3 }
+          - { op: resource, key: morale, delta: -1 }
+      - id: sent_the_wrong_way
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: advanceTime, hours: 3 }
+          - { op: resource, key: energy, delta: -2 }
+
+  - id: pay_a_kid_to_take_you
+    hiddenUnless: { resource: cash, gte: 10 }
+    costs:
+      - { op: resource, key: cash, delta: -10 }
+    outcomes:
+      - id: straight_there
+        weight: 1
+        effects:
+          - { op: flag, id: paid_a_local }
+          - { op: advanceTime, hours: 1 }

@@ -1,0 +1,89 @@
+id: weather.the_storm_you_cannot_drive_through
+category: weather
+tags: [weather, risk, endurance, road]
+priority: beat
+beatType: midpoint_crisis
+tensionBand: [0.3, 1]
+context:
+  locationTypes: [roadside, wilderness, village]
+cooldownLegs: 10
+maxOccurrences: 2
+image: weather/the_storm
+choices:
+  - id: shelter_and_lose_the_day
+    outcomes:
+      - id: waited_it_out
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 13 }
+          - { op: resource, key: hunger, delta: 3 }
+          - { op: resource, key: energy, delta: 1 }
+          - { op: flag, id: took_the_long_way }
+
+  - id: push_on_through_it
+    check:
+      skill: endurance
+      dc: 13
+      tags: [endurance, navigate, physical, luck]
+    outcomes:
+      - id: made_ground
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: advanceTime, hours: 4 }
+          - { op: resource, key: energy, delta: -3 }
+      - id: off_the_road
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: transport, change: { field: condition, delta: -2 } }
+          - { op: resource, key: health, delta: -2 }
+          - { op: advanceTime, hours: 6 }
+      - id: worse_than_that
+        weight: 1
+        onCheck: failure
+        requires: { resource: health, lte: 4 }
+        effects:
+          - { op: resource, key: health, delta: -3 }
+          - { op: resource, key: morale, delta: -2 }
+          - { op: advanceTime, hours: 9 }
+
+  - id: find_the_mechanic_first
+    hiddenUnless: { transportStat: condition, lte: 5 }
+    check:
+      skill: mechanics
+      dc: 12
+      tags: [mechanics, navigate]
+    outcomes:
+      - id: weatherproofed
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: transport, change: { field: condition, delta: 1 } }
+          - { op: advanceTime, hours: 3 }
+      - id: no_time_for_it
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: advanceTime, hours: 3 }
+          - { op: resource, key: morale, delta: -1 }
+
+  - id: see_to_the_damage
+    hiddenUnless: { resource: health, lte: 6 }
+    check:
+      skill: endurance
+      dc: 11
+      tags: [endurance, medical, physical]
+    outcomes:
+      - id: nothing_broken
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: resource, key: health, delta: 2 }
+          - { op: advanceTime, hours: 2 }
+      - id: it_will_have_to_hold
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: resource, key: morale, delta: -1 }
+          - { op: advanceTime, hours: 2 }

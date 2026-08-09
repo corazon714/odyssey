@@ -13,7 +13,9 @@ import {
   type Complication,
   type ComplicationSource,
 } from './complication-source.ts';
+import { type RegistryComplication } from '../content/registry-complication.ts';
 import { filterEvent } from './hard-filters.ts';
+import { selectComplication } from './select-complication.ts';
 import { FILLER_RUNG, RELAXATION_RUNGS, UNEVENTFUL_RUNG } from './relaxation-rung.ts';
 import { pickWeight } from './score-event.ts';
 
@@ -33,6 +35,15 @@ export type SelectionResult =
       readonly rung: number;
       readonly fromQueue: boolean;
       readonly complications: readonly Complication[];
+      /**
+       * The registry row the director attached, or null.
+       *
+       * Distinct from `complications` above, which is the Phase 1 seam's DISPLAY chips and
+       * still works exactly as it did. This is the authored row that carries `checkDelta`,
+       * `addsChoice` and `removesChoice` — the mechanical half. `advanceLeg` persists its id
+       * so `resolveChoice` resolves the same one on the next call.
+       */
+      readonly complication: RegistryComplication | null;
     }
   | { readonly kind: 'uneventful'; readonly reasonKey: string; readonly params: TextParams };
 
@@ -65,11 +76,23 @@ export function selectEvent(
     };
   }
 
-  // The complication hook, post-selection. Empty in Phase 1 — the LIST is the extension
-  // point. It draws from `encounterFlavor`, so Phase 2 consuming randomness here cannot
-  // shift `eventPick` and invalidate M10's golden runs.
+  // The registry, post-selection. Cursor-free (see `selectComplication`), so it consumes no
+  // randomness at all — the promise the Phase 1 seam made about `encounterFlavor` is kept
+  // more strictly than it needed to be, and no golden digest can move for this reason ever.
+  const complication = selectComplication(
+    chosen.event,
+    state.seed,
+    state.route.legIndex,
+    pack.complications,
+    ctx,
+  );
+
+  // The Phase 1 seam, unchanged and still empty by default. It produces DISPLAY chips; the
+  // row above carries the mechanics. Keeping both means the seam's test — a stub source whose
+  // output must reach the caller — still asserts something real.
   return {
     ...chosen,
+    complication,
     complications:
       opts.complicationSources.length === 0
         ? EMPTY_COMPLICATIONS

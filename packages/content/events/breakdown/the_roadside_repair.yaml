@@ -1,0 +1,87 @@
+id: breakdown.the_roadside_repair
+category: breakdown
+tags: [breakdown, mechanics, money, road]
+context:
+  locationTypes: [roadside, wilderness, village]
+  transportModes: [car, truck]
+cooldownLegs: 8
+image: breakdown/the_roadside_repair
+requires:
+  transportStat: condition
+  lte: 9
+choices:
+  # Reads toolkit and spare_tyre through the registry rows AND here, so the mechanic path is
+  # genuinely different when you packed for it.
+  - id: fix_it_yourself
+    labelKey: events.breakdown.the_roadside_repair.choice.fix
+    check:
+      skill: mechanics
+      dc: 13
+      tags: [mechanics, physical]
+    outcomes:
+      - id: back_on_the_road
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: transport, change: { field: condition, delta: 3 } }
+          - { op: advanceTime, hours: 3 }
+          - { op: resource, key: hygiene, delta: -2 }
+      - id: made_it_worse
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: transport, change: { field: condition, delta: -1 } }
+          - { op: advanceTime, hours: 4 }
+          - { op: resource, key: morale, delta: -2 }
+      - id: used_the_spare
+        weight: 2
+        onCheck: failure
+        requires: { item: spare_tyre, gte: 1 }
+        effects:
+          - { op: item, id: spare_tyre, countDelta: -1, condition: null, container: null }
+          - { op: transport, change: { field: condition, delta: 2 } }
+          - { op: advanceTime, hours: 2 }
+
+  - id: find_someone_who_can
+    check:
+      skill: negotiation
+      dc: 12
+      tags: [social, haggle, mechanics, intimidate]
+    outcomes:
+      - id: fair_price
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: resource, key: cash, delta: -60 }
+          - { op: transport, change: { field: condition, delta: 4 } }
+          - {
+              op: relationship,
+              npc: roadside_mechanic,
+              trustDelta: 1,
+              meet: true,
+              addTags: [trade],
+            }
+          - { op: advanceTime, hours: 4 }
+      - id: stranded_price
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: resource, key: cash, delta: -140 }
+          - { op: transport, change: { field: condition, delta: 4 } }
+          - {
+              op: relationship,
+              npc: roadside_mechanic,
+              trustDelta: -1,
+              meet: true,
+              addTags: [trade],
+            }
+          - { op: advanceTime, hours: 6 }
+
+  - id: nurse_it_along
+    outcomes:
+      - id: limped_on
+        weight: 1
+        effects:
+          - { op: transport, change: { field: condition, delta: -1 } }
+          - { op: advanceTime, hours: 2 }
+          - { op: resource, key: morale, delta: -1 }

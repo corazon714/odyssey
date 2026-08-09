@@ -13,6 +13,13 @@ import {
   createModifierRegistry,
   type RegistryModifier,
 } from '../../modifiers/registry-modifier.ts';
+import { choiceId, complicationId } from '../../ids/content-ids.ts';
+import { createComplicationRegistry, type RegistryComplication } from '../registry-complication.ts';
+import {
+  createUniversalChoiceRegistry,
+  UNIVERSAL_CHOICE_PREFIX,
+  type UniversalChoice,
+} from '../universal-choice.ts';
 import { EVENT_PRIORITIES } from '../event-priority.ts';
 
 const { events, registries } = loadMiniPack();
@@ -215,5 +222,85 @@ describe('contentVersion covers the modifier registry (M2A.3)', () => {
     expect(createContentPack([], { ...EMPTY_REGISTRIES, modifiers: a }).version).toBe(
       createContentPack([], { ...EMPTY_REGISTRIES, modifiers: b }).version,
     );
+  });
+});
+
+describe('contentVersion covers the two Phase 2B registries (M-A)', () => {
+  // Same argument as the modifier block above, and it has to be re-made per registry rather
+  // than assumed: what makes the hash cover a registry is that the registry is INSIDE
+  // `ContentRegistries`, and nothing about adding a second one guarantees the third is too.
+  // Both ship empty in M-A, so without these two tests the placement is untested until the
+  // milestone that fills them — which is the milestone that would have to debug it.
+
+  const complication = (checkDelta: number): RegistryComplication => ({
+    id: complicationId('queue_is_enormous'),
+    appliesTo: ['cat:border'],
+    requires: { kind: 'always' },
+    weight: 1,
+    textKey: 'complication.queue_is_enormous.text',
+    checkDelta,
+    addsChoice: null,
+    removesChoice: null,
+  });
+
+  const universal = (labelKey: string): UniversalChoice => ({
+    id: 'walk_away',
+    appliesTo: ['cat:border'],
+    family: 'retreat',
+    priority: 10,
+    choice: {
+      id: choiceId(`${UNIVERSAL_CHOICE_PREFIX}walk_away`),
+      labelKey,
+      requires: { kind: 'always' },
+      hiddenUnless: null,
+      costs: [],
+      skillCheck: null,
+      search: null,
+      outcomes: [
+        {
+          weight: 1,
+          onCheck: null,
+          requires: { kind: 'always' },
+          textKey: 'universal.walk_away.out.left',
+          textVariants: [],
+          effects: [],
+        },
+      ],
+    },
+  });
+
+  it('moves when a single complication checkDelta changes by 1', () => {
+    const packWith = (delta: number): ContentPack =>
+      createContentPack([], {
+        ...EMPTY_REGISTRIES,
+        complications: createComplicationRegistry([complication(delta)]),
+      });
+
+    expect(packWith(-3).version).not.toBe(packWith(-2).version);
+  });
+
+  it('moves when a single universal choice changes', () => {
+    const packWith = (labelKey: string): ContentPack =>
+      createContentPack([], {
+        ...EMPTY_REGISTRIES,
+        universalChoices: createUniversalChoiceRegistry([universal(labelKey)]),
+      });
+
+    expect(packWith('universal.walk_away.label').version).not.toBe(
+      packWith('universal.walk_away.other').version,
+    );
+  });
+
+  it('an empty registry hashes the same as the one M-A shipped', () => {
+    // The anti-vacuity guard for the two above: if `createContentPack` silently dropped the
+    // new keys, both `not.toBe` assertions would still pass for the wrong reason while this
+    // one caught it — an empty registry and a populated one would agree.
+    const empty = createContentPack([], EMPTY_REGISTRIES).version;
+    const populated = createContentPack([], {
+      ...EMPTY_REGISTRIES,
+      complications: createComplicationRegistry([complication(-3)]),
+    }).version;
+
+    expect(empty).not.toBe(populated);
   });
 });

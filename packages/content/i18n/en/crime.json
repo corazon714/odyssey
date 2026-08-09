@@ -1,0 +1,15 @@
+{
+  "events.crime.the_offer.title": "A Package and an Address",
+  "events.crime.the_offer.body": "He buys the coffee before saying what he wants, which tells you the shape of it. A wrapped parcel the size of a book, an address on your route, and a number that is more than you have made all week. He does not say what is in it and you do not ask.",
+
+  "events.crime.the_offer.choice.take_the_package": "Take the job",
+  "events.crime.the_offer.out.terms_agreed": "Half now, half at the address, and a name to say when you get there. He shakes your hand like the matter is settled, which it is.",
+  "events.crime.the_offer.out.worse_terms": "You agree to worse than he opened with, because you agreed too quickly and you both noticed. He is pleasant about it, which is somehow the worst part.",
+
+  "events.crime.the_offer.choice.put_it_somewhere_they_will_not_look": "Put it out of the way",
+  "events.crime.the_offer.out.well_hidden": "You find the space behind the panel that was always there and had never been useful before. It sits flush. You would not know.",
+  "events.crime.the_offer.out.badly_hidden": "You get it in, but not neatly, and the panel does not sit the way it did. Anybody who knows the vehicle would see it. You spend the next leg deciding who might.",
+
+  "events.crime.the_offer.choice.say_no": "Say no",
+  "events.crime.the_offer.out.walked_away": "He takes it well, finishes his coffee, and does not offer again. You think about the number for the rest of the day."
+}

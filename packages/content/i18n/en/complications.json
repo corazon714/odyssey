@@ -1,0 +1,112 @@
+{
+  "_comment": "Complications. Each `.text` is a SEPARATE SENTENCE APPENDED to the event body, never interpolated into it — so it must read as a complete sentence after any body it can attach to, and must not depend on the body's subject or tense. Test one by reading it after three different bodies.",
+
+  "complication.queue_is_enormous.text": "The queue goes back further than you can see, and it is not moving.",
+  "complication.queue_is_enormous.choice.buy_a_place_in_line": "Buy somebody's place",
+  "complication.queue_is_enormous.choice.buy_a_place_in_line.out.bought_forward": "A quiet negotiation moves you up forty places. The people you passed watched the whole thing.",
+
+  "complication.shift_change.text": "Whoever you were getting somewhere with has just gone off shift.",
+  "complication.shift_change.choice.start_again_with_the_new_one": "Start again with the new one",
+  "complication.shift_change.choice.start_again_with_the_new_one.out.from_the_top": "You explain the whole thing a second time to somebody with no reason to believe the first version happened.",
+
+  "complication.you_are_running_late.text": "Something you need to be on is boarding, and it will not wait.",
+  "complication.you_are_running_late.choice.abandon_this_and_run": "Abandon this and run",
+  "complication.you_are_running_late.choice.abandon_this_and_run.out.made_it_just": "You make it with nothing to spare, having left whatever this was entirely unresolved behind you.",
+  "complication.you_are_running_late.choice.abandon_this_and_run.out.missed_it_anyway": "You run, and you miss it anyway, and now you have neither the thing you left nor the thing you ran for.",
+
+  "complication.second_officer_watching.text": "A second officer is standing where he can see the counter, and he is not doing anything else.",
+  "complication.second_officer_watching.choice.keep_it_strictly_correct": "Keep it strictly correct",
+  "complication.second_officer_watching.choice.keep_it_strictly_correct.out.by_the_book": "Everything is done properly, at the speed doing things properly takes, and nobody has anything to write down.",
+
+  "complication.a_crowd_has_gathered.text": "A crowd has collected, the way crowds do, and nobody in it is leaving.",
+  "complication.a_crowd_has_gathered.choice.use_the_crowd": "Use the crowd",
+  "complication.a_crowd_has_gathered.choice.use_the_crowd.out.gone_in_the_press": "You put six people between yourself and the problem and are out the far side before anyone has decided you were the point.",
+  "complication.a_crowd_has_gathered.choice.use_the_crowd.out.jostled_and_noticed": "You get through, minus something from a pocket, and with rather more faces having registered you than went in.",
+
+  "complication.a_second_vehicle_pulls_in.text": "A second vehicle pulls in behind you and nobody gets out of it.",
+  "complication.a_second_vehicle_pulls_in.choice.wait_for_them_to_leave": "Wait for them to leave",
+  "complication.a_second_vehicle_pulls_in.choice.wait_for_them_to_leave.out.outlasted_them": "You do nothing at all for two hours, extremely deliberately, until they get bored first.",
+
+  "complication.the_radio_is_describing_you.text": "A radio somewhere is describing somebody, and the description is not general.",
+  "complication.the_radio_is_describing_you.choice.cover_your_face": "Cover your face",
+  "complication.the_radio_is_describing_you.choice.cover_your_face.out.not_the_one_they_want": "Collar up, head down, walking at exactly the speed of everybody else. Whoever they want, it is not the person they are looking at.",
+  "complication.the_radio_is_describing_you.choice.cover_your_face.out.exactly_the_one": "Trying not to look like the description is itself the description, and somebody works that out.",
+
+  "complication.it_starts_raining.text": "It starts raining, hard, and there is nowhere obvious to stand.",
+  "complication.it_starts_raining.choice.shelter_until_it_passes": "Get under something",
+  "complication.it_starts_raining.choice.shelter_until_it_passes.out.waited_under_a_canopy": "You stand under a canopy with four strangers for two hours, all of you watching the same rain.",
+
+  "complication.it_is_almost_dark.text": "The light is going faster than you expected it to.",
+  "complication.it_is_almost_dark.choice.wait_for_full_dark": "Wait for full dark",
+  "complication.it_is_almost_dark.choice.wait_for_full_dark.out.better_in_the_dark": "You let it get properly dark first, which costs you the evening and makes everything afterwards easier.",
+
+  "complication.the_power_is_out.text": "The power is out, and nothing anybody wants to check can be checked.",
+  "complication.the_power_is_out.choice.wait_for_the_lights": "Wait for the lights",
+  "complication.the_power_is_out.choice.wait_for_the_lights.out.back_on_in_an_hour": "It comes back on about an hour later, along with everybody's interest in doing their job.",
+
+  "complication.your_papers_are_wet.text": "Your papers got wet at some point and the ink has done what ink does.",
+  "complication.your_papers_are_wet.choice.explain_the_damage": "Explain the damage",
+  "complication.your_papers_are_wet.choice.explain_the_damage.out.accepted_with_a_sigh": "The explanation is boring and true and delivered without embarrassment, which is what gets it accepted.",
+  "complication.your_papers_are_wet.choice.explain_the_damage.out.not_good_enough": "It is not that they disbelieve you. It is that the page has to be legible and it is not.",
+
+  "complication.your_hands_are_shaking.text": "Your hands are not steady, and you notice before anybody else does.",
+  "complication.your_hands_are_shaking.choice.sit_down_first": "Sit down first",
+  "complication.your_hands_are_shaking.choice.sit_down_first.out.five_minutes": "You sit on a wall for ten minutes and eat nothing and feel considerably more like a person afterwards.",
+
+  "complication.nobody_here_speaks_your_language.text": "Nobody here shares a language with you, and nobody is going to.",
+  "complication.nobody_here_speaks_your_language.choice.point_and_hope": "Point, and hope",
+  "complication.nobody_here_speaks_your_language.choice.point_and_hope.out.understood_eventually": "Between the pointing and the drawing and one shared word, you get there. It takes a while and it works.",
+  "complication.nobody_here_speaks_your_language.choice.point_and_hope.out.gestured_past_each_other": "You both mime enthusiastically at cross purposes for ten minutes and part with mutual goodwill and no information.",
+
+  "complication.the_price_just_went_up.text": "The number has changed since it was first said, and nobody is pretending otherwise.",
+  "complication.the_price_just_went_up.choice.refuse_the_new_price": "Refuse the new price",
+  "complication.the_price_just_went_up.choice.refuse_the_new_price.out.walked_on_principle": "You refuse on principle and walk, which is satisfying for about ninety seconds and expensive for considerably longer.",
+
+  "complication.they_want_local_currency.text": "What you are carrying is not what they will take.",
+  "complication.they_want_local_currency.choice.find_a_way_to_change_money": "Find somewhere to change money",
+  "complication.they_want_local_currency.choice.find_a_way_to_change_money.out.changed_at_a_bad_rate": "You change it at a counter that knows you have no alternative, and are charged accordingly.",
+
+  "complication.someone_recognises_you.text": "Somebody here knows your face, and is already crossing the room.",
+  "complication.someone_recognises_you.choice.greet_them_properly": "Greet them properly",
+  "complication.someone_recognises_you.choice.greet_them_properly.out.caught_up": "Twenty minutes of where-have-you-been, and it is genuinely good to see them, which surprises you.",
+
+  "complication.another_traveller_in_the_same_trouble.text": "Somebody else here has exactly your problem and has noticed that you do.",
+  "complication.another_traveller_in_the_same_trouble.choice.go_in_together": "Go in together",
+  "complication.another_traveller_in_the_same_trouble.choice.go_in_together.out.better_as_two": "Two people with the same story is harder to wave away than one, and you both get through on it.",
+  "complication.another_traveller_in_the_same_trouble.choice.go_in_together.out.dragged_down_with_them": "Their problem turns out to be larger than yours was, and you are now standing next to it.",
+
+  "complication.your_companion_speaks_up.text": "Your companion starts talking before you have decided whether to.",
+  "complication.your_companion_speaks_up.choice.let_them_handle_it": "Let them handle it",
+  "complication.your_companion_speaks_up.choice.let_them_handle_it.out.handled": "They say four sentences you do not follow and the whole thing is over.",
+  "complication.your_companion_speaks_up.choice.let_them_handle_it.out.made_it_worse_for_you": "They say considerably more than four sentences, and some of them were about you.",
+
+  "complication.an_argument_ahead.text": "There is an argument going on ahead of you and everyone is watching it.",
+  "complication.an_argument_ahead.choice.slip_past_while_they_shout": "Slip past while they shout",
+  "complication.an_argument_ahead.choice.slip_past_while_they_shout.out.straight_through": "You walk through the middle of it at a normal pace and nobody looks at you once.",
+  "complication.an_argument_ahead.choice.slip_past_while_they_shout.out.pulled_into_it": "One of them appeals to you for support, on a matter you know nothing about, loudly.",
+
+  "complication.there_are_dogs.text": "There are dogs working the line, and they are working it properly.",
+  "complication.there_are_dogs.choice.get_it_away_from_you": "Get rid of it",
+  "complication.there_are_dogs.choice.get_it_away_from_you.out.left_it_in_the_ditch": "You put it in the ditch forty metres back and walk on without turning round. Somebody will find it. Not today.",
+
+  "complication.your_bag_is_already_open.text": "Your bag is open, and you did not open it.",
+  "complication.your_bag_is_already_open.choice.take_inventory_first": "Count it all first",
+  "complication.your_bag_is_already_open.choice.take_inventory_first.out.counted_it_all": "You go through everything twice before doing anything else. It is all there, and the hour is not.",
+
+  "complication.the_engine_is_still_running.text": "You never switched the engine off, and it is still running.",
+  "complication.the_engine_is_still_running.choice.just_drive_off": "Just drive off",
+  "complication.the_engine_is_still_running.choice.just_drive_off.out.gone_before_anyone_moved": "You are in gear and gone before anybody has finished deciding whether to stop you.",
+  "complication.the_engine_is_still_running.choice.just_drive_off.out.chased_for_a_while": "Somebody follows for six or seven kilometres, close enough to be a fact and far enough to be deniable.",
+
+  "complication.the_road_ahead_is_closed.text": "The road ahead is closed, and the sign does not say for how long.",
+  "complication.the_road_ahead_is_closed.choice.take_the_long_way_round": "Take the long way round",
+  "complication.the_road_ahead_is_closed.choice.take_the_long_way_round.out.hours_added": "The detour adds five hours and two unmarked junctions, and you take the second one twice.",
+
+  "complication.you_have_been_here_before.text": "You have stood in this exact spot before, and it went a particular way.",
+  "complication.you_have_been_here_before.choice.do_what_worked_last_time": "Do what worked last time",
+  "complication.you_have_been_here_before.choice.do_what_worked_last_time.out.same_again": "You run the same play, in the same order, and it works the same way. There is a quiet pleasure in that.",
+
+  "complication.the_official_is_new.text": "Whoever is handling this is new at it, and checking everything twice because of it.",
+  "complication.the_official_is_new.choice.let_them_check_everything": "Let them check everything",
+  "complication.the_official_is_new.choice.let_them_check_everything.out.every_page_twice": "Every page, twice, plus a supervisor consulted once. Four hours, and not one thing found."
+}

@@ -1,4 +1,5 @@
 import { CHECK_TAGS, SKILL_IMPLIES_TAG, type CheckTag } from '@odyssey/engine';
+import { rolledChecks } from '../shared/rolled-checks.ts';
 import { error, warn, type LintIssue } from './issue.ts';
 import { type ContentBundle } from './load-content.ts';
 import { fileFor } from './rules-references.ts';
@@ -84,36 +85,77 @@ export function missingCheckTags(bundle: ContentBundle): readonly LintIssue[] {
   for (const event of bundle.events) {
     const file = fileFor(bundle, String(event.id));
     for (const choice of event.choices) {
-      const check = choice.skillCheck;
-      if (check === null) continue;
+      for (const check of rolledChecks(choice)) {
+        const implied = SKILL_IMPLIES_TAG[check.skill];
+        if (!check.tags.includes(implied)) {
+          issues.push(
+            error(
+              'MISSING_CHECK_TAGS',
+              file,
+              `\`${String(choice.id)}\` rolls ${check.skill} but does not tag \`${implied}\`, so every ${implied} modifier misses it`,
+            ),
+          );
+        }
 
-      const implied = SKILL_IMPLIES_TAG[check.skill];
-      if (!check.tags.includes(implied)) {
-        issues.push(
-          error(
-            'MISSING_CHECK_TAGS',
-            file,
-            `\`${String(choice.id)}\` rolls ${check.skill} but does not tag \`${implied}\`, so every ${implied} modifier misses it`,
-          ),
+        const reachable = bundle.modifiers.filter((row) =>
+          row.appliesTo.some((tag) => check.tags.includes(tag)),
         );
-      }
-
-      const reachable = bundle.modifiers.filter((row) =>
-        row.appliesTo.some((tag) => check.tags.includes(tag)),
-      );
-      if (reachable.length === 0) {
-        issues.push(
-          error(
-            'STARVED_CHECK',
-            file,
-            `\`${String(choice.id)}\` draws NO registry modifiers — its tags match nothing`,
-          ),
-        );
+        if (reachable.length === 0) {
+          issues.push(
+            error(
+              'STARVED_CHECK',
+              file,
+              `\`${String(choice.id)}\` draws NO registry modifiers — its ${check.what} tags match nothing`,
+            ),
+          );
+        }
       }
     }
   }
 
   return issues;
+}
+
+/**
+ * REGION_MODIFIER_NOT_DOCUMENT — CLAUDE.md §11, made decidable for the one `sourceKind` that
+ * can violate it silently.
+ *
+ * "Geography is real; character is not." The map uses real cities and borders — that is a
+ * feature. What is banned is attaching DANGER, CORRUPTION or BEHAVIOUR to a named real place.
+ * A `region` modifier is the one row shape that can do that and still look like ordinary
+ * balance: `{ region: <somewhere>, delta: -3 }` reads as a tuning number and encodes a claim
+ * about a people.
+ *
+ * The rule, from ADR 0022 and the content style guide: **a `region` row may only encode the
+ * PLAYER'S PAPERS relative to a crossing** — a visa they hold or do not, a passport that
+ * matches or does not. Two players standing in the same place with different documents get
+ * different numbers, which is exactly §11's "difficulty comes from the route PROFILE and the
+ * player's STATE, never from where the player happens to be".
+ *
+ * So: a `region` row whose `when` mentions no passport and no visa is describing a place.
+ * That is decidable, and it is an ERROR rather than a warning — unlike the `SAFETY_*` locale
+ * scans, which are heuristics over prose and would get suppressed if they failed CI. This one
+ * is structural.
+ */
+export function regionModifiers(bundle: ContentBundle): readonly LintIssue[] {
+  const mentionsPapers = (node: unknown): boolean => {
+    if (node === null || typeof node !== 'object') return false;
+    const record = node as Record<string, unknown>;
+    if (record['kind'] === 'visa' || record['kind'] === 'passport') return true;
+    return Object.values(record).some((value) =>
+      Array.isArray(value) ? value.some(mentionsPapers) : mentionsPapers(value),
+    );
+  };
+
+  return bundle.modifiers
+    .filter((row) => row.sourceKind === 'region' && !mentionsPapers(row.when))
+    .map((row) =>
+      error(
+        'REGION_MODIFIER_NOT_DOCUMENT',
+        'modifiers.yaml',
+        `\`${row.id}\` is a \`region\` modifier whose \`when\` reads no passport or visa — that is a property of a PLACE, not of the player's papers (CLAUDE.md §11)`,
+      ),
+    );
 }
 
 /**
@@ -130,7 +172,9 @@ export function tagCoverage(bundle: ContentBundle): readonly LintIssue[] {
   for (const event of bundle.events) {
     const tags = new Set<CheckTag>();
     for (const choice of event.choices) {
-      for (const tag of choice.skillCheck?.tags ?? []) tags.add(tag);
+      for (const check of rolledChecks(choice)) {
+        for (const tag of check.tags) tags.add(tag);
+      }
     }
     for (const tag of tags) eventsPerTag.set(tag, (eventsPerTag.get(tag) ?? 0) + 1);
   }

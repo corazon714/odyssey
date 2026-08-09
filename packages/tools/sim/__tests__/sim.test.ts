@@ -22,7 +22,20 @@ describe('parseArgs', () => {
       seed: 'x',
       policies: ['random', 'risk-taker'],
       diff: false,
+      json: false,
+      // Defaults to the fixture pack so `sim:diff` keeps comparing like with like.
+      pack: 'fixture',
     });
+  });
+
+  it('parses --pack and rejects an unknown one', () => {
+    const corpus = parseArgs(['--pack=corpus']);
+    expect(corpus.ok && corpus.options.pack).toBe('corpus');
+
+    // Unknown flags and values are errors, not shrugs: a typo'd pack that silently ran the
+    // fixture would make a corpus balance report quietly wrong.
+    const bad = parseArgs(['--pack=seed']);
+    expect(bad.ok).toBe(false);
   });
 
   it('swallows the bare -- that pnpm forwards', () => {
@@ -85,7 +98,14 @@ describe('runOne', () => {
 });
 
 describe('runMany — the M6 gate criteria', () => {
-  const summary = runMany(PACK, SCENARIOS, { runs: 300, seed: 'gate', policies: [], diff: false });
+  const summary = runMany(PACK, SCENARIOS, {
+    runs: 300,
+    seed: 'gate',
+    policies: [],
+    diff: false,
+    json: false,
+    pack: 'fixture',
+  });
 
   it('completes every run without an engine error', () => {
     expect(summary.errors).toEqual([]);
@@ -118,7 +138,14 @@ describe('runMany — the M6 gate criteria', () => {
 
   it('never throws for any policy over a fuzzed corpus', () => {
     expect(() =>
-      runMany(PACK, SCENARIOS, { runs: 200, seed: 'fuzz', policies: [], diff: false }),
+      runMany(PACK, SCENARIOS, {
+        runs: 200,
+        seed: 'fuzz',
+        policies: [],
+        diff: false,
+        json: false,
+        pack: 'fixture',
+      }),
     ).not.toThrow();
   });
 });

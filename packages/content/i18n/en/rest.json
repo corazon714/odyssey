@@ -1,0 +1,21 @@
+{
+  "events.rest.the_shared_room.title": "Six Bunks, One Door",
+  "events.rest.the_shared_room.body": "The room costs almost nothing and you can see why. Five other people, none of whom look at you, and a door that closes but does not lock. Somebody is already asleep in their boots. Everything you own fits under your head if you fold it right.",
+
+  "events.rest.the_shared_room.choice.sleep_on_your_bag": "Sleep on top of your bag",
+  "events.rest.the_shared_room.out.undisturbed": "You wake once at something and it is nothing. In the morning the room is empty, your bag is where your head was, and you have slept properly for the first time in days.",
+  "events.rest.the_shared_room.out.bag_gone_through": "Somebody went through it while you slept and took the one thing worth carrying out quietly. You notice at the roadside, hours later.",
+  "events.rest.the_shared_room.out.the_bulky_thing_walks": "The big awkward thing is gone. It cannot have left quietly and you slept through it anyway, which is its own kind of insult.",
+  "events.rest.the_shared_room.out.light_purse_heavy_sleep": "You sleep like something switched off. Some of your money does not survive the night, and you cannot say when it left.",
+
+  "events.rest.the_shared_room.choice.leave_the_bulk_behind": "Carry only what fits on you",
+  "events.rest.the_shared_room.out.travelling_light_now": "You keep what is against your skin and abandon the rest to the room. You sleep badly, move faster in the morning, and feel the gap all day.",
+
+  "events.rest.the_shared_room.choice.pay_for_a_private_room": "Pay for a door that locks",
+  "events.rest.the_shared_room.out.a_door_that_locks": "It is barely a room and the water runs cold, but the door has a bolt and you use it. You come down in the morning looking like somebody people talk to.",
+  "events.rest.the_shared_room.out.nothing_free_tonight": "There is nothing free and the price does not move. You take the bunk anyway and sleep in instalments.",
+
+  "events.rest.the_shared_room.choice.see_to_your_feet": "See to your feet",
+  "events.rest.the_shared_room.out.patched_up": "You clean what needs it, bind what needs it, and put your boots by the door instead of on. It makes more difference than a night's sleep.",
+  "events.rest.the_shared_room.out.worse_in_the_morning": "You do what you can with what you have, which is not much, and in the morning it has gone the other way."
+}

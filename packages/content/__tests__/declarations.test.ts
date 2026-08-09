@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { collectFlagUsage, collectRefs } from '@odyssey/engine';
 import { REGISTRY_FILES } from '../schema/declarations.ts';
-import { declaredIds, loadDeclarations } from '../loader/load-declarations.ts';
+import { declaredIds, loadDeclarations, loadModifiers } from '../loader/load-declarations.ts';
 import { formatIssue } from '../loader/locate.ts';
 import { loadEvents } from '../loader/load-events.ts';
 
@@ -11,6 +11,22 @@ const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const loaded = loadDeclarations(PACKAGE_ROOT);
 const events = loadEvents(join(PACKAGE_ROOT, 'events'), PACKAGE_ROOT);
+/**
+ * THE REGISTRY COUNTS AS A CONSUMER. Corrected 2026-08-09.
+ *
+ * These walks used to read events alone, which made two shipped assertions bind in opposite
+ * directions: `modifier-registry.test.ts` requires every npc/item/flag a modifier's `when`
+ * names to be DECLARED, while "every declared id is actually used" only counted event
+ * references. Between them, a modifier could not name an id unless an event named it too — so
+ * `modifiers.yaml` could never grow ahead of the corpus, which is the order the linter's own
+ * STARVED_CHECK rule demands.
+ *
+ * `content:lint` never had the bug: `rules-references.ts` already passes `bundle.modifiers` to
+ * both `collectFlagUsage` and `collectRefs`. This is the test catching up with the tool, not a
+ * relaxation — a flag a modifier reads is read, and the anti-pattern these guard against is a
+ * declaration NOTHING consumes.
+ */
+const modifiers = loadModifiers(PACKAGE_ROOT).modifiers;
 
 describe('declaration registries', () => {
   it('all five load without an issue', () => {
@@ -51,8 +67,8 @@ describe('declaration registries', () => {
  */
 describe('references resolve against the declarations', () => {
   const declared = declaredIds(loaded.declarations);
-  const usage = collectFlagUsage(events.events);
-  const refs = collectRefs(events.events);
+  const usage = collectFlagUsage(events.events, modifiers);
+  const refs = collectRefs(events.events, modifiers);
 
   it('loaded the events it is checking', () => {
     expect(events.issues).toEqual([]);

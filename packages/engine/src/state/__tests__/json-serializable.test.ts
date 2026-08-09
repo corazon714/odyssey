@@ -87,6 +87,7 @@ function populated(): RunState {
       eventId: eventId('border.bribe_attempt'),
       presentedAtLeg: 4,
       rung: 0,
+      complicationId: null,
     },
   };
 }
