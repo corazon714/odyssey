@@ -49,6 +49,11 @@ export function collectRefs(
         }
       }
 
+      // The item a search hunts for is a content reference like any other. Missing it would
+      // let a search name a deleted item, never appear in `danglingRefs`, and simply never
+      // find anything — the silent-content-bug shape this whole walk exists to catch.
+      if (choice.search !== null && choice.search.item !== null) push('item', choice.search.item);
+
       for (const outcome of choice.outcomes) {
         walkPredicate(outcome.requires, push);
         for (const effect of outcome.effects) walkEffect(effect, push);

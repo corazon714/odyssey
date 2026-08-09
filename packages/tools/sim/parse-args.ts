@@ -11,13 +11,27 @@ export type ParseResult =
   | { readonly ok: true; readonly options: SimOptions }
   | { readonly ok: false; readonly message: string };
 
-const DEFAULTS: SimOptions = { runs: 100, seed: 'base', policies: [], diff: false };
+const PACK_NAMES = ['fixture', 'corpus'] as const;
+export type PackName = (typeof PACK_NAMES)[number];
+
+const DEFAULTS: SimOptions = {
+  runs: 100,
+  seed: 'base',
+  policies: [],
+  diff: false,
+  json: false,
+  // DEFAULTS TO FIXTURE so `sim:diff` keeps comparing like with like. The fixture pack is the
+  // stable control the golden runs are built on; the corpus is the thing under development.
+  pack: 'fixture',
+};
 
 export function parseArgs(argv: readonly string[]): ParseResult {
   let runs = DEFAULTS.runs;
   let seed = DEFAULTS.seed;
   const policies: PolicyName[] = [];
   let diff = false;
+  let json = false;
+  let pack = DEFAULTS.pack;
 
   for (const arg of argv) {
     // `pnpm sim -- --runs=1000` forwards the bare `--` to us verbatim. CLAUDE.md 5 documents
@@ -26,9 +40,17 @@ export function parseArgs(argv: readonly string[]): ParseResult {
 
     const [rawKey, rawValue] = splitFlag(arg);
     if (rawKey === null) return { ok: false, message: `not a flag: ${arg}` };
-    // --diff is the one valueless flag.
+    // --diff and --json are the valueless flags.
     if (rawKey === '--diff') {
       diff = true;
+      continue;
+    }
+    // Emits the runs as JSON instead of the markdown report — the per-run TRACE rather than the
+    // aggregate. `--runs=1 --seed=x --policy=random --json` is one reproducible journey with its
+    // fired events and picked choices in order, which is the only way to check that a memory
+    // chain fires in the right sequence rather than merely firing.
+    if (rawKey === '--json') {
+      json = true;
       continue;
     }
     if (rawValue === null) return { ok: false, message: `${rawKey} needs a value` };
@@ -45,6 +67,13 @@ export function parseArgs(argv: readonly string[]): ParseResult {
       case '--seed':
         seed = rawValue;
         break;
+      case '--pack': {
+        if (!PACK_NAMES.includes(rawValue as PackName)) {
+          return { ok: false, message: `unknown pack: ${rawValue} (fixture|corpus)` };
+        }
+        pack = rawValue as PackName;
+        break;
+      }
       case '--policy': {
         if (!isPolicyName(rawValue)) {
           return { ok: false, message: `unknown policy: ${rawValue}` };
@@ -57,7 +86,7 @@ export function parseArgs(argv: readonly string[]): ParseResult {
     }
   }
 
-  return { ok: true, options: { runs, seed, policies, diff } };
+  return { ok: true, options: { runs, seed, policies, diff, json, pack } };
 }
 
 /** Accepts both `--runs=10` and `--runs 10` is NOT supported — one form, no ambiguity. */

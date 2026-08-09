@@ -21,3 +21,10 @@ docs/engine-spec.md
 # Generated sim output, pinned for review. Prettier would reflow the fixed-width report and
 # make `pnpm sim:diff` permanently noisy against freshly generated output.
 docs/sim-baseline.md
+
+# The sim baselines are GENERATED REPORTS committed for review, and their column alignment is
+# load-bearing: `sim:diff` compares them line by line against a fresh report, so Prettier
+# collapsing the whitespace makes every headline metric read as changed. Found the hard way at
+# Phase 2B M-D, when the corpus baseline was reformatted and diffed against itself.
+docs/sim-baseline.md
+docs/sim-baseline-corpus.md

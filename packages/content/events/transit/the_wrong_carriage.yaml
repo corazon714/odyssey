@@ -1,0 +1,64 @@
+id: transit.the_wrong_carriage
+category: transit
+tags: [transit, risk, deception, money]
+context:
+  transportModes: [bus, train]
+cooldownLegs: 6
+image: transit/the_wrong_carriage
+choices:
+  # Pay and be done with it. Always available, never free.
+  - id: pay_the_difference
+    hiddenUnless: { resource: cash, gte: 15 }
+    costs:
+      - { op: resource, key: cash, delta: -15 }
+    outcomes:
+      - id: settled
+        weight: 1
+        effects:
+          - { op: flag, id: ticket_purchased }
+          - { op: resource, key: morale, delta: 1 }
+
+  - id: talk_your_way_through
+    check:
+      skill: negotiation
+      dc: 12
+      tags: [social, deception, documents, authority]
+    outcomes:
+      - id: believed
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: resource, key: reputation, delta: 1 }
+      - id: story_falls_apart
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: flag, id: caught_lying }
+          - { op: resource, key: reputation, delta: -1 }
+          - { op: resource, key: heat, delta: 1 }
+      - id: scene_in_the_aisle
+        weight: 1
+        onCheck: failure
+        requires: { resource: morale, lte: 4 }
+        effects:
+          - { op: flag, id: made_a_scene }
+          - { op: flag, id: caught_lying }
+          - { op: resource, key: morale, delta: -2 }
+
+  - id: move_before_they_reach_you
+    check:
+      skill: stealth
+      dc: 11
+      tags: [stealth, crime, perception]
+    outcomes:
+      - id: slipped_back
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: resource, key: energy, delta: -1 }
+      - id: caught_between_cars
+        weight: 2
+        onCheck: failure
+        effects:
+          - { op: resource, key: heat, delta: 2 }
+          - { op: flag, id: made_a_scene }

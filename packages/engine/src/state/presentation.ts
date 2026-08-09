@@ -1,4 +1,4 @@
-import { type EventId } from '../ids/content-ids.ts';
+import { type ComplicationId, type EventId } from '../ids/content-ids.ts';
 
 /**
  * What the player is currently looking at. NOT in engine-spec 1 — added deliberately.
@@ -20,6 +20,25 @@ export type Presentation =
       readonly presentedAtLeg: number;
       /** Relaxation rung the director reached, 0 = nothing relaxed. Fed to the sim. */
       readonly rung: number;
+      /**
+       * The complication the director attached, or null. PERSISTED rather than recomputed, and
+       * that is the decision this field exists to record.
+       *
+       * `resolveChoice` runs on a LATER call than `advanceLeg`, against a state selection never
+       * saw: `advance-leg.ts` rewrites `pendingEvents`, `route.beatSchedule` and `rngCursors`
+       * after `selectEvent` returns. Re-deriving there is stable only by accident — no
+       * predicate kind reads the queue TODAY, and nothing says one never will. The two call
+       * sites also build different `chanceScope`s (route id vs event id), so a `{ chance: p }`
+       * inside a complication's `requires` would answer differently at each.
+       *
+       * The decisive case is reload. `reconcileContent` TOLERATES a `contentVersion` mismatch,
+       * so a player who closes the app mid-event and reopens after an update would have the
+       * complication re-derived against the NEW `complications.yaml` — silently changing the DC
+       * and the choices they already read. A persisted id that no longer resolves degrades to
+       * no-complication in one `Map.get`, which is the same policy the queue already applies to
+       * a pending event whose target vanished. See ADR 0021.
+       */
+      readonly complicationId: ComplicationId | null;
     }
   | { readonly kind: 'uneventful'; readonly presentedAtLeg: number; readonly reasonKey: string };
 

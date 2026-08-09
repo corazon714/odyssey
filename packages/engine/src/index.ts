@@ -79,6 +79,30 @@ export {
   type SkillCheck,
   type SkillCheckCoversSpec,
 } from './content/game-event.ts';
+export { type SearchSpec } from './content/search-spec.ts';
+export {
+  COMPLICATION_CHOICE_PREFIX,
+  createComplicationRegistry,
+  EMPTY_COMPLICATION_REGISTRY,
+  type ComplicationRegistry,
+  type RegistryComplication,
+} from './content/registry-complication.ts';
+export { presentedChoices } from './content/presented-choices.ts';
+export { ATTACH_PERCENT, selectComplication } from './director/select-complication.ts';
+export {
+  createUniversalChoiceRegistry,
+  EMPTY_UNIVERSAL_CHOICE_REGISTRY,
+  MAX_UNIVERSAL_PER_EVENT,
+  UNIVERSAL_CHOICE_PREFIX,
+  type UniversalChoice,
+  type UniversalChoiceRegistry,
+} from './content/universal-choice.ts';
+export {
+  injectUniversalChoices,
+  type InjectionResult,
+  type ShadowedInjection,
+} from './content/inject-universal-choices.ts';
+export { tagsOf } from './content/event-tags.ts';
 export {
   collectFlagUsage,
   collectRefs,
@@ -244,7 +268,7 @@ export {
   SCORING_FACTORS,
   tensionFit,
 } from './director/scoring-factors.ts';
-export { tagSaturation, tagsOf } from './director/tag-saturation.ts';
+export { tagSaturation } from './director/tag-saturation.ts';
 export { pickWeight, scoreEvent } from './director/score-event.ts';
 export { FILLER_RUNG, RELAXATION_RUNGS, UNEVENTFUL_RUNG } from './director/relaxation-rung.ts';
 export {
@@ -259,6 +283,7 @@ export { consecutiveHighTension, nextTension } from './director/tension.ts';
 export { advanceLeg, type AdvanceLegResult } from './loop/advance-leg.ts';
 export { pickOutcome, resolveChoice, type ResolveChoiceResult } from './loop/resolve-choice.ts';
 export { runSkillCheck } from './loop/run-skill-check.ts';
+export { searchCheck } from './loop/search-check.ts';
 export { checkRunEnd, type RunEndVerdict } from './loop/check-run-end.ts';
 export { worldTick } from './loop/world-tick.ts';
 export { locationAtLeg } from './state/route-state.ts';

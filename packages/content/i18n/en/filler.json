@@ -1,0 +1,26 @@
+{
+  "events.filler.the_hours_between.title": "The Hours Between",
+  "events.filler.the_hours_between.body": "Nothing in either direction but the road doing what the road does. The light changes by degrees. You pass a sign for somewhere you are not going, then the same sign again forty minutes later, or one very like it.",
+
+  "events.filler.the_hours_between.choice.watch_the_road": "Pay attention to it",
+  "events.filler.the_hours_between.out.noticed_something": "You notice the turning before the sign for it, and something about getting that right sets you up for the rest of the day.",
+  "events.filler.the_hours_between.out.nothing_at_all": "You watch carefully for two hours and are rewarded with two hours of exactly what you were looking at.",
+  "events.filler.the_hours_between.out.turned_it_over_again": "You turn the useless thing over in your pocket for a while. It is not lucky and you are not superstitious, and you keep it anyway.",
+
+  "events.filler.the_hours_between.choice.eat_something": "Eat something",
+  "events.filler.the_hours_between.out.whatever_was_left": "You eat what is left standing up, in about four minutes, without tasting any of it.",
+
+  "events.filler.the_long_quiet_stretch.title": "The Long Quiet Stretch",
+  "events.filler.the_long_quiet_stretch.body": "A straight road through nothing much, in weather that has no opinion. This is most of it, in the end: not the crossings or the arguments, just distance being turned into time at a steady and unremarkable rate.",
+
+  "events.filler.the_long_quiet_stretch.choice.keep_going": "Keep going",
+  "events.filler.the_long_quiet_stretch.out.kilometres": "Kilometres. That is the entire content of the afternoon, and there is nothing wrong with it.",
+  "events.filler.the_long_quiet_stretch.out.a_good_stretch": "For an hour or so it is genuinely good — the road empty, the light long, and no reason to be anywhere else yet.",
+
+  "events.filler.the_long_quiet_stretch.choice.stop_and_rest": "Stop for a while",
+  "events.filler.the_long_quiet_stretch.out.an_hour_off_your_feet": "You stop somewhere that is not anywhere and sit for an hour. It costs you the hour and it is worth it.",
+
+  "events.filler.the_long_quiet_stretch.choice.listen_to_the_engine": "Listen to the engine",
+  "events.filler.the_long_quiet_stretch.out.caught_it_early": "There is a note in it that was not there yesterday. You find the loose thing making it and tighten it at the roadside in ten minutes.",
+  "events.filler.the_long_quiet_stretch.out.nothing_you_can_hear": "You drive with the radio off and the window down for an hour and learn nothing except that you are tired of the sound of it."
+}

@@ -1,0 +1,22 @@
+{
+  "events.border.night_crossing.title": "The Late Booth",
+  "events.border.night_crossing.body": "Two lanes, one open. The officer has been on since morning and it shows in how slowly he turns each page. Behind you an engine idles. Ahead, a strip light buzzes over a counter worn pale by other people's paperwork. He looks up, and waits.",
+
+  "events.border.night_crossing.choice.present_papers": "Hand over your papers",
+  "events.border.night_crossing.out.waved_through": "He reads every page anyway, stamps one, and slides the lot back without a word. The barrier lifts. Two hours of your evening, and nothing else.",
+  "events.border.night_crossing.out.held_and_questioned": "He keeps the passport and asks you to wait. The wait becomes an office, and the office becomes a form. Nobody is unkind. It simply takes the rest of the night, and your name is written down twice.",
+  "events.border.night_crossing.out.papers_taken": "He does not give the passport back. There is a receipt, a reference number, and an address to write to. He is already looking past you at the next vehicle.",
+
+  "events.border.night_crossing.choice.offer_something": "Fold something into the passport",
+  "events.border.night_crossing.out.understood": "He opens the passport, closes it, and hands it back lighter. The barrier lifts before he has finished sitting down. Neither of you says anything worth writing down.",
+  "events.border.night_crossing.out.refused": "He takes the note out, sets it on the counter between you, and looks at it until you take it back. Then he writes something. It takes a long time to write.",
+  "events.border.night_crossing.out.detained_here": "The note is still on the counter when the second officer arrives. There is a room with a bench in it, and a very long night, and by morning you are somebody they have a file on.",
+
+  "events.border.night_crossing.choice.keep_it_out_of_sight": "Keep it out of sight",
+  "events.border.night_crossing.out.not_found": "He pats your coat twice, decides you are not worth the paperwork, and waves you on. You are three kilometres down the road before you breathe out.",
+  "events.border.night_crossing.out.found": "He finds it on the second pass, without any particular triumph. It goes into a bag, the bag goes into a drawer, and you are told to wait while somebody senior is fetched.",
+
+  "events.border.night_crossing.choice.make_yourself_useful": "Make conversation while he reads",
+  "events.border.night_crossing.out.small_talk": "You ask about the road ahead. He tells you, at length, which lane floods and which town has fuel. By the end he has forgotten to check the second page.",
+  "events.border.night_crossing.out.searched_anyway": "He is not unfriendly. He is also thorough, and everything you own ends up on the counter in the order you packed it, then goes back in a worse one."
+}

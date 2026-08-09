@@ -1,0 +1,63 @@
+id: opportunity.work_for_a_day
+category: opportunity
+tags: [opportunity, money, endurance, food]
+context:
+  locationTypes: [town, village, city, rest_stop]
+cooldownLegs: 8
+image: opportunity/work_for_a_day
+choices:
+  # THE CORPUS'S RELIABLE CASH AND FOOD SOURCE. Without one, health decline is irreversible and
+  # every long run converges to zero — the gap the fixture pack has carried since Phase 1.
+  - id: take_the_day_rate
+    check:
+      skill: endurance
+      dc: 10
+      tags: [endurance, physical, social]
+    outcomes:
+      - id: paid_and_fed
+        weight: 4
+        onCheck: success
+        effects:
+          - { op: resource, key: cash, delta: 55 }
+          - { op: resource, key: hunger, delta: -3 }
+          - { op: resource, key: energy, delta: -3 }
+          - { op: advanceTime, hours: 10 }
+      - id: paid_less_than_agreed
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: resource, key: cash, delta: 30 }
+          - { op: resource, key: hunger, delta: -2 }
+          - { op: resource, key: energy, delta: -4 }
+          - { op: resource, key: morale, delta: -1 }
+          - { op: advanceTime, hours: 10 }
+      - id: worked_dry
+        weight: 1
+        onCheck: failure
+        requires: { item: water_carrier, gte: 1 }
+        effects:
+          - { op: resource, key: cash, delta: 50 }
+          - { op: resource, key: health, delta: -1 }
+          - { op: resource, key: energy, delta: -5 }
+          - { op: advanceTime, hours: 11 }
+
+  - id: haggle_the_rate_first
+    check:
+      skill: negotiation
+      dc: 12
+      tags: [social, haggle]
+    outcomes:
+      - id: better_rate
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: resource, key: cash, delta: 85 }
+          - { op: resource, key: hunger, delta: -2 }
+          - { op: resource, key: energy, delta: -4 }
+          - { op: advanceTime, hours: 11 }
+      - id: work_goes_to_someone_else
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: resource, key: morale, delta: -1 }
+          - { op: advanceTime, hours: 3 }

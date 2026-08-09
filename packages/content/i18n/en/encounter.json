@@ -1,0 +1,19 @@
+{
+  "events.encounter.the_other_traveller.title": "Going the Same Way",
+  "events.encounter.the_other_traveller.body": "Same road, same direction, roughly the same amount of luggage. They have been at it longer than you and it shows in the boots. They sit down without being invited, which is either very good manners or none at all, and ask where you crossed.",
+
+  "events.encounter.the_other_traveller.choice.share_what_you_have": "Share what you have",
+  "events.encounter.the_other_traveller.out.a_meal_and_a_map": "You split what there is. In return you get an hour of where not to stop, which turns out to be worth considerably more than the food.",
+  "events.encounter.the_other_traveller.out.eaten_in_silence": "They eat, they nod, they go. Not unfriendly. Just finished.",
+
+  "events.encounter.the_other_traveller.choice.buy_a_meal_from_them": "Buy a meal off them",
+  "events.encounter.the_other_traveller.out.hot_and_enough": "It is hot, there is enough of it, and it costs about what you would have paid a stranger. Which is what happened.",
+
+  "events.encounter.the_other_traveller.choice.compare_routes": "Compare routes",
+  "events.encounter.the_other_traveller.out.worth_knowing": "They draw it on the table with a finger and it is better than what you had. You will remember the shape of it for weeks.",
+  "events.encounter.the_other_traveller.out.nothing_you_did_not_know": "Twenty minutes to establish that you both know the same road and neither of you has anything to add.",
+
+  "events.encounter.the_other_traveller.choice.look_at_their_leg": "Look at the leg",
+  "events.encounter.the_other_traveller.out.cleaned_and_bound": "It is not as bad as the walking made it look. You clean it, bind it, and tell them to stay off it, which they will not.",
+  "events.encounter.the_other_traveller.out.out_of_your_depth": "You get the boot off and immediately wish you had not offered. You do what you can, which is a clean cloth and some optimism."
+}

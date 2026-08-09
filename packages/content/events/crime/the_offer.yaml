@@ -1,0 +1,64 @@
+id: crime.the_offer
+category: crime
+tags: [crime, money, risk, corruption]
+context:
+  locationTypes: [rest_stop, city, town, station]
+cooldownLegs: 9
+maxOccurrences: 2
+image: crime/the_offer
+requires:
+  not: { flag: wanted }
+choices:
+  - id: take_the_package
+    check:
+      skill: streetwise
+      dc: 12
+      tags: [crime, deception, haggle, bribery]
+    outcomes:
+      - id: terms_agreed
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: item, id: contraband, countDelta: 1, condition: null, container: null }
+          - { op: resource, key: cash, delta: 120 }
+          - { op: flag, id: smuggler_contact }
+          - { op: relationship, npc: fixer, trustDelta: 1, meet: true, addTags: [work] }
+      - id: worse_terms
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: item, id: contraband, countDelta: 1, condition: null, container: null }
+          - { op: resource, key: cash, delta: 40 }
+          - { op: flag, id: smuggler_contact }
+          - { op: relationship, npc: fixer, trustDelta: -1, meet: true, addTags: [] }
+          - { op: resource, key: heat, delta: 1 }
+
+  # The second search in the corpus, and the one that uses a real container.
+  - id: put_it_somewhere_they_will_not_look
+    hiddenUnless: { item: contraband, gte: 1 }
+    search:
+      container: stash
+      dc: 11
+      item: contraband
+      tags: [stealth, search, crime]
+    outcomes:
+      - id: well_hidden
+        weight: 1
+        onCheck: success
+        effects:
+          - { op: flag, id: stash_used, ttlLegs: 6 }
+          - { op: resource, key: morale, delta: 1 }
+      - id: badly_hidden
+        weight: 1
+        onCheck: failure
+        effects:
+          - { op: flag, id: stash_used, ttlLegs: 6 }
+          - { op: resource, key: heat, delta: 2 }
+
+  - id: say_no
+    outcomes:
+      - id: walked_away
+        weight: 1
+        effects:
+          - { op: relationship, npc: fixer, trustDelta: -1, meet: true, addTags: [] }
+          - { op: resource, key: morale, delta: -1 }

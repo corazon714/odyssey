@@ -115,6 +115,17 @@ is the right home.
 `packages/content/events/` is untouched. The 12 seed events remain a Phase 2 deliverable
 written against the content bible, and the fixtures must not become them.
 
+> **AMENDED 2026-08-09 (Phase 2B M-D, see ADR 0022).** This said where the fixtures must NOT go
+> and not where they should live, and they were occupying the only directory the corpus could
+> use. They now live in **`packages/content/__fixtures__/events/`**, and
+> `packages/content/events/` is the seed corpus. The split is what let thirteen seed events land
+> without moving a single golden run.
+>
+> One consequence worth knowing: the fixture YAMLs are **unlinted**, because `content:lint`
+> reads `events/` only. That is deliberate — they are frozen data whose only contract is
+> reproducing `mini-pack.json` byte-for-byte, which `round-trip.test.ts` checks. Do not "fix"
+> the gap by moving them back.
+
 The pack is built to provide specific coverage rather than to be representative: **two
 fillers** (the relaxation ladder's rung-6 floor needs at least two), beats for three beat
 types, a **schedule/payoff pair** (`border.bribe_attempt` → `border.guard_remembers`), and one

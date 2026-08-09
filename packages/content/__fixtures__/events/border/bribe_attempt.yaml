@@ -122,6 +122,47 @@ choices:
             id: detained
           - op: unlockEnding
             id: ending.detained_at_border
+  # The fixture's search. `container: person` because a fixture run carries no bag, vehicle or
+  # stash — `createInventory()` gives you what is on you and nothing else, and a search of a
+  # container that does not exist would be a dead choice pretending to be coverage.
+  #
+  # Gated at cash >= 100 rather than the 400 the plan sketched: a fixture run starts on 320 and
+  # has no income, so a 400 gate would be a SECOND dead `hiddenUnless` next to `turn_back`'s.
+  # This one fires, which is what takes `hiddenUnless` from "never executed in the loop"
+  # (ADR 0012) to executed.
+  #
+  # Success means it stayed hidden — see `content/search-spec.ts` for why that direction is
+  # forced by the sign convention already in modifiers.yaml.
+  - id: hide_the_cash
+    hiddenUnless:
+      resource: cash
+      gte: 100
+    search:
+      container: person
+      dc: 12
+      item: cash_belt
+      tags: [stealth, search]
+    outcomes:
+      - id: concealed
+        weight: 1
+        onCheck: success
+        effects:
+          - op: resource
+            key: heat
+            delta: 1
+      - id: found
+        weight: 1
+        onCheck: failure
+        effects:
+          - op: resource
+            key: cash
+            delta: -60
+          - op: resource
+            key: heat
+            delta: 3
+          - op: flag
+            id: bribe_on_record
+
   - id: turn_back
     hiddenUnless:
       resource: heat

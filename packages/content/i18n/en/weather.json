@@ -1,0 +1,20 @@
+{
+  "events.weather.the_storm_you_cannot_drive_through.title": "Not Driving Through That",
+  "events.weather.the_storm_you_cannot_drive_through.body": "It arrives sideways and does not let up. Visibility is the length of the vehicle. Somewhere ahead there is a line of stopped tail lights that has not moved in twenty minutes, and behind you the water is already crossing the road in sheets.",
+
+  "events.weather.the_storm_you_cannot_drive_through.choice.shelter_and_lose_the_day": "Sit it out",
+  "events.weather.the_storm_you_cannot_drive_through.out.waited_it_out": "You pull off and wait. It takes the rest of the day and most of the food, and when it clears the road is fine and you are half a day behind.",
+
+  "events.weather.the_storm_you_cannot_drive_through.choice.push_on_through_it": "Push on through it",
+  "events.weather.the_storm_you_cannot_drive_through.out.made_ground": "You crawl through it at walking pace with your face at the windscreen, and come out the far side into flat grey light having gained forty kilometres on everyone who stopped.",
+  "events.weather.the_storm_you_cannot_drive_through.out.off_the_road": "The verge goes soft where the water crossed and you are off the road before you have finished deciding to brake. Nothing is broken. Everything is bent.",
+  "events.weather.the_storm_you_cannot_drive_through.out.worse_than_that": "It goes badly in the way these things go badly, quickly and then very slowly, and afterwards you sit for a while before doing anything at all.",
+
+  "events.weather.the_storm_you_cannot_drive_through.choice.find_the_mechanic_first": "Get it looked at first",
+  "events.weather.the_storm_you_cannot_drive_through.out.weatherproofed": "Somebody with wire and a strong opinion spends an hour on it and it holds all the way through. Best money of the week.",
+  "events.weather.the_storm_you_cannot_drive_through.out.no_time_for_it": "Everyone with tools is already busy with somebody else's, and by the time it might be your turn the weather has decided for you.",
+
+  "events.weather.the_storm_you_cannot_drive_through.choice.see_to_the_damage": "See to the damage",
+  "events.weather.the_storm_you_cannot_drive_through.out.nothing_broken": "You check yourself over properly for the first time in days. Nothing broken, several things overdue, and an hour spent on both.",
+  "events.weather.the_storm_you_cannot_drive_through.out.it_will_have_to_hold": "You look at it, decide there is nothing useful to be done at the side of a road in this, and put your sleeve back down."
+}

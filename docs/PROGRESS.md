@@ -5,7 +5,454 @@
 
 ---
 
-## Shipped this session (2026-08-08, session 5) — Phase 2A under adversarial verification
+## Shipped this session (2026-08-09, session 6) — **PHASE 2B COMPLETE**, M0 through M-F
+
+**Phase 2B is complete. All seven milestones landed in one session.** The plan — 162
+modifiers, 25 complications, 15 universal choices, 12 seed events, a real `en/` locale and a
+style guide, across seven milestones — is at
+`~/.claude/plans/plan-mode-author-the-enchanted-pizza.md`, approved with four decisions
+recorded in its Context section. **The seed corpus exists, has words, and plays inside its
+design band: 13 events, 137 modifiers, 25 complications, 15 universal choices, a complete `en`
+locale, and `content:lint` at 0 errors / 1 warning — from 31 warnings at session start.**
+
+**Prove it:**
+
+```bash
+pnpm typecheck && pnpm lint && pnpm test && pnpm format:check
+```
+
+```bash
+pnpm content:lint                          # exit 0 — 0 errors, 31 warnings
+pnpm sim:diff -- --runs=2000               # "No change vs docs/sim-baseline.md."
+pnpm sim -- --runs=2000 --pack=corpus --diff   # "No change vs docs/sim-baseline-corpus.md."
+pnpm vitest run --project engine src/loop/__tests__/search-check.test.ts   # 6 tests
+```
+
+Totals moved 1055 → **1142 Vitest + 3 Jest across 53 files**.
+
+### What M0 delivers
+
+`Choice.search` — a container search that resolves through the existing `runSkillCheck` on the
+existing `skillCheck` stream. No new RNG stream, no `RngCursors` change, no save migration.
+`docs/adr/0020` is the reasoning; the two decisions worth knowing without reading it:
+
+- **`search` is on the CHOICE, not the Outcome** (PROGRESS's own prose said Outcome and was
+  wrong — `onCheck` branches on the choice's roll, so a search on the outcome resolves too late
+  for the branching mechanism both documents named).
+- **Success means it stayed HIDDEN.** The Phase 2A plan file's example comments this the other
+  way round. Every `search`-tagged row in `modifiers.yaml` is signed from the player's side —
+  `cash_concealed` +2, `wanted_by_authorities` −3 — so a searcher-rolls framing makes all four
+  apply backwards. Reading either document literally would have shipped a silently inverted
+  mechanic that no test could catch, because no event used a search.
+
+Two warnings closed and four opened, all honest: `UNUSED_TAG: search` is gone (the completion
+signal the old next-step named), `LIABILITY_UNBACKED: cash_belt` is gone because `collectRefs`
+now walks `search.item`. New: `stealth` is a `THIN_TAG` twice over, because the registry has no
+stealth rows — M-E's job. 29 → 31.
+
+`hiddenUnless` is **no longer dead**. ADR 0012 recorded that it had exactly one instance and
+that instance never fired; `hide_the_cash` gates at `cash >= 100`, which a fixture run starting
+on 320 reaches, and it is picked in 0.3% of runs.
+
+### ⚠ The finding: the fixture pack ships an EMPTY modifier registry
+
+**The ten rows in `packages/content/modifiers.yaml` have never applied in a golden run or a sim
+run.** `mini-pack.json` has `registries.modifiers: []`, and `packages/tools/sim/load-pack.ts`
+reads that same file. They are exercised by `packages/content`'s unit tests and by
+`content:lint`'s static analysis, and by nothing that runs the engine.
+
+M2A.3's sim delta was recorded as "`contentVersion` only". True — but because the `modifiers`
+**key** went from absent to `[]`, not because the rows entered the pack.
+
+Not fixed here: the fix belongs with M-D, where the sim gains a pack that loads `modifiers.yaml`.
+**Until then no sim number is evidence about the registry** — including the ~162 rows M-E adds.
+
+### Sim delta — a redistribution, not a difficulty change
+
+`offer_bribe` 0.4% → 0.1%, `hide_the_cash` 0.3% (new), `border.guard_remembers/acknowledge`
+0.2% → 0.0% because fewer bribes fire to schedule it. Endings moved ±0.3pp inside that same
+chain. **Completion rate unmoved at 31.2%.** Golden runs: exactly 18 lines changed, 9
+`contentVersion` and 9 `expectedDigest`, everything else byte-identical.
+
+**Wall clock is not comparable across machines and the baseline now says so.** It reads ~740 ms
+where M2A.6 read 496 ms; the pre-M0 tree measures 758–787 ms on the same machine, so the whole
+difference is hardware. Measured both ways before believing it.
+
+### M-A — the `ContentRegistries` shape commit
+
+`ContentRegistries` gains `complications` and `universalChoices`, **both shipped empty**, so the
+`contentVersion` hit is taken once and reviewed on its own rather than mixed into the milestone
+that fills them. `contentVersion` moved `819cb199` → `aee5a082`.
+
+**The invariant it exists to demonstrate held:** the `golden-runs.json` diff is exactly 18
+lines — 9 `contentVersion`, 9 `expectedDigest` — with `choiceSequence`, `expectedHistoryKeys`,
+`expectedLegs` and `expectedEndings` byte-identical across all nine runs. `pnpm sim:diff` says
+"No change". Zero behaviour moved.
+
+Both element types are defined in full now rather than stubbed: `RegistryComplication`
+(`content/registry-complication.ts`) and `UniversalChoice` (`content/universal-choice.ts`),
+plus a 13th branded id, `ComplicationId`. Defining them early costs nothing — `contentVersion`
+hashes `[]` identically whatever the element type is — and it makes M-B and M-C purely
+additive.
+
+Three things settled here that the later milestones depend on:
+
+- **`UniversalChoice` embeds a whole `Choice`** rather than flattening its fields. A flattened
+  copy is a second definition of `Choice` that drifts the first time either gains a field —
+  which `search` just demonstrated by being added in M0.
+- **`UNIVERSAL_CHOICE_PREFIX` is `'u:'`, not `'u.'`.** `:` is outside `ID_PATTERN`; a dot is
+  legal precisely so ids can be namespaced, so a `u.` prefix would be forgeable. The failure it
+  prevents is not a crash: `resolveChoice` uses `.find`, so a colliding injected id would be
+  displayed, picked, and resolve the AUTHORED choice's outcomes.
+- **`MAX_UNIVERSAL_PER_EVENT = 3`, and "never more than half the choices shown" reduces to
+  `i <= a`** — with `a` authored and `i` injected, `i <= (a+i)/2` is exactly `i <= a`. So the
+  cap is `min(3, authored.length)`: static, state-free, and computable where the splice happens.
+
+Two new `content-pack.test.ts` blocks assert the version moves when a complication's
+`checkDelta` or a universal choice's `labelKey` changes, plus an anti-vacuity case — the
+placement is otherwise untested until the milestone that fills the registries, which is the
+milestone that would have to debug it.
+
+`conformance.test.ts`'s L2 layer caught both new empty constants and demanded they be
+classified. Working as designed; they are recorded as `'empty constant'` alongside
+`EMPTY_MODIFIER_REGISTRY`.
+
+### M-B — universal choices
+
+The subsystem, shipped with an **empty registry**. `injectUniversalChoices` splices matching
+rows into `GameEvent.choices` inside `createContentPack`, before the `contentVersion` call, so
+`pack.version` fingerprints what the pack actually plays rather than what was authored.
+
+**The proof: `contentVersion` did not move** (still `aee5a082`), `golden-runs.json` is
+byte-identical to the M-A state, and `pnpm sim:diff` says "No change". A whole subsystem landed
+and nothing observable changed — which is only checkable because the registry ships empty.
+
+New: `content/inject-universal-choices.ts`, `content/event-tags.ts`,
+`content/schema/universal-choice.ts`, `content/loader/load-universal-choices.ts`,
+`content/universal-choices.yaml` (empty, with the authoring rules in its header),
+`tools/content-lint/rules-universal.ts`. `content:lint` is now **14 rules**.
+
+Things settled here that are easy to get wrong later:
+
+- **`tagsOf` moved from `director/` to `content/event-tags.ts`.** Pack construction needs it,
+  and `content/` depending on `director/` to build a pack inverts the layering — the director
+  consumes content, not the reverse. Still exported from the barrel, so no API break.
+- **The splice is the identity on an empty registry, down to object reference.** Tested. A
+  rebuilt-but-equal array would also be correct, but this is the stronger claim and it is what
+  makes "nothing moved" mean something.
+- **`buildOutcome` now takes a `keyBase`, not an event id.** That indirection is the whole
+  reason universal choices are affordable: row-scoped keys (`universal.walk_away.label`) mint
+  ONE key however many events a row lands in. Event-scoped derivation would have minted one per
+  event x per row — twelve events and three rows is thirty-six keys for three strings, each one
+  a `MISSING_I18N_KEY` error.
+- **The schema reuses `event.ts`'s `skillCheckSchema` / `searchSchema` / `outcomeSchema`**
+  rather than restating them. A second definition of what a choice may contain drifts the first
+  time either gains a field — which `search` demonstrated one milestone ago.
+- **The "never strictly the best option" rule is half-mechanised.** The schema rejects a row
+  with no costs, no roll and no effects; a roll counts as a cost because risk is one. The rest
+  is review and `content:lint`.
+- **`content-lint` runs the REAL splice** rather than reimplementing matching, the cap and
+  families. A linter with its own copy of the rule reports on a second implementation.
+
+### M-C — complications. `docs/adr/0021`. **The first milestone to touch `RunState`.**
+
+The subsystem, shipped with an **empty registry**. `Presentation` gains `complicationId`;
+`SAVE_VERSION` is **4**; `MIGRATIONS` has a third entry.
+
+**What moved and what did not:** all nine `expectedDigest` values moved and **nothing else
+did** — `contentVersion` is still `aee5a082`, and `choiceSequence`, `expectedHistoryKeys`,
+`expectedLegs` and `expectedEndings` are byte-identical. `RunState.version` is inside
+`stateDigest`, so a save-format bump necessarily moves every digest. **That signature —
+digests only — is what distinguishes a format bump from a behaviour change**, and it is the
+thing to check if M-D or M-E ever produces a diff you cannot explain.
+
+New: `director/select-complication.ts`, `content/presented-choices.ts`,
+`content/schema/complication.ts`, `content/loader/load-complications.ts`,
+`content/complications.yaml` (empty, rules in its header). The sim gained a **`Complication
+rate`** line against the `ATTACH_PERCENT` target; it reads 0.0% until M-E writes rows.
+
+Four decisions, all argued in ADR 0021 — the ones worth knowing here:
+
+- **Persisted, not recomputed.** The decisive reason is not the state drift or the differing
+  `chanceScope` between the two call sites, both of which are real; it is RELOAD.
+  `reconcileContent` tolerates a `contentVersion` mismatch by policy, so a player who reads a
+  complication, closes the app, updates and reopens would — under recomputation — resolve a
+  different situation than the one they read. A persisted id that no longer resolves degrades
+  to no-complication in one `Map.get`.
+- **`migrate_3_to_4` WRITES `null` rather than leaving the key absent.** `isRunStateShape` does
+  not inspect `presentation`, so an absent key loads clean, reads `undefined`, and
+  `undefined !== null` sends `resolveChoice` looking up a complication by an undefined id.
+  Both v4 fixtures are byte-copies of the v3 ones (`presentation: {kind:'none'}`), so the
+  meta-test passes while the migration's only branch never runs — **two tests were added for
+  exactly that gap.**
+- **Selection is cursor-free**, so `encounterFlavor`'s cursor stays 0 forever and adding a row
+  shifts no other event's complication. That property is load-bearing: M-E adds twenty-five at
+  once. Pinned by a test.
+- **`presentedChoices` is ONE function used by both the presentation path and
+  `resolveChoice`'s lookup.** `resolve-choice.ts` no longer touches `event.choices` directly.
+  A `removesChoice` that would empty the list is DECLINED — a content mistake must not become
+  a stuck run.
+
+`effects[]` and `exclusiveWith[]` were cut before implementation, approved: the first would
+make `advanceLeg` an effect applier, the second is degenerate at one complication per event.
+
+### M-D, part 1 — prerequisites and the `--pack` machinery
+
+**A plan bug, found before it cost anything.** The plan said "modifiers before events". That is
+**impossible as the tests stood**, and the two assertions bound in opposite directions:
+
+- `modifier-registry.test.ts:43` — every npc/item/flag a MODIFIER's `when` names must be declared.
+- `declarations.test.ts:55` — every DECLARED id must be referenced by an EVENT; it walked
+  `collectRefs(events.events)` with no registry argument.
+
+Between them a modifier could not name an id unless an event named it too, so `modifiers.yaml`
+could never grow ahead of the corpus — the order `STARVED_CHECK` demands. **`content:lint` never
+had the bug**: `rules-references.ts` already passes `bundle.modifiers` to both walks. The test
+now does too. That is the test catching up with the tool, not a relaxation — a flag a modifier
+reads is read, and the anti-pattern being guarded is a declaration NOTHING consumes.
+Behaviour-neutral today; verified.
+
+**`docs/content-style-guide.md` written.** Its subject is the one question that decides
+everything else: does this belong in an event or in a registry? It also records the
+non-stacking-collapse rule that shapes every modifier, the check-tag pairing rule, the two
+`sourceKind`s with no state behind them (`region`, `companion`), the i18n cliff, and the §11
+place-neutrality rule in authoring terms.
+
+**`pnpm sim -- --pack=fixture|corpus`.** `loadCorpusPack` builds from `packages/content/` —
+YAML events plus `modifiers.yaml`, `complications.yaml` and `universal-choices.yaml`.
+
+> **This closes the M0 finding: `modifiers.yaml` has now reached a running engine.** Same nine
+> events, same routes, ten modifier rows live: **completion 31.2% → 30.8%**. That is what the
+> registry does, measured for the first time.
+
+**One baseline per pack**, tagged in the filename. A single shared file would be overwritten by
+whichever ran last, so "no change" would mean "no change since somebody else's run" — worse than
+no baseline, because it looks like coverage. `docs/sim-baseline.md` keeps its name;
+`docs/sim-baseline-corpus.md` is new. Both diff clean.
+
+**`docs/sim-baseline*.md` are now in `.prettierignore`**, found the hard way: Prettier collapsed
+the corpus report's column alignment, and `sim:diff` compares line by line — so every headline
+metric read as changed against a file that was byte-identical in substance.
+
+Corpus routes are deliberately still the fixture routes: route generation is Phase 2B
+`engine/src/route/`, and inventing a corpus route file here would pre-empt it. Flagged in the
+baseline header to revisit when the corpus lands.
+
+### M-D, part 2 — the corpus split. **The seed corpus exists.**
+
+Thirteen events across all twelve categories, **137 modifiers** covering all twelve
+`sourceKind`s, twenty declared flags, ten items, six npcs, ten traits. The nine fixture YAMLs
+moved to `packages/content/__fixtures__/events/`; `round-trip.test.ts` repointed in one line.
+
+**`content:lint` went 31 warnings → 3, zero errors.** Every `THIN_TAG` and `UNUSED_TAG` is gone:
+all eighteen check tags now have **≥3 events and ≥5 modifiers**. The three that remain are
+`MISSING_LOCALE`, `SAFETY_NOT_SCANNED` and `MISSING_IMAGE_MANIFEST` — the locale and the image
+manifest, both of which are their own commits and neither of which may be stubbed.
+
+**The fixture control survived intact:** golden runs byte-identical, `pnpm sim:diff` "No change".
+That is what the split was for.
+
+#### Two content bugs the first corpus sim found
+
+Both are the class of silent failure ADR 0001 says content has no other instrument for:
+
+- **`authority.the_file_catches_up` was `priority: beat`.** A beat event only fires when a beat
+  SLOT of its type is due, and the consequence queue cannot arrange one — so the payoff was
+  scheduled 129 times and paid off **1.6%**. Made `normal`: **1.6% → 67%**, unresolved threads
+  125 → 42. **A queued payoff must never be a beat event**, and that is now the rule.
+- **`breakdown.the_roadside_repair` gated on `transportStat condition lte 7`.** Transport starts
+  at 10 and only a failed storm takes 2 off it, so the event **never fired in 2000 runs**.
+  Now `lte 9`; never-fired 1 → 0.
+
+#### Three tools tests were asserting the fixture's gaps, not a property
+
+Worth reading before writing the next one:
+
+- `lint.test.ts` asserted `UNUSED_TAG` is REPORTED. That was the honest state of a nine-event
+  fixture; the corpus covers every tag, so the assertion was inverted into its positive form —
+  tag coverage is now pinned as `expect(coverage).toEqual([])` rather than left to a warning.
+- `lint.test.ts`'s rule-SELECTION test keyed on `tag-coverage` and expected a non-empty set, so
+  filling the gaps broke a test that has nothing to do with rule selection. Re-keyed to `i18n`.
+- `stats.test.ts` asserted `not.toContain('region')` to mean "there is no region AXIS". It
+  passed only because no modifier used `sourceKind: region`; four now do, and the word appeared
+  under "Modifiers by source kind" while the property was still true. **A substring match on a
+  vocabulary member was never testing what its comment claimed.** Now asserts on headings.
+
+#### Open, and left for M-F rather than tuned further here
+
+**Completion 52.1% against engine-spec 6's 30–50% band.** The fixture sat at 31% because it had
+no food at all and every long run converged to health 0; the corpus added food and rest and
+overshot. Three trims took it 60.0 → 59.1 → 53.1 → 52.1 — diminishing returns on the wrong
+lever. Median legs is 13, so runs COMPLETE rather than survive, and the remaining distance is
+route length, not recovery. Corpus routes want route generation (`engine/src/route/`).
+
+Beat fill 30.3%: the corpus fills `border_crossing` and `midpoint_crisis`; the fixture routes
+also schedule `departure`, `ferry_boarding`, `approach` and `finale`.
+
+### The `en` locale — the game has words now
+
+**Twelve files, 157 event keys, 146 check-chip keys, in one commit** — because the locale is a
+cliff, not a slope: `MISSING_I18N_KEY` is an error that fires PER KEY the moment `i18n/en/`
+holds any `.json`, so half a locale is hundreds of errors.
+
+**`content:lint`: 3 warnings → 1, still zero errors.** `MISSING_LOCALE` and `SAFETY_NOT_SCANNED`
+are closed. Landing it also switched on `BODY_TOO_LONG`, `CHOICE_TOO_LONG` and the four §11
+`SAFETY_*` scans **for the first time**, and all of them are clean — longest body 54/60, longest
+choice label 7/8.
+
+The one warning left is `MISSING_IMAGE_MANIFEST`, and it is **structural rather than a to-do**:
+`packages/tools/imagegen/` is empty, no image exists, and a manifest mapping thirteen keys to
+nothing is a stub of exactly the kind CLAUDE.md §5 forbids. Leave it until imagegen lands.
+
+#### The gap the linter has, and the test that covers it
+
+**`content:lint` does not check modifier chip labels, and cannot.** `i18nCoverage` walks keys
+reachable FROM an event; a modifier is not reachable from one, because it applies by tag
+intersection at roll time. So a missing `check.modifier.<id>` does not fail a build — it ships
+the raw key to the result screen, which is precisely what design pillar 2 exists to prevent.
+
+`packages/content/__tests__/locale.test.ts` is that check: every modifier's `labelKey`, every
+`check.modifier.skill.<key>` that `runSkillCheck` synthesises, and every
+`check.modifier.container.<kind>` that `searchCheck` synthesises — none of which is authored
+anywhere, so nothing else would have caught their absence. It also asserts the reverse (no
+orphaned strings), no duplicate key across files, and the pillar-5 budgets as assertions rather
+than warnings.
+
+#### `lint.test.ts` had been wrong twice; it is now keyed to nothing
+
+The rule-SELECTION test named the rules it expected to fire — first `{THIN_TAG, UNUSED_TAG}`,
+then `{MISSING_LOCALE}` — and **both broke when the corpus improved**, for reasons with nothing
+to do with rule selection. It now asserts the actual contract, which holds on a clean corpus and
+a broken one alike: every single-rule run is a subset of the full run, and the union of all of
+them is the whole of it.
+
+Worth generalising: **a test that asserts a linter REPORTS something is asserting a to-do list.**
+Three of them broke this session for that reason. Assert the positive property instead.
+
+### M-F — the last two registries. **Phase 2B is complete.**
+
+25 complications and 15 universal choices, with their locale. `docs/adr/0022` records the
+decisions; `docs/adr/0009` §5 is amended for the fixture move it should have specified.
+
+#### The headline: completion reached the band by adding CONTENT, not by tuning
+
+**44.1%**, inside engine-spec 6's 30–50%. Three rounds of trimming food and rest moved it
+60.0 → 59.1 → 53.1 → 52.1 and then stopped paying. What took it the rest of the way was landing
+the two registries, which add **costly options a player will actually take**.
+
+**Diversity and difficulty turned out to be the same lever**, which is the strongest evidence so
+far that CLAUDE.md §9's architecture is the right one. It is also the argument to reach for when
+the next balance problem looks like a tuning problem.
+
+`Complication rate 59.5%` against an `ATTACH_PERCENT` of 60 — the tunable measures what it says.
+Payoff 73.9% with 6 unresolved threads (from 1.6% and 125 before the `priority: beat` bug).
+
+#### A bug the first full-registry run found, and why it is good news
+
+`resolveChoice: loop/unknown-choice`, across 2000 runs. The sim read `event.choices` directly,
+so when a complication **removed** a choice it offered one the engine refuses.
+
+**The engine refusing is CLAUDE.md 2.7 working** — it is the authority on legality, not the
+screen, and the sim is a screen. The fix is that `selectableChoices` now goes through
+`presentedChoices`, which is the entire reason that is ONE exported function rather than two
+inline expressions. **The app layer will need it too**; anything that renders a choice list must
+derive it the same way.
+
+#### What the first real registry taught us about `appliesTo`
+
+`UNIVERSAL_NEVER_INJECTED` fired on **three of fifteen rows** — the rule written in M-B, firing
+on content for the first time. The cause is structural: with a 3-per-event cap and one row per
+family, a row that is both **low priority and broadly targeted never lands anywhere**. It loses
+its family contest where it matches and loses the cap where it does not.
+
+Raising priorities only moves the problem to whoever gets displaced. The fix was to make each
+row in a family target a **different kind of event** and win there. Two rows also shared a family
+they had no business sharing — a distraction and a day's labour are not two ways of doing the
+same thing — which made the cheaper one unreachable.
+
+**`appliesTo` breadth is a cost, not a benefit.** A row matching everything wins nowhere in
+particular and starves its family. That is now in the style guide.
+
+#### Corpus totals
+
+|                   |                                                                          |
+| ----------------- | ------------------------------------------------------------------------ |
+| events            | 13, all twelve categories, two fillers for the ladder floor              |
+| modifiers         | **137** — 3 under the brief's floor, see below; all twelve `sourceKind`s |
+| complications     | 25                                                                       |
+| universal choices | 15, all reachable                                                        |
+| declarations      | 20 flags, 10 items, 6 npcs, 10 traits, 7 endings                         |
+| locale            | complete `en` — 157 event keys, 146 chip keys, plus both registries      |
+| `content:lint`    | **0 errors, 1 warning** (`MISSING_IMAGE_MANIFEST`, structural)           |
+
+#### ⚠ The one deliverable that came in under its number — and the measurement that says leave it
+
+**137 modifiers against a brief of "140–180" and an approved list of 162.** Three under the
+floor, twenty-five under the plan. It was reported as a count in every milestone summary and
+never flagged as a shortfall, which it should have been.
+
+Where the 25 went, and why: **`item`, `trait`, `companion` and `region` rows are the ones that
+need declarations**, and declarations are constrained from both sides — a flag a modifier reads
+must be WRITTEN by an event (`FLAG_READ_NEVER_WRITTEN` is an error), and an item needs a
+liability event that reads it. Thirteen events can only back so many. The rows were cut during
+authoring rather than declared and left dangling, which was the right call; not saying so was
+not.
+
+**But the count was a proxy, and the property it stood for is met.** The brief's actual
+requirement was "a typical check should pull 3–7". Measured over all 29 checks in the corpus
+against a representative mid-run state:
+
+```
+min 3 · median 7 · max 9 · mean 6.4
+```
+
+The registry is at the top of the target band and slightly over it — **the twelve checks outside
+3–7 are outside it on the HIGH side (8–9), not the low.** Adding 25 rows to reach 162 would push
+more checks further above the range the number existed to produce.
+
+**So: do not top this up to hit 162.** If the count is revisited, the honest lever is the
+`item`/`trait` kinds, and only alongside events that give the declarations something to be
+backed by. Recorded rather than fixed.
+
+### Next step
+
+Phase 2B is done apart from the note above. The things it deliberately did not do, in the order
+they matter:
+
+0. **`quirks.yaml` — the FOURTH registry in CLAUDE.md §9 — does not exist.** It was not in this
+   phase's brief and is not a regression, but §9 promises four registries and three are live.
+   NPC personality traits that register as modifiers; the `ModifierSource` seam it would plug
+   into is still empty and still tested.
+
+1. **Beat fill is 30.1%** — the corpus fills `border_crossing` and `midpoint_crisis`; the fixture
+   routes also schedule `departure`, `ferry_boarding`, `approach` and `finale`. This wants
+   **corpus routes**, which want **route generation** (`packages/engine/src/route/`, the one
+   `(planned)` engine directory). That is the natural next milestone and it closes steps 1–3 of
+   the game loop, which have never existed.
+2. **`MISSING_IMAGE_MANIFEST`** — `packages/tools/imagegen/` is empty. Do not stub the manifest.
+3. **The open questions below**, unchanged: the `CLAUDE.md` line count, `CHECK_DIE_SIDES`,
+   Hermes, and `engine-spec.md` Part I.
+
+---
+
+## Superseded — the M-D part 2 brief
+
+**`git mv` the nine fixture YAMLs to
+`packages/content/__fixtures__/events/`, repoint `round-trip.test.ts` and `structure.test.ts`,
+add `sim --pack=fixture|corpus` plus a corpus routes file — **and land the seed corpus in the
+same commit**. `declarations.test.ts:72,88-101` asserts every declared flag, npc, item and
+trait is actually used, so there is no intermediate state where `events/` is empty and the
+suite is green.
+
+Decide there, not later: `sim:diff` compares against exactly one `docs/sim-baseline.md`, and
+two packs means two baselines or a pack-tagged one.
+
+**Carry forward:** the fixture pack ships an empty MODIFIER registry (see the finding above),
+so M-D is also where `modifiers.yaml` first reaches a running engine.
+
+---
+
+## Shipped in session 5 (2026-08-08) — Phase 2A under adversarial verification
 
 **No new features. The deliverable is knowing which of Phase 2A's guarantees are real.** Six
 checks against what session 4 claimed. Four confirmed it; **two did not, and both produced a

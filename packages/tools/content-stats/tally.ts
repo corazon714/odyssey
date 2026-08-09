@@ -1,3 +1,4 @@
+import { rolledChecks } from '../shared/rolled-checks.ts';
 import {
   LOCATION_TYPES,
   ROUTE_PROFILES,
@@ -150,7 +151,11 @@ export function checkTagUse(events: readonly GameEvent[]): ReadonlyMap<string, n
   const out = new Map<string, number>();
   for (const event of events) {
     for (const choice of event.choices) {
-      for (const tag of choice.skillCheck?.tags ?? []) out.set(tag, (out.get(tag) ?? 0) + 1);
+      // Reads BOTH a `check` and a `search` — see shared/rolled-checks.ts. Reading
+      // `skillCheck?.tags` here made the search tag report 1 use when three choices carry it.
+      for (const rolled of rolledChecks(choice)) {
+        for (const tag of rolled.tags) out.set(tag, (out.get(tag) ?? 0) + 1);
+      }
     }
   }
   return out;

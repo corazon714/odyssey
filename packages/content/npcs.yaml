@@ -1,6 +1,10 @@
 # Declared NPCs. ARCHETYPES, never people, and never nationalities — CLAUDE.md §11 forbids
-# attaching behaviour to a real group, and an NPC named for one would do that through the
-# back door. "A border guard" is a role anyone can occupy; corruption is a situation.
+# attaching behaviour to a real group, and an NPC named for one would do that through the back
+# door. "A border guard" is a role anyone can occupy; corruption is a situation.
+#
+# Six is deliberate. Each is a role the road actually produces repeatedly, so a relationship
+# with one can be built in a dozen legs and cashed in a dozen more. A seventh that appears once
+# is a character, not an archetype, and belongs in an event's text rather than here.
 
 - id: border_guard
   description: The official at a crossing. Remembers a bribe, and remembers being refused.
@@ -19,3 +23,21 @@
   category: criminal
   archetype: opportunist
   tags: [crime, rest]
+
+- id: fixer
+  description: Knows who moves what, and expects to be paid in favours before money.
+  category: criminal
+  archetype: broker
+  tags: [crime, commerce]
+
+- id: long_haul_driver
+  description: Doing this route for the ninth time this year. Knows every checkpoint's mood.
+  category: trade
+  archetype: traveller
+  tags: [transit, road]
+
+- id: innkeeper
+  description: Rents a bed and sells the local weather forecast at the same counter.
+  category: trade
+  archetype: host
+  tags: [rest, commerce]

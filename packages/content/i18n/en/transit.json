@@ -1,0 +1,16 @@
+{
+  "events.transit.the_wrong_carriage.title": "The Wrong End of the Train",
+  "events.transit.the_wrong_carriage.body": "The seats here have headrests and nobody standing. Yours does not, and is four carriages back. The conductor has started at the far door and is working his way down, and he is not hurrying, which somehow makes it worse.",
+
+  "events.transit.the_wrong_carriage.choice.pay_the_difference": "Pay the difference",
+  "events.transit.the_wrong_carriage.out.settled": "He writes it out by hand, takes the money, and gives you a stub with a number on it. The seat is not better. Not having to think about it is.",
+
+  "events.transit.the_wrong_carriage.choice.talk_your_way_through": "Explain the misunderstanding",
+  "events.transit.the_wrong_carriage.out.believed": "You explain. He looks at the ticket, looks at you, and decides that on balance he has had a long day too. He moves on.",
+  "events.transit.the_wrong_carriage.out.story_falls_apart": "The story is fine until he asks one ordinary question about it, and then it is not. He does not raise his voice. He just waits while you rearrange it.",
+  "events.transit.the_wrong_carriage.out.scene_in_the_aisle": "It gets loud, and it gets loud in front of forty people who now all know your face and what you sound like when cornered.",
+
+  "events.transit.the_wrong_carriage.choice.move_before_they_reach_you": "Move down before he gets here",
+  "events.transit.the_wrong_carriage.out.slipped_back": "You go the long way round through the buffet car and are in your own seat, breathing normally, by the time he reaches it.",
+  "events.transit.the_wrong_carriage.out.caught_between_cars": "He comes through the connecting door as you are going the other way, and there is nowhere in a corridor that width to look like you belong."
+}

@@ -1,3 +1,4 @@
+import { tagsOf } from '../content/event-tags.ts';
 import { type GameEvent } from '../content/game-event.ts';
 import { type RunState } from '../state/run-state.ts';
 import { TAG_SATURATION_MIN, TAG_WINDOW } from './scoring-constants.ts';
@@ -38,9 +39,4 @@ export function tagSaturation(event: GameEvent, state: RunState): number {
 
   const factor = 1 / (1 + worst);
   return factor < TAG_SATURATION_MIN ? TAG_SATURATION_MIN : factor;
-}
-
-/** An event's tags plus its category as `cat:<category>`. */
-export function tagsOf(event: GameEvent): readonly string[] {
-  return [...event.tags, `cat:${event.category}`];
 }

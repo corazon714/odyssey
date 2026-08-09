@@ -12,6 +12,7 @@ import {
   type EventId,
 } from '@odyssey/engine';
 import { type FixtureScenario } from './load-pack.ts';
+import { UNIVERSAL_CHOICE_PREFIX } from '@odyssey/engine';
 import { POLICIES, selectableChoices, type PolicyName } from './policy.ts';
 
 /**
@@ -36,6 +37,26 @@ export type SimRun = {
   readonly uneventfulLegs: number;
   readonly fallbackLegs: number;
   readonly queueFires: number;
+  /** Legs where the director attached a complication. Measures ATTACH_PERCENT against reality. */
+  readonly complicatedLegs: number;
+  /**
+   * Modifier-pipeline instrumentation. `chipsTotal / checksRolled` is the number
+   * 08-DIVERSITY-SYSTEMS D1 is actually about: "a typical check should pull 3-7". A check
+   * pulling under two is drawing nothing the registry exists to provide, and it is invisible
+   * without counting — the roll still happens and the report still looks healthy.
+   */
+  readonly checksRolled: number;
+  readonly chipsTotal: number;
+  readonly checksUnderTwoChips: number;
+  /**
+   * Universal choices, offered vs taken. BOTH, because either alone misleads: a row offered
+   * everywhere and never picked is clutter, and a row picked far more often than it is offered
+   * is too strong and is flattening the hand-authored content it sits beside.
+   */
+  readonly choicesOffered: number;
+  readonly universalOffered: number;
+  readonly picks: number;
+  readonly universalPicked: number;
   readonly scheduled: number;
   readonly noOutcomeChoices: number;
   readonly clamps: number;
@@ -86,6 +107,14 @@ export function runOne(
   let uneventfulLegs = 0;
   let fallbackLegs = 0;
   let queueFires = 0;
+  let complicatedLegs = 0;
+  let checksRolled = 0;
+  let chipsTotal = 0;
+  let checksUnderTwoChips = 0;
+  let choicesOffered = 0;
+  let universalOffered = 0;
+  let picks = 0;
+  let universalPicked = 0;
   let scheduled = 0;
   let noOutcomeChoices = 0;
   let clamps = created.clamps.length;
@@ -133,9 +162,10 @@ export function runOne(
 
     if (selection.rung > 0) fallbackLegs += 1;
     if (selection.fromQueue) queueFires += 1;
+    if (selection.complication !== null) complicatedLegs += 1;
     firedEvents.push(selection.event.id);
 
-    const choices = selectableChoices(selection.event, state, pack);
+    const choices = selectableChoices(selection.event, state, pack, selection.complication);
     const choice = policy.choose(choices, state, policyRng);
     if (choice === null) {
       // Every event must offer at least one selectable choice. If none does, the run cannot
@@ -143,11 +173,23 @@ export function runOne(
       return blank(seed, route, policyName, `no selectable choice in ${selection.event.id}`);
     }
 
+    choicesOffered += choices.length;
+    universalOffered += choices.filter((c) =>
+      String(c.id).startsWith(UNIVERSAL_CHOICE_PREFIX),
+    ).length;
+    picks += 1;
+    if (String(choice.id).startsWith(UNIVERSAL_CHOICE_PREFIX)) universalPicked += 1;
+
     choicesPicked.push(`${selection.event.id}/${choice.id}`);
 
     const resolved = resolveChoice(state, pack, choice.id);
     if (!resolved.ok) {
       return blank(seed, route, policyName, `resolveChoice: ${resolved.error.code}`);
+    }
+    if (resolved.resolution !== null) {
+      checksRolled += 1;
+      chipsTotal += resolved.resolution.modifiers.length;
+      if (resolved.resolution.modifiers.length < 2) checksUnderTwoChips += 1;
     }
     if (resolved.outcome === null) noOutcomeChoices += 1;
     for (const applied of resolved.applied) {
@@ -169,6 +211,14 @@ export function runOne(
     uneventfulLegs,
     fallbackLegs,
     queueFires,
+    complicatedLegs,
+    checksRolled,
+    chipsTotal,
+    checksUnderTwoChips,
+    choicesOffered,
+    universalOffered,
+    picks,
+    universalPicked,
     scheduled,
     noOutcomeChoices,
     clamps,
@@ -202,6 +252,14 @@ function blank(
     uneventfulLegs: 0,
     fallbackLegs: 0,
     queueFires: 0,
+    complicatedLegs: 0,
+    checksRolled: 0,
+    chipsTotal: 0,
+    checksUnderTwoChips: 0,
+    choicesOffered: 0,
+    universalOffered: 0,
+    picks: 0,
+    universalPicked: 0,
     scheduled: 0,
     noOutcomeChoices: 0,
     clamps: 0,

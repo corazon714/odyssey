@@ -11,11 +11,13 @@ import {
   beatTypeSchema,
   checkTagSchema,
   checkVisibilitySchema,
+  containerKindSchema,
   eventIdSchema,
   eventPrioritySchema,
   i18nKeySchema,
   ID_PATTERN,
   intSchema,
+  itemIdSchema,
   list,
   locationTypeSchema,
   nullable,
@@ -81,7 +83,7 @@ const checkModifierSchema = z.strictObject({
   why: z.string().nullish(),
 });
 
-const skillCheckSchema = z.strictObject({
+export const skillCheckSchema = z.strictObject({
   skill: skillKeySchema,
   dc: intSchema,
   /**
@@ -97,7 +99,23 @@ const skillCheckSchema = z.strictObject({
   modifiers: list(checkModifierSchema),
 });
 
-const outcomeSchema = z.strictObject({
+/**
+ * A container search. The sibling of `check`, never its companion — see the `superRefine`.
+ *
+ * `skill` defaults to `stealth` because that is what keeping a thing out of sight is, and
+ * making the common case free is the whole argument for the terse authoring form. `tags` gets
+ * no default and a minimum of one, for exactly the reason `check.tags` does: a search with the
+ * wrong tags still rolls, it just draws nothing from the registry, and the author never notices.
+ */
+export const searchSchema = z.strictObject({
+  container: containerKindSchema,
+  dc: intSchema,
+  item: nullable(itemIdSchema),
+  skill: skillKeySchema.nullish().transform((v) => v ?? 'stealth'),
+  tags: z.array(checkTagSchema).min(1, 'a search with no tags draws no registry modifiers'),
+});
+
+export const outcomeSchema = z.strictObject({
   id: z.string().regex(ID_PATTERN, 'outcome ids are snake_case'),
   weight: intSchema.positive(),
   onCheck: nullable(z.enum(['success', 'failure'])),
@@ -124,6 +142,7 @@ const choiceSchema = z.strictObject({
   labelKey: z.string().nullish(),
   costs: list(effectSchema),
   check: nullable(skillCheckSchema),
+  search: nullable(searchSchema),
   outcomes: z.array(outcomeSchema).min(1),
 });
 
@@ -156,12 +175,22 @@ const rawEventSchema = z.strictObject({
   choices: z.array(choiceSchema).min(1),
 });
 
-type RawEvent = z.infer<typeof rawEventSchema>;
-type RawChoice = RawEvent['choices'][number];
-type RawOutcome = RawChoice['outcomes'][number];
+export type RawEvent = z.infer<typeof rawEventSchema>;
+export type RawChoice = RawEvent['choices'][number];
+export type RawOutcome = RawChoice['outcomes'][number];
 
-function buildOutcome(eventKey: string, raw: RawOutcome): Outcome {
-  const base = `events.${eventKey}.out.${raw.id}`;
+/**
+ * `keyBase` is the owner's key prefix, not the event's id, and that indirection is the whole
+ * reason universal choices can exist.
+ *
+ * A registry row is spliced into every event whose tags match. Deriving its keys from the
+ * EVENT would mint one key per event x per row — twelve events and three rows is thirty-six
+ * keys for three strings, every one of which `MISSING_I18N_KEY` (an error) would demand be
+ * written. Derived from the ROW, `universal.walk_away.label` is one key that reads correctly
+ * wherever it is injected.
+ */
+export function buildOutcome(keyBase: string, raw: RawOutcome): Outcome {
+  const base = `${keyBase}.out.${raw.id}`;
   return {
     weight: raw.weight,
     onCheck: raw.onCheck,
@@ -175,7 +204,7 @@ function buildOutcome(eventKey: string, raw: RawOutcome): Outcome {
   };
 }
 
-function buildCheck(raw: NonNullable<RawChoice['check']>): SkillCheck {
+export function buildCheck(raw: NonNullable<RawChoice['check']>): SkillCheck {
   return {
     skill: raw.skill,
     dc: raw.dc,
@@ -194,7 +223,8 @@ function buildChoice(eventKey: string, raw: RawChoice): Choice {
     hiddenUnless: raw.hiddenUnless,
     costs: raw.costs,
     skillCheck: raw.check === null ? null : buildCheck(raw.check),
-    outcomes: raw.outcomes.map((outcome) => buildOutcome(eventKey, outcome)),
+    search: raw.search,
+    outcomes: raw.outcomes.map((outcome) => buildOutcome(`events.${eventKey}`, outcome)),
   };
 }
 
@@ -240,11 +270,26 @@ export const gameEventSchema = rawEventSchema
           message: `choice \`${choice.id}\` has duplicate outcome ids, so their text keys collide`,
         });
       }
-      // An outcome gated on a check result inside a choice with no check can never fire.
-      if (choice.check === null && choice.outcomes.some((o) => o.onCheck !== null)) {
+      // Both would feed the one `RollResult` that `onCheck` branches on, leaving
+      // `onCheck: success` with two possible referents. Rejected rather than given a
+      // precedence, because a precedence rule is a puzzle every author has to remember.
+      if (choice.check !== null && choice.search !== null) {
         ctx.addIssue({
           code: 'custom',
-          message: `choice \`${choice.id}\` has no \`check\`, so \`onCheck\` can never match`,
+          message: `choice \`${choice.id}\` has both \`check\` and \`search\`; a choice rolls one thing`,
+        });
+      }
+      // An outcome gated on a check result inside a choice that rolls nothing can never fire.
+      // A `search` counts as rolling: it resolves through the same `runSkillCheck` and lands
+      // in the same `check` slot, so `onCheck` reads it exactly as it reads a `check`.
+      if (
+        choice.check === null &&
+        choice.search === null &&
+        choice.outcomes.some((o) => o.onCheck !== null)
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `choice \`${choice.id}\` has no \`check\` or \`search\`, so \`onCheck\` can never match`,
         });
       }
       for (const outcome of choice.outcomes) {

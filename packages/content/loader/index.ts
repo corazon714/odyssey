@@ -14,4 +14,6 @@ export {
   type Declarations,
   type LoadDeclarationsResult,
 } from './load-declarations.ts';
+export { loadComplications } from './load-complications.ts';
+export { loadUniversalChoices } from './load-universal-choices.ts';
 export { formatIssue, issueAt, locate, offsetToLineCol, type ContentIssue } from './locate.ts';

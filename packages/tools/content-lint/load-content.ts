@@ -1,13 +1,20 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+  loadComplications,
   loadDeclarations,
   loadEvents,
   loadModifiers,
+  loadUniversalChoices,
   type ContentIssue,
   type Declarations,
 } from '@odyssey/content/loader';
-import { type GameEvent, type ModifierRegistry } from '@odyssey/engine';
+import {
+  type ComplicationRegistry,
+  type GameEvent,
+  type ModifierRegistry,
+  type UniversalChoiceRegistry,
+} from '@odyssey/engine';
 import { error, type LintIssue } from './issue.ts';
 
 /**
@@ -25,6 +32,8 @@ export type ContentBundle = {
   readonly events: readonly GameEvent[];
   readonly declarations: Declarations;
   readonly modifiers: ModifierRegistry;
+  readonly universalChoices: UniversalChoiceRegistry;
+  readonly complications: ComplicationRegistry;
   /** en/ keys, or null when the locale has no files at all — a different finding. */
   readonly locale: ReadonlyMap<string, string> | null;
   /** images/manifest.json refs, or null when the manifest does not exist. */
@@ -46,11 +55,19 @@ export function loadContent(root: string): ContentBundle {
   const modifiers = loadModifiers(root);
   issues.push(...modifiers.issues.map(toLint));
 
+  const universalChoices = loadUniversalChoices(root);
+  issues.push(...universalChoices.issues.map(toLint));
+
+  const complications = loadComplications(root);
+  issues.push(...complications.issues.map(toLint));
+
   return {
     root,
     events: events.events,
     declarations: declarations.declarations,
     modifiers: modifiers.modifiers,
+    universalChoices: universalChoices.universalChoices,
+    complications: complications.complications,
     locale: readLocale(join(root, 'i18n', 'en')),
     images: readImageManifest(join(root, 'images', 'manifest.json')),
     issues,

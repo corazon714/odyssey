@@ -113,6 +113,10 @@ export function advanceLeg(state: RunState, pack: ContentPack): AdvanceLegResult
             eventId: selection.event.id,
             presentedAtLeg: legIndex,
             rung: selection.rung,
+            // Persisted, not recomputed. resolveChoice runs on a later call against a state
+            // this function has already rewritten, and a reload may swap the pack underneath
+            // it — see the field's own docstring and ADR 0021.
+            complicationId: selection.complication?.id ?? null,
           }
         : { kind: 'uneventful', presentedAtLeg: legIndex, reasonKey: selection.reasonKey },
   };

@@ -1,0 +1,59 @@
+id: road.the_hitchhiker
+category: road
+tags: [road, social, risk, companion]
+context:
+  locationTypes: [roadside, wilderness]
+  transportModes: [car, truck]
+cooldownLegs: 7
+image: road/the_hitchhiker
+choices:
+  # MEMORY, form 3: `variants` reads eventMemory.count, so the second time you stop for
+  # somebody the text is a retelling rather than a repeat.
+  - id: pull_over
+    check:
+      skill: negotiation
+      dc: 10
+      tags: [social, perception, language]
+    outcomes:
+      - id: good_company
+        weight: 3
+        onCheck: success
+        variants: 2
+        effects:
+          - { op: flag, id: companion_present }
+          - { op: flag, id: companion_local }
+          - { op: relationship, npc: long_haul_driver, trustDelta: 1, meet: true, addTags: [] }
+          - { op: resource, key: morale, delta: 2 }
+      - id: long_silence
+        weight: 3
+        onCheck: failure
+        variants: 2
+        effects:
+          - { op: flag, id: companion_present }
+          - { op: resource, key: morale, delta: -1 }
+      - id: they_take_something
+        weight: 1
+        onCheck: failure
+        requires: { resource: heat, gte: 3 }
+        effects:
+          - { op: resource, key: cash, delta: -40 }
+          - { op: flag, id: burned_a_bridge }
+          - { op: relationship, npc: pickpocket, trustDelta: -1, meet: true, addTags: [] }
+
+  - id: drive_on
+    outcomes:
+      - id: watched_in_the_mirror
+        weight: 1
+        variants: 2
+        effects:
+          - { op: resource, key: morale, delta: -1 }
+
+  - id: leave_them_at_the_junction
+    hiddenUnless: { flag: companion_present }
+    outcomes:
+      - id: parted_badly
+        weight: 1
+        effects:
+          - { op: flag, id: burned_a_bridge }
+          - { op: resource, key: reputation, delta: -1 }
+          - { op: resource, key: morale, delta: 1 }

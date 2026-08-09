@@ -1,14 +1,15 @@
 # Declared items.
 #
-# THE LIABILITY RULE. Every item names at least one event where CARRYING it hurts. That is
-# not decoration: an item that is purely good is not an item, it is a number, and the schema
+# THE LIABILITY RULE. Every item names at least one event where CARRYING it hurts. That is not
+# decoration: an item that is purely good is not an item, it is a number, and the schema
 # refuses an empty list. "Is this outcome bad?" is not statically decidable, so the judgement
 # sits here with the author and `content:lint` checks what it can — that the events exist and
 # that they really do read the item.
 #
-# Only items the fixture events actually reference are declared. `ration` appears in the
-# engine fixture's own registry block but no event reads it, and declaring it here would have
-# meant inventing a liability for an item nothing can be liable for.
+# THE CONSTRAINT THAT SIZES THIS FILE, and it is different from the one on flags. A modifier
+# reading an item satisfies the DECLARATION, but `LIABILITY_UNBACKED` needs the named event to
+# read the item itself. So every row here is referenced by at least one corpus event, not only
+# by the registry.
 
 - id: cash_belt
   description: Holds cash close. Harder to pickpocket, and obvious to anyone who pats you down.
@@ -20,7 +21,7 @@
   tags: [money, concealment]
   liability:
     # Wearing one is what a search finds; it marks you as someone worth searching.
-    - border.bribe_attempt
+    - border.night_crossing
 
 - id: spare_tyre
   description: One roadside repair's worth of self-sufficiency. Bulky, and worth stealing.
@@ -32,4 +33,100 @@
   tags: [mechanics, bulky]
   liability:
     # Bulk is the cost: it fills a container and it is the visible thing a thief takes first.
-    - rest.pickpocket_victim
+    - rest.the_shared_room
+
+- id: toolkit
+  description: Enough to get a vehicle moving again. Heavy, and it looks like a burglar's bag.
+  category: vehicle
+  size: 3
+  concealability: 1
+  legality: legal
+  value: 35
+  tags: [mechanics, bulky]
+  liability:
+    # A bag of tools is exactly what somebody looking for a reason wants to find.
+    - border.night_crossing
+
+- id: first_aid_kit
+  description: Clean dressings and something for the pain. Small, and the first thing looted.
+  category: carry
+  size: 2
+  concealability: 1
+  legality: legal
+  value: 25
+  tags: [medical]
+  liability:
+    - rest.the_shared_room
+
+- id: paper_map
+  description: Does not need a signal or a charge. Marks you as a stranger the moment you open it.
+  category: carry
+  size: 1
+  concealability: 2
+  legality: legal
+  value: 8
+  tags: [navigation]
+  liability:
+    # Standing on a corner with it unfolded is an advertisement.
+    - city.the_address_that_moved
+
+- id: phrasebook
+  description: Forty pages of the wrong register, and better than nothing.
+  category: carry
+  size: 1
+  concealability: 3
+  legality: legal
+  value: 6
+  tags: [language]
+  liability:
+    - city.the_address_that_moved
+
+- id: cigarettes
+  description: Not for smoking. The smallest denomination of currency that always works.
+  category: trade
+  size: 1
+  concealability: 3
+  legality: legal
+  value: 12
+  tags: [trade, money]
+  liability:
+    # Offering the wrong person a cigarette reads as the opening move of a bribe.
+    - border.night_crossing
+
+- id: contraband
+  description: A wrapped package you were asked not to open. Worth a great deal to someone.
+  category: illicit
+  size: 2
+  concealability: 4
+  legality: illegal
+  hot: true
+  value: 200
+  tags: [crime, concealment]
+  liability:
+    # The whole point: it is ruinous exactly when someone decides to look.
+    - border.night_crossing
+    - crime.the_offer
+
+- id: water_carrier
+  description: Four litres, and the difference between a long day and a bad one.
+  category: carry
+  size: 2
+  concealability: 0
+  legality: legal
+  value: 10
+  tags: [endurance]
+  liability:
+    # Full, it is heavy; empty, it is the thing you are queuing to fill.
+    - opportunity.work_for_a_day
+
+- id: lucky_charm
+  description: Worthless, and you would not sell it. Everyone on this road carries something.
+  category: carry
+  size: 1
+  concealability: 4
+  legality: legal
+  value: 0
+  tags: [luck]
+  liability:
+    # It costs a slot and does nothing you can point at. That IS the liability.
+    - filler.the_hours_between

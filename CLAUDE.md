@@ -23,7 +23,7 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status as of 2026-08-08 — Phase 1 and Phase 2A complete.** Steps 5, 6 and 7 RUN: the leg
+> **Status as of 2026-08-09 — Phase 1, 2A and 2B complete.** Steps 5, 6 and 7 RUN: the leg
 > loop, event selection from a filtered and scored pool, choices resolving to weighted
 > outcomes, and all four memory mechanisms. `pnpm sim -- --runs=20000` completes twenty
 > thousand journeys.
@@ -31,10 +31,14 @@ The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 > Steps 1-4 do NOT: no map, no route generation, no preparation screen. The route is
 > caller-supplied via `RunInit.route`.
 >
-> **Content is now a real pipeline** — YAML under `packages/content/events/`, validated by Zod,
-> held identical to the engine types by a conformance harness, and checked by
-> `pnpm content:lint` in CI. But the nine events there are still FIXTURES re-expressed from
-> Phase 1, not the seed corpus. The twelve seed events are Phase 2B.
+> **The seed corpus exists and plays inside its design band.** `packages/content/events/` holds
+> **13 events**; the registries hold **137 modifiers, 25 complications and 15 universal
+> choices**; `i18n/en/` is complete. `pnpm content:lint` reports 0 errors and 1 warning.
+> `pnpm sim -- --pack=corpus` completes 44.1% of runs, inside engine-spec 6's 30-50%.
+> The nine Phase 1 fixtures moved to `packages/content/__fixtures__/events/` and are the
+> stable control the golden runs are still built on (ADR 0022).
+>
+> Of CLAUDE.md §9's four registries, three are live. `quirks.yaml` is the one that is not.
 >
 > `docs/PROGRESS.md` is the authority on current state; `docs/engine-spec.md` Part II is the
 > authority on what the engine actually does, written from the code.
@@ -101,7 +105,7 @@ These have caused real damage in similar projects when broken. Do not "improve" 
 
 6. **Content is data, not code.** Events live in `packages/content/events/**.yaml`, validated by Zod
    at build time and in tests. Never hardcode an event in a `.ts` file.
-   _Enforcement: **live.** Nine YAML events under `packages/content/events/`, validated by Zod
+   _Enforcement: **live.** Thirteen YAML events under `packages/content/events/`, validated by Zod
    and held identical to the engine types by the conformance harness in
    `packages/content/__tests__/conformance.test.ts` (ADR 0009). `pnpm content:lint` is the
    build-time gate and runs in CI. The engine fixture is JSON DATA, never `.ts`, and a
@@ -169,9 +173,13 @@ packages/engine/            Pure TS game engine                         ✅ pack
   src/state/container-state.ts  four containers + drain order           ✅ ADR 0017
   src/route/                route graph traversal, k-shortest paths        (planned — Phase 2B)
 packages/content/                                                       ✅ package exists
-  events/                   *.yaml event definitions (grouped by category) ✅ 9 fixtures
+  events/                   *.yaml event definitions (grouped by category) ✅ 13 seed events
+  __fixtures__/events/      the 9 Phase 1 fixtures, frozen; ADR 0022        ✅ unlinted on purpose
+  complications.yaml        25 situational layers                          ✅ ADR 0021
+  universal-choices.yaml    15 injected choices                            ✅ ADR 0022
   geo/                      nodes.json, edges.json, world.simplified.geojson (empty)
-  i18n/                     en/, tr/, ru/, de/                             (empty — all four)
+  i18n/en/                  complete: 157 event keys + 146 chip keys        ✅
+  i18n/                     tr/, ru/, de/                                  (empty)
   images/                   asset directory                                (empty)
   images/manifest.json      image spec -> asset mapping                    (planned)
   schema/                   Zod schemas + terse->canonical transform    ✅ ADR 0009
@@ -185,8 +193,10 @@ packages/tools/                                                         ✅ pack
   content-stats/            counts + 4-axis coverage report             ✅
   imagegen/                 build-time AI image pipeline                   (empty)
   i18n-check/               key coverage, pseudo-loc, length audit         (empty)
-docs/                       ADRs, design docs, content style guide      ✅ engine-spec, PROGRESS, sim-baseline, adr/0001-0019
-                            design docs + content style guide              (planned)
+docs/                       ADRs, design docs, content style guide      ✅ engine-spec, PROGRESS, adr/0001-0021
+  content-style-guide.md    how to author; registry-vs-event is its subject ✅ Phase 2B
+  sim-baseline.md           FIXTURE pack balance baseline                ✅
+  sim-baseline-corpus.md    CORPUS pack baseline — one per pack          ✅ Phase 2B M-D
 .claude/                    Claude Code extension layer                 ✅ (not in original layout)
   settings.json             permissions + hook wiring                   ✅ committed, shared
   hooks/                    4 guard scripts (Node .mjs)                 ✅ see docs/adr/0003
@@ -240,7 +250,7 @@ re-verified against Expo SDK 57.0.11 on 2026-08-07; SDK 57.0.11 is still npm `la
     **Not usable here: `anime.js`, web `motion` — both target the DOM.**
 - Lists: `@shopify/flash-list` **(planned** — SDK pin `2.0.2`, not npm-latest 2.3.2**)** ·
   Images: `expo-image` ✅ · Map: `react-native-svg` **(planned** — SDK pin `15.15.4`**)**
-- Validation: Zod ✅ 4.4.3 (installed in `packages/content`, not yet used) ·
+- Validation: Zod ✅ 4.4.3 (`packages/content/schema/` — 8 modules; see `docs/adr/0009`) ·
   i18n: `i18next` + `react-i18next` + `expo-localization` **(planned)**
 - Tests: Vitest (engine, content, tools) ✅ + Jest ✅ **29.x, not 30** +
   `@testing-library/react-native` ✅ 14.x (**`render()` is async in v14 — `await render(...)`**)
@@ -287,7 +297,8 @@ pnpm test:engine              # engine unit + golden-run tests only (fast)      
 pnpm content:lint             # validate events, refs, orphan flags, tags, i18n, safety   ✅
 pnpm content:lint -- --fix    # sort registries by id, dedupe list fields (nothing else)  ✅
 pnpm content:stats            # counts by category/tag/check-tag + a 4-axis coverage report  ✅
-pnpm sim -- --runs=20000      # headless balance simulation                                 ✅
+pnpm sim -- --runs=20000      # headless balance simulation (fixture pack)                 ✅
+pnpm sim -- --pack=corpus     # sim against packages/content/ — the REAL registries         ✅
 pnpm sim:diff                 # compare latest sim to docs/sim-baseline.md                ✅
 pnpm golden:update            # regenerate golden-runs.json from the engine — REVIEW the diff ✅
 
@@ -330,7 +341,11 @@ A change is not done until all of these pass:
    Exits 1 on an error, 0 with warnings — the warnings are real findings, so read them.
 5. New behavior has a test. Bug fixes have a **regression test that fails before the fix**.
 6. If engine behavior changed: `pnpm sim -- --runs=5000` run and the report delta explained.
-   — **(planned)**: same as 4. Report **N/A** while the harness does not exist.
+   ✅ **the harness exists** — it has since Phase 1 M10, and this item said otherwise for four
+   sessions. Two packs, two baselines: `--pack=fixture` (default) against `docs/sim-baseline.md`
+   is the stable control the golden runs are built on; `--pack=corpus` against
+   `docs/sim-baseline-corpus.md` is the real content. **Diff both** — a change can move one and
+   not the other, and which one it moves is the finding.
 7. If a decision was non-obvious: an ADR added to `docs/adr/NNNN-title.md`.
 8. `CLAUDE.md` updated if a command, rule, or layout changed.
 

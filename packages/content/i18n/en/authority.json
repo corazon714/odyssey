@@ -1,0 +1,17 @@
+{
+  "events.authority.the_file_catches_up.title": "Somebody Ran Your Name",
+  "events.authority.the_file_catches_up.body": "It is not a checkpoint, exactly. A car, two people, and a question about where you crossed and when. One of them already has the answer written down and is checking it against your face. The other is watching your hands.",
+
+  "events.authority.the_file_catches_up.choice.answer_the_questions": "Answer everything they ask",
+  "events.authority.the_file_catches_up.out.nothing_further": "You tell it straight, twice, the same way both times. Whatever they were checking, it matches. They thank you, which is somehow worse than not being thanked.",
+  "events.authority.the_file_catches_up.out.it_goes_in_the_file": "Nothing you say is wrong. It simply takes an hour to establish that, and by the end there is a second sheet of paper with your name at the top of it.",
+  "events.authority.the_file_catches_up.out.held_overnight": "They decide it is easier to sort out in the morning. There is a bench, a light nobody turns off, and a great deal of time to think about which answer did it.",
+
+  "events.authority.the_file_catches_up.choice.stand_your_ground": "Refuse to be hurried",
+  "events.authority.the_file_catches_up.out.they_lose_interest": "You stop answering and start waiting. It takes four minutes for the whole thing to become more trouble than it is worth to them. They wave you off mid-sentence.",
+  "events.authority.the_file_catches_up.out.they_do_not": "They have more patience than you do, and considerably more paperwork. The conversation ends where these conversations end.",
+
+  "events.authority.the_file_catches_up.choice.make_it_go_away": "Ask what it would take",
+  "events.authority.the_file_catches_up.out.file_misplaced": "The question is understood immediately, which tells you something about the week they have been having. The sheet of paper does not come back out.",
+  "events.authority.the_file_catches_up.out.now_it_is_two_files": "You misjudge the room by a considerable margin. Now there is the original problem, and there is what you just said, and the second one is worse."
+}

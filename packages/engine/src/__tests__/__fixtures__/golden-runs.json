@@ -8,7 +8,7 @@
       "seed": "golden:fixture.short:random",
       "routeId": "fixture.short",
       "policy": "random",
-      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
       "choiceSequence": [
         "keep_going",
         "rest",
@@ -21,7 +21,7 @@
         "rest",
         "walk_in"
       ],
-      "expectedDigest": "297e84c8671346a373b7d2e1897ea62e",
+      "expectedDigest": "d36f3fc6eaabe6ebbf38b0c1a7cdee42",
       "expectedHistoryKeys": [
         "events.filler.roadside_quiet.out.onward",
         "events.filler.long_hours.out.rested",
@@ -41,7 +41,7 @@
       "seed": "golden:fixture.short:greedy-safe",
       "routeId": "fixture.short",
       "policy": "greedy-safe",
-      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
       "choiceSequence": [
         "rest",
         "keep_going",
@@ -54,7 +54,7 @@
         "keep_going",
         "walk_in"
       ],
-      "expectedDigest": "ad6d4f9167ab0e713a80ac714551832e",
+      "expectedDigest": "909597d3e0b5423b65c30098e60f1583",
       "expectedHistoryKeys": [
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
@@ -74,7 +74,7 @@
       "seed": "golden:fixture.short:risk-taker",
       "routeId": "fixture.short",
       "policy": "risk-taker",
-      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
       "choiceSequence": [
         "rest",
         "keep_going",
@@ -87,7 +87,7 @@
         "keep_going",
         "walk_in"
       ],
-      "expectedDigest": "3a7b5901cf7cb887b7499fc3ebea18d5",
+      "expectedDigest": "8e450b646b50949021160c61eaaf01dd",
       "expectedHistoryKeys": [
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
@@ -107,7 +107,7 @@
       "seed": "golden:fixture.illicit:random",
       "routeId": "fixture.illicit",
       "policy": "random",
-      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
       "choiceSequence": [
         "let_it_go",
         "keep_going",
@@ -122,7 +122,7 @@
         "push_on",
         "let_it_go"
       ],
-      "expectedDigest": "250445500dfdf81041acde890e6a0e3a",
+      "expectedDigest": "99f39031e3fe3d6173eb36eed84efbe4",
       "expectedHistoryKeys": [
         "events.rest.pickpocket_victim.out.shrug",
         "events.filler.roadside_quiet.out.onward",
@@ -144,7 +144,7 @@
       "seed": "golden:fixture.illicit:greedy-safe",
       "routeId": "fixture.illicit",
       "policy": "greedy-safe",
-      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
       "choiceSequence": [
         "let_it_go",
         "keep_going",
@@ -160,7 +160,7 @@
         "let_it_go",
         "fix_it_yourself"
       ],
-      "expectedDigest": "2c050ce29d737b6b2110426ca8377ce9",
+      "expectedDigest": "6a68a4ae6632c2f7b0a3b3d8acb5527f",
       "expectedHistoryKeys": [
         "events.rest.pickpocket_victim.out.shrug",
         "events.filler.roadside_quiet.out.onward",
@@ -183,7 +183,7 @@
       "seed": "golden:fixture.illicit:risk-taker",
       "routeId": "fixture.illicit",
       "policy": "risk-taker",
-      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
       "choiceSequence": [
         "chase",
         "rest",
@@ -199,7 +199,7 @@
         "chase",
         "fix_it_yourself"
       ],
-      "expectedDigest": "23bd2ff3373d6a1526e2cbd983835809",
+      "expectedDigest": "cdb88142ce9a38fb398f1d0d6253c899",
       "expectedHistoryKeys": [
         "events.rest.pickpocket_victim.out.lost",
         "events.filler.long_hours.out.rested",
@@ -222,7 +222,7 @@
       "seed": "golden:fixture.scenic:random",
       "routeId": "fixture.scenic",
       "policy": "random",
-      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
       "choiceSequence": [
         "keep_going",
         "plead_with_driver",
@@ -236,7 +236,7 @@
         "push_on",
         "keep_going"
       ],
-      "expectedDigest": "10a252ebb6679c329a83cde7bfe76788",
+      "expectedDigest": "5d058010d98e2325a32614ad429817b0",
       "expectedHistoryKeys": [
         "events.filler.roadside_quiet.out.onward",
         "events.transit.bus_ejection.out.ejected",
@@ -257,7 +257,7 @@
       "seed": "golden:fixture.scenic:greedy-safe",
       "routeId": "fixture.scenic",
       "policy": "greedy-safe",
-      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
       "choiceSequence": [
         "let_it_go",
         "get_off",
@@ -271,7 +271,7 @@
         "rest",
         "keep_going"
       ],
-      "expectedDigest": "f2de9482526a2b233719b3cf5888d77d",
+      "expectedDigest": "2522012864e215e6b029a265354c0575",
       "expectedHistoryKeys": [
         "events.rest.pickpocket_victim.out.shrug",
         "events.transit.bus_ejection.out.walked",
@@ -292,7 +292,7 @@
       "seed": "golden:fixture.scenic:risk-taker",
       "routeId": "fixture.scenic",
       "policy": "risk-taker",
-      "contentVersion": "4c57cd5c34928aecd5e3fe02a369b706",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
       "choiceSequence": [
         "keep_going",
         "get_off",
@@ -305,7 +305,7 @@
         "rest",
         "keep_going"
       ],
-      "expectedDigest": "48b6dcc67a26ee329a3347c547fb896c",
+      "expectedDigest": "ccc6305d4a79aca1e659e4e01b13024c",
       "expectedHistoryKeys": [
         "events.filler.roadside_quiet.out.onward",
         "events.transit.bus_ejection.out.walked",

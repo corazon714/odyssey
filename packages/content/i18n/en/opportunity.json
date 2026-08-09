@@ -1,0 +1,13 @@
+{
+  "events.opportunity.work_for_a_day.title": "A Day's Work, Cash",
+  "events.opportunity.work_for_a_day.body": "There is a yard behind the fuel stop and a man in it counting pallets who is short of hands. No questions about papers, no questions about anything. It is a day you were going to spend travelling, offered back to you as money.",
+
+  "events.opportunity.work_for_a_day.choice.take_the_day_rate": "Take the day rate",
+  "events.opportunity.work_for_a_day.out.paid_and_fed": "Ten hours, a meal at the middle of it, and the money in your hand at the end without argument. Your back has opinions about tomorrow.",
+  "events.opportunity.work_for_a_day.out.paid_less_than_agreed": "The number at the end is not the number at the start, and the explanation is long and unfalsifiable. You take it, because the day is already gone.",
+  "events.opportunity.work_for_a_day.out.worked_dry": "It is hotter than the work allows for and you get through what you brought by midday. You finish it, and you pay for finishing it.",
+
+  "events.opportunity.work_for_a_day.choice.haggle_the_rate_first": "Settle the rate first",
+  "events.opportunity.work_for_a_day.out.better_rate": "You name a number, he laughs, you wait, and he pays most of it. Eleven hours instead of ten, and worth the difference.",
+  "events.opportunity.work_for_a_day.out.work_goes_to_someone_else": "While you are establishing your worth, two other people say yes at the opening price. You watch them start."
+}

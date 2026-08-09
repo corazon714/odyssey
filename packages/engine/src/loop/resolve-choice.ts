@@ -1,5 +1,9 @@
 import { type ContentPack } from '../content/content-pack.ts';
 import { type Choice, type GameEvent, type Outcome } from '../content/game-event.ts';
+import { presentedChoices } from '../content/presented-choices.ts';
+import { type RegistryComplication } from '../content/registry-complication.ts';
+import { CHECK_TAGS } from '../modifiers/check-tag.ts';
+import { type RegistryModifier } from '../modifiers/registry-modifier.ts';
 import { applyEffects } from '../effects/apply-effects.ts';
 import { createEffectContext } from '../effects/effect-context.ts';
 import { type AppliedEffect } from '../effects/applied-effect.ts';
@@ -15,6 +19,7 @@ import { type RunState } from '../state/run-state.ts';
 import { checkRunEnd, type RunEndVerdict } from './check-run-end.ts';
 import { type ModifierResolution } from '../modifiers/resolved-modifier.ts';
 import { runSkillCheck } from './run-skill-check.ts';
+import { searchCheck } from './search-check.ts';
 
 /**
  * Resolve the presented event with the chosen option.
@@ -68,7 +73,17 @@ export function resolveChoice(
     `${event.id}:${String(state.route.legIndex)}`,
   );
 
-  const choice = event.choices.find((c) => c.id === choiceId);
+  // The complication the director attached, resolved from the id state persisted. A row that
+  // no longer exists degrades to null rather than erroring: `reconcileContent` tolerates a
+  // contentVersion mismatch by policy, so a save made before an update can legitimately name
+  // a complication this build no longer ships.
+  const complication =
+    state.presentation.complicationId === null
+      ? null
+      : (pack.complicationById.get(state.presentation.complicationId) ?? null);
+
+  // Through `presentedChoices`, never `event.choices` — the same list the app rendered.
+  const choice = presentedChoices(event, complication).find((c) => c.id === choiceId);
   if (choice === undefined) {
     return { ok: false, error: engineError('loop/unknown-choice', { choiceId, event: event.id }) };
   }
@@ -89,18 +104,34 @@ export function resolveChoice(
   next = costs.state;
   applied.push(...costs.applied);
 
+  // A choice rolls at most one thing. `search` is an alternative to `skillCheck`, not an
+  // addition — both feed the single `RollResult` that `onCheck` branches on, and the schema
+  // rejects a choice carrying both rather than inventing a precedence.
+  const rolling =
+    choice.skillCheck ??
+    (choice.search === null ? null : searchCheck(choice.search, next.inventory));
+
+  // The complication's `checkDelta` enters as a synthetic registry row rather than adjusting
+  // `dc`. Routed this way it is conflict-resolved, non-stacking-collapsed, diminished, CLAMPED
+  // and rendered as a chip like everything else. A raw dc change would bypass all four and be
+  // a number the player cannot reconstruct — the same call ADR 0020 made for the search.
+  const modifiers =
+    complication === null || complication.checkDelta === 0
+      ? pack.modifiers
+      : [...pack.modifiers, complicationModifier(complication)];
+
   const checked =
-    choice.skillCheck === null
+    rolling === null
       ? null
       : runSkillCheck(
-          choice.skillCheck,
+          rolling,
           createPredicateContext(next, pack.refs, `${event.id}:${String(next.route.legIndex)}`),
           rng,
           PHASE_1_MODIFIER_SOURCES,
           // The registry rides on the pack, so the seam needs no new parameter and no caller
           // can hand in a different one — the same argument ADR 0005 makes for deriving the
           // RNG from state rather than injecting it.
-          pack.modifiers,
+          modifiers,
         );
   const check = checked === null ? null : checked.roll;
 
@@ -129,6 +160,31 @@ export function resolveChoice(
     resolution: checked === null ? null : checked.resolution,
     applied,
     end,
+  };
+}
+
+/**
+ * The complication, as a row the modifier pipeline understands.
+ *
+ * `appliesTo` is every check tag, because a complication is a fact about the SITUATION and
+ * applies to whatever the player attempts in it — unlike a registry row, which is keyed to a
+ * kind of contest. `sourceKind: 'context'` puts it in the same non-stacking bucket as the
+ * place-and-time rows, so a complication and an `official_scrutiny` cannot both land and
+ * double-count the same pressure; the stronger survives.
+ */
+function complicationModifier(complication: RegistryComplication): RegistryModifier {
+  return {
+    id: `complication.${String(complication.id)}`,
+    appliesTo: CHECK_TAGS,
+    when: { kind: 'always' },
+    delta: complication.checkDelta,
+    labelKey: `complication.${String(complication.id)}.chip`,
+    sourceKind: 'context',
+    conflictsWith: [],
+    // Above the place-and-time rows so that when two `context` rows collapse, the one the
+    // player just READ in the body text is the one they see in the chip list.
+    priority: 80,
+    stacks: false,
   };
 }
 

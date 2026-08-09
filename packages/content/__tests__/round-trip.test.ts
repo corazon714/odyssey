@@ -20,7 +20,19 @@ import { findEventFiles, formatIssue, loadEvents } from '../loader/load-events.t
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const EVENTS_DIR = join(HERE, '..', 'events');
+/**
+ * `__fixtures__/events/`, NOT `events/`. Moved at Phase 2B M-D.
+ *
+ * These nine files are the Phase 1 fixture pack re-expressed in the authoring syntax, and they
+ * exist to prove the transform is lossless against `mini-pack.json` — which the golden runs and
+ * the sim are built on. `events/` is now the SEED CORPUS, a different thing with a different
+ * job (ADR 0009 §5: the fixtures must not become the corpus).
+ *
+ * Consequence worth knowing: `content:lint` reads `events/` only, so these nine are UNLINTED.
+ * That is acceptable because they are frozen data whose only contract is reproducing the JSON
+ * byte-for-byte, and this file is what checks it. Do not "fix" the gap by moving them back.
+ */
+const EVENTS_DIR = join(HERE, '..', '__fixtures__', 'events');
 const PACKAGE_ROOT = join(HERE, '..');
 const FIXTURE = join(
   HERE,

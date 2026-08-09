@@ -1,0 +1,329 @@
+# THE UNIVERSAL-CHOICE REGISTRY.
+#
+# A row here is spliced into every event whose tags match, at pack construction. "Run", "bribe
+# them", "walk away" belong in dozens of events; hand-authored into each they drift apart, and
+# adding a new one means editing every file that should have offered it (08-DIVERSITY-SYSTEMS D2).
+#
+# `labelKey` and every outcome's `textKey` derive from the ROW — `universal.<id>.label`,
+# `universal.<id>.out.<outcomeId>` — so a row costs one translation rather than one per event
+# it lands in.
+#
+# ── THE HARD DESIGN RULE ────────────────────────────────────────────────────────────────
+#
+# A universal choice must NEVER be strictly the best option. If it is, every hand-authored
+# choice in every matching event becomes pointless and the corpus collapses to fifteen buttons.
+# Every row below carries a real cost — heat, morale, cash, time, a flag, or a burned
+# relationship — PAID WHETHER OR NOT IT WORKS. The cost is stated in a comment above each row.
+# The schema rejects a row with no costs, no roll and no effects; a roll counts as a cost,
+# because risk is one. The rest is review.
+#
+# Injection, all enforced in `engine/src/content/inject-universal-choices.ts`:
+#   - at most 3 per event, and never more than the event authored itself (`i <= a`)
+#   - at most one row per `family` per event
+#   - ordered by (-priority, id ascending), always AFTER the hand-authored choices
+#
+# Ids are minted as `u:<id>`, using a character `ID_PATTERN` forbids, so no authored choice can
+# collide with one.
+
+# ── retreat: three ways of not doing the thing, and only one lands per event ─────────────
+
+# COST: forfeits the event's upside entirely, plus morale. Always safe, never good.
+- id: walk_away
+  appliesTo: [cat:opportunity, cat:encounter, opportunity, food]
+  family: retreat
+  priority: 55
+  outcomes:
+    - id: left_it
+      weight: 1
+      effects:
+        - { op: resource, key: morale, delta: -1 }
+        - { op: advanceTime, hours: 1 }
+
+# COST: heat +2 and energy -2 up front, and it burns whoever you were dealing with.
+- id: run
+  appliesTo: [cat:border, cat:crime, cat:authority, risk, crime]
+  family: retreat
+  priority: 40
+  costs:
+    - { op: resource, key: heat, delta: 2 }
+    - { op: resource, key: energy, delta: -2 }
+  check:
+    skill: endurance
+    dc: 12
+    tags: [endurance, physical, crime]
+  outcomes:
+    - id: got_clear
+      weight: 3
+      onCheck: success
+      effects:
+        - { op: flag, id: burned_a_bridge }
+    - id: caught_up_with
+      weight: 3
+      onCheck: failure
+      effects:
+        - { op: flag, id: burned_a_bridge }
+        - { op: resource, key: heat, delta: 2 }
+        - { op: resource, key: health, delta: -1 }
+
+# COST: three hours, which worldTick charges as hunger, energy and hygiene.
+- id: wait_it_out
+  appliesTo: [cat:border, cat:weather, cat:transit, cat:filler, road, quiet, weather, transit]
+  family: retreat
+  priority: 10
+  outcomes:
+    - id: waited
+      weight: 1
+      effects:
+        - { op: advanceTime, hours: 3 }
+
+# ── money: two ways to pay, both expensive in different currencies ───────────────────────
+
+# COST: cash, and on failure heat +2 AND the permanent bribe_on_record flag, which two
+# registry rows penalise for the rest of the run.
+- id: bribe
+  appliesTo: [cat:border, cat:authority, authority, corruption]
+  family: money
+  priority: 50
+  costs:
+    - { op: resource, key: cash, delta: -50 }
+  check:
+    skill: negotiation
+    dc: 13
+    tags: [social, bribery, authority, crime]
+  outcomes:
+    - id: taken_quietly
+      weight: 3
+      onCheck: success
+      effects:
+        - { op: flag, id: paid_a_local }
+    - id: refused_and_noted
+      weight: 3
+      onCheck: failure
+      effects:
+        - { op: flag, id: bribe_on_record }
+        - { op: resource, key: heat, delta: 2 }
+
+# COST: roughly three times a bribe, and no roll. The buy-out, priced so it hurts.
+- id: pay_the_asking_price
+  appliesTo: [cat:breakdown, cat:rest, cat:city, cat:transit, money, mechanics, rest]
+  family: money
+  priority: 50
+  costs:
+    - { op: resource, key: cash, delta: -150 }
+  outcomes:
+    - id: settled_in_full
+      weight: 1
+      effects:
+        - { op: advanceTime, hours: 1 }
+
+# ── talk: four ways to use your mouth, each with a different thing it can cost you ───────
+
+# COST: on failure the passport is FLAGGED PERMANENTLY — every later documents check pays.
+- id: bluff_with_documents
+  appliesTo: [cat:border, cat:authority, documents, authority]
+  family: talk
+  priority: 45
+  check:
+    skill: negotiation
+    dc: 13
+    tags: [social, deception, documents, authority]
+  outcomes:
+    - id: they_did_not_look_closely
+      weight: 3
+      onCheck: success
+      effects:
+        - { op: advanceTime, hours: 1 }
+    - id: looked_closely
+      weight: 3
+      onCheck: failure
+      effects:
+        - { op: document, change: { field: passportFlagged, flagged: true } }
+        - { op: flag, id: papers_questioned }
+
+# COST: on failure sets caught_lying, which is -3 on every later deception check, forever.
+- id: lie_about_destination
+  appliesTo: [cat:transit, transit]
+  family: talk
+  priority: 55
+  check:
+    skill: negotiation
+    dc: 12
+    tags: [social, deception]
+  outcomes:
+    - id: story_held
+      weight: 3
+      onCheck: success
+      effects:
+        - { op: advanceTime, hours: 1 }
+    - id: story_did_not
+      weight: 3
+      onCheck: failure
+      effects:
+        - { op: flag, id: caught_lying }
+        - { op: resource, key: heat, delta: 1 }
+
+# COST: reputation -2, the relationship -2, and heat. It works, and it costs you the town.
+- id: threaten
+  appliesTo: [cat:breakdown, cat:rest, mechanics, theft]
+  family: talk
+  priority: 55
+  costs:
+    - { op: resource, key: reputation, delta: -2 }
+    - { op: resource, key: heat, delta: 1 }
+  check:
+    skill: endurance
+    dc: 12
+    tags: [endurance, intimidate, social]
+  outcomes:
+    - id: they_backed_down
+      weight: 3
+      onCheck: success
+      effects:
+        - { op: flag, id: burned_a_bridge }
+    - id: they_did_not_back_down
+      weight: 3
+      onCheck: failure
+      effects:
+        - { op: flag, id: made_a_scene }
+        - { op: resource, key: heat, delta: 2 }
+
+# COST: reputation -1 whether or not it works, and a flag that stops you using it twice.
+- id: plead_ignorance
+  appliesTo: [cat:city, city, navigation]
+  family: talk
+  priority: 55
+  requires: { noFlag: caught_lying }
+  costs:
+    - { op: resource, key: reputation, delta: -1 }
+  outcomes:
+    - id: treated_as_a_fool
+      weight: 2
+      effects:
+        - { op: flag, id: caught_lying }
+        - { op: advanceTime, hours: 2 }
+    - id: waved_off_as_harmless
+      weight: 3
+      effects:
+        - { op: flag, id: caught_lying }
+        - { op: advanceTime, hours: 1 }
+
+# ── other people ────────────────────────────────────────────────────────────────────────
+
+# COST: reputation -1 regardless, and the relationship if they refuse.
+- id: ask_for_help
+  appliesTo: [cat:breakdown, cat:city, cat:encounter, cat:weather, social, breakdown, city]
+  family: others
+  priority: 30
+  costs:
+    - { op: resource, key: reputation, delta: -1 }
+  check:
+    skill: negotiation
+    dc: 11
+    tags: [social, haggle]
+  outcomes:
+    - id: somebody_helped
+      weight: 3
+      onCheck: success
+      effects:
+        - { op: flag, id: owed_a_favour }
+        - { op: advanceTime, hours: 2 }
+    - id: nobody_wanted_to_know
+      weight: 3
+      onCheck: failure
+      effects:
+        - { op: relationship, npc: innkeeper, trustDelta: -1, meet: true, addTags: [] }
+        - { op: advanceTime, hours: 2 }
+
+# COST: the companion resents it, and YOU gain no reputation — the outcome is theirs.
+- id: let_the_companion_handle_it
+  appliesTo: [cat:city, cat:border, cat:encounter, cat:breakdown, social, companion, city]
+  family: others
+  priority: 40
+  requires: { flag: companion_present }
+  check:
+    skill: negotiation
+    dc: 11
+    tags: [social, language]
+  outcomes:
+    - id: they_sorted_it
+      weight: 3
+      onCheck: success
+      effects:
+        - { op: advanceTime, hours: 1 }
+    - id: they_resent_being_used
+      weight: 3
+      onCheck: failure
+      effects:
+        - { op: resource, key: morale, delta: -1 }
+        - { op: advanceTime, hours: 2 }
+
+# COST: an item AND hunger. The only row that buys relationship trust, and it is not cheap.
+- id: share_what_you_have
+  appliesTo: [cat:encounter, cat:rest, cat:road, cat:filler, social, rest, road, food]
+  family: others
+  priority: 20
+  costs:
+    - { op: resource, key: hunger, delta: 2 }
+    - { op: resource, key: cash, delta: -10 }
+  outcomes:
+    - id: shared_out
+      weight: 1
+      effects:
+        - { op: flag, id: helped_a_stranger }
+        - { op: resource, key: morale, delta: 1 }
+
+# ── effort ──────────────────────────────────────────────────────────────────────────────
+
+# COST: six hours and energy -3. The honest option is the slow one.
+- id: offer_to_work_for_it
+  appliesTo: [cat:breakdown, cat:opportunity, cat:rest, money, mechanics]
+  family: effort
+  priority: 45
+  outcomes:
+    - id: worked_it_off
+      weight: 1
+      effects:
+        - { op: advanceTime, hours: 6 }
+        - { op: resource, key: energy, delta: -3 }
+        - { op: resource, key: hunger, delta: 1 }
+
+# COST: heat +2 up front; on failure a made_a_scene flag three social rows read.
+- id: create_a_distraction
+  appliesTo: [cat:crime, crime, theft]
+  family: stealth
+  priority: 55
+  costs:
+    - { op: resource, key: heat, delta: 2 }
+  check:
+    skill: stealth
+    dc: 12
+    tags: [stealth, crime, deception]
+  outcomes:
+    - id: everyone_looked_the_other_way
+      weight: 3
+      onCheck: success
+      effects:
+        - { op: advanceTime, hours: 1 }
+    - id: everyone_looked_at_you
+      weight: 3
+      onCheck: failure
+      effects:
+        - { op: flag, id: made_a_scene }
+        - { op: resource, key: heat, delta: 1 }
+
+# ── the thing in your bag ───────────────────────────────────────────────────────────────
+
+# COST: the item is CONSUMED. Permanent inventory loss for a one-event benefit.
+- id: use_an_item
+  appliesTo: [cat:breakdown, cat:weather, cat:road, cat:filler, mechanics, road, breakdown, quiet]
+  family: kit
+  priority: 45
+  requires: { item: toolkit, gte: 1 }
+  costs:
+    - { op: item, id: toolkit, countDelta: -1, condition: null, container: null }
+  outcomes:
+    - id: had_the_right_thing
+      weight: 1
+      effects:
+        - { op: transport, change: { field: condition, delta: 2 } }
+        - { op: advanceTime, hours: 1 }

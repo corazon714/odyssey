@@ -21,6 +21,7 @@ export type EdgeId = Brand<string, 'EdgeId'>;
 export type RegionId = Brand<string, 'RegionId'>;
 export type LanguageId = Brand<string, 'LanguageId'>;
 export type RouteId = Brand<string, 'RouteId'>;
+export type ComplicationId = Brand<string, 'ComplicationId'>;
 
 export const eventId = (raw: string): EventId => raw as EventId;
 export const choiceId = (raw: string): ChoiceId => raw as ChoiceId;
@@ -34,3 +35,4 @@ export const edgeId = (raw: string): EdgeId => raw as EdgeId;
 export const regionId = (raw: string): RegionId => raw as RegionId;
 export const languageId = (raw: string): LanguageId => raw as LanguageId;
 export const routeId = (raw: string): RouteId => raw as RouteId;
+export const complicationId = (raw: string): ComplicationId => raw as ComplicationId;

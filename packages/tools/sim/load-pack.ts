@@ -2,14 +2,26 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  declaredIds,
+  formatIssue,
+  loadComplications,
+  loadDeclarations,
+  loadEvents,
+  loadModifiers,
+  loadUniversalChoices,
+} from '@odyssey/content/loader';
+import {
   createContentPack,
   createResources,
   createTransport,
   type ContentPack,
   type ContentRegistries,
   type GameEvent,
+  type ItemId,
+  type NpcId,
   type Resources,
   type RouteState,
+  type TraitId,
   type TransportMode,
   type TransportState,
 } from '@odyssey/engine';
@@ -72,6 +84,56 @@ export function loadFixturePack(): ContentPack {
     readFileSync(join(FIXTURE_DIR, 'mini-pack.json'), 'utf8'),
   ) as MiniPackFile;
   return createContentPack(file.events, file.registries);
+}
+
+/**
+ * The pack built from `packages/content/` — YAML events plus every real registry.
+ *
+ * THE DIFFERENCE THAT MATTERS, and it is not the events. `mini-pack.json` carries
+ * `registries.modifiers: []`, so the ten rows in `modifiers.yaml` have never applied in a
+ * golden run or a sim run — M2A.3 moved `contentVersion` because the KEY appeared, not because
+ * the rows did. This is the first loader that puts them in front of the engine, and the same
+ * goes for `complications.yaml` and `universal-choices.yaml`.
+ *
+ * So `--pack=corpus` is not "the same numbers with more events". It is the first measurement
+ * of the registries at all, and its report is expected to differ from the fixture baseline in
+ * ways that are the point rather than a regression.
+ *
+ * Loader issues are RETURNED alongside the pack rather than thrown: the sim's job is to report,
+ * and a corpus that half-loads is a finding, not a crash.
+ */
+export function loadCorpusPack(): {
+  readonly pack: ContentPack;
+  readonly issues: readonly string[];
+} {
+  const root = findWorkspaceRoot(dirname(fileURLToPath(import.meta.url)));
+  const contentRoot = join(root, 'packages', 'content');
+
+  const events = loadEvents(join(contentRoot, 'events'), contentRoot);
+  const declarations = loadDeclarations(contentRoot);
+  const modifiers = loadModifiers(contentRoot);
+  const complications = loadComplications(contentRoot);
+  const universalChoices = loadUniversalChoices(contentRoot);
+
+  const declared = declaredIds(declarations.declarations);
+  const pack = createContentPack(events.events, {
+    npcs: declared.npcs as readonly NpcId[],
+    items: declared.items as readonly ItemId[],
+    traits: declared.traits as readonly TraitId[],
+    modifiers: modifiers.modifiers,
+    complications: complications.complications,
+    universalChoices: universalChoices.universalChoices,
+  });
+
+  const issues = [
+    ...events.issues,
+    ...declarations.issues,
+    ...modifiers.issues,
+    ...complications.issues,
+    ...universalChoices.issues,
+  ].map((issue) => `${formatIssue(issue)} ${issue.message}`);
+
+  return { pack, issues };
 }
 
 export function loadFixtureScenarios(): readonly FixtureScenario[] {

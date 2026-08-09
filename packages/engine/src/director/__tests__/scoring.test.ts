@@ -11,7 +11,8 @@ import { loadMiniPack } from '../../__tests__/support/load-fixtures.ts';
 import { pickWeight, scoreEvent } from '../score-event.ts';
 import { PICK_WEIGHT_MIN, WEIGHT_MAX } from '../scoring-constants.ts';
 import { SCORING_FACTORS } from '../scoring-factors.ts';
-import { tagSaturation, tagsOf } from '../tag-saturation.ts';
+import { tagsOf } from '../../content/event-tags.ts';
+import { tagSaturation } from '../tag-saturation.ts';
 
 const { events, registries } = loadMiniPack();
 const PACK = createContentPack(events, registries);
