@@ -414,24 +414,140 @@ more checks further above the range the number existed to produce.
 `item`/`trait` kinds, and only alongside events that give the declarations something to be
 backed by. Recorded rather than fixed.
 
-### Next step
+### Also shipped, after the milestones: a verification pass and a constitution audit
 
-Phase 2B is done apart from the note above. The things it deliberately did not do, in the order
-they matter:
+Neither was planned. Both came out of being asked "is it finished?" twice, and both found things.
 
-0. **`quirks.yaml` — the FOURTH registry in CLAUDE.md §9 — does not exist.** It was not in this
-   phase's brief and is not a regression, but §9 promises four registries and three are live.
-   NPC personality traits that register as modifiers; the `ModifierSource` seam it would plug
-   into is still empty and still tested.
+**Sim instrumentation.** None of the D1 metrics existed. Added: `Modifier chips / check`,
+`Checks under 2 chips`, `Universal choices offered`, `Universal choices picked`, and
+`pnpm sim -- --json` for a per-run TRACE (fired events and picks in order) rather than the
+aggregate. `docs/adr/0023` records what they measure and why the row count is not the metric.
 
-1. **Beat fill is 30.1%** — the corpus fills `border_crossing` and `midpoint_crisis`; the fixture
-   routes also schedule `departure`, `ferry_boarding`, `approach` and `finale`. This wants
-   **corpus routes**, which want **route generation** (`packages/engine/src/route/`, the one
-   `(planned)` engine directory). That is the natural next milestone and it closes steps 1–3 of
-   the game loop, which have never existed.
-2. **`MISSING_IMAGE_MANIFEST`** — `packages/tools/imagegen/` is empty. Do not stub the manifest.
-3. **The open questions below**, unchanged: the `CLAUDE.md` line count, `CHECK_DIE_SIDES`,
-   Hermes, and `engine-spec.md` Part I.
+**`content-stats` was reporting a wrong number, and had been since M0.** It read
+`choice.skillCheck?.tags`, so the `search` tag showed **1** use when three choices carry it —
+both actual searches were invisible. The tool whose job is finding content holes had a hole in
+it. Helper now shared at `packages/tools/shared/rolled-checks.ts`.
+
+**`REGION_MODIFIER_NOT_DOCUMENT`** — proposed in the plan, never built. Now built, wired (15
+rules), and **tested against a deliberate violation**, because a rule that has never fired is a
+rule nobody has checked. Silent on the shipped corpus, which is correct.
+
+**CLAUDE.md 502 to 405 lines**, closing open question 1 after six sessions. Everything MOVED, not
+deleted: `docs/enforcement.md` and `docs/stack-notes.md` are new. The audit found **six stale
+claims** — listed in the closed question below.
+
+---
+
+## Half-done
+
+**Nothing is broken, stubbed, or partially applied.** Working tree clean, all checks green. What
+follows is live data with no consumer, or a number below its stated target — each with the file
+that closes it.
+
+### 1. `quirks.yaml` — the fourth §9 registry does not exist
+
+`packages/content/` has `modifiers`, `complications` and `universal-choices`. CLAUDE.md §9 names
+four; `quirks.yaml` (NPC personality traits that register as modifiers) is `(planned)`. It was
+never in Phase 2B's brief, so this is a gap rather than a regression — but §9 promises four.
+
+The seam it plugs into is `packages/engine/src/effects/modifier-source.ts`, which still ships
+empty and still has a test appending a stub. ADR 0008's prediction that Phase 2 would append a
+`quirkModifierSource` there is the one part of it still outstanding.
+
+### 2. 137 modifiers against a brief of 140-180
+
+Three under the floor, 25 under the approved list. **Measured, it does not need fixing**: 6.7
+chips per check over 27,395 checks, top of the 3-7 band, 0 checks under two. Adding rows
+overshoots. `docs/adr/0023` decision 1. Left deliberately.
+
+### 3. Universal choices are offered more than they are taken
+
+38.5% of choices shown, 36.0% picked — but per policy: `random` 0.99 pick/offer, `greedy-safe`
+0.56, `risk-taker` **0.02**. They are **too many, not too strong**, and `risk-taker` at 0.6%
+means they are near-dead for aggressive play. The lever is measured
+(`MAX_UNIVERSAL_PER_EVENT` 3 to 2 gives offered 30.2% / picked 31.8%) and **not applied**.
+ADR 0023 decisions 2-3.
+
+### 4. Beat fill 30.6%
+
+The corpus fills `border_crossing` and `midpoint_crisis`. The fixture routes also schedule
+`departure`, `ferry_boarding`, `approach` and `finale`. This is not a director fault and not
+tunable — it wants corpus routes, which want route generation.
+
+### 5. `MISSING_IMAGE_MANIFEST` — the one remaining lint warning
+
+`packages/tools/imagegen/` is empty and no image exists. A manifest mapping 13 keys to nothing
+is the stub CLAUDE.md §5 forbids. Correct to leave.
+
+---
+
+## Next step (ONE task, start here)
+
+**Build `packages/engine/src/route/` — route generation. It is the last `(planned)` engine
+directory, and it closes steps 1-3 of the game loop, which have never existed.**
+
+A fresh agent can start with no other context:
+
+1. **Read first, in order:** `CLAUDE.md` §1 (the loop — steps 1-4 are the missing half),
+   `docs/engine-spec.md` **Part II** (Part I is the pre-Phase-1 design doc and diverges; see
+   open question 4), and `docs/adr/0005` §1 for the `routeGen` RNG stream, which **already
+   exists, is named, and has never been drawn from**.
+
+2. **What the engine already assumes about a route.** `RouteState` is caller-supplied today via
+   `RunInit.route` and validated by `packages/engine/src/state/validate-route.ts`. It carries
+   `nodes[]`, `edges[]`, `legIndex`, `legCount`, `progressKm`, `totalKm`, `beatSchedule[]` and
+   **`legLocations[]` — one `LocationType` per leg, and `validateRoute` rejects a length
+   mismatch**. Generation must produce all of it, including the beat schedule.
+
+3. **The three fixture routes in `packages/engine/src/__tests__/__fixtures__/routes.json` are
+   the specification by example** — read them before writing anything. Each carries a `start`
+   block (transport, cash, startHour, weather); `packages/tools/sim/load-pack.ts` documents why
+   route and start block are inseparable, and the walking skeleton had 5 of 9 events never
+   firing when they came apart.
+
+4. **Use the `routeGen` stream.** Do not add one: an `RngCursors` key is a `SAVE_VERSION` bump
+   and a migration (currently 4). If generation's draw COUNT would depend on how much content
+   exists, use the cursor-free `deriveKey` form — see `director/select-complication.ts` for the
+   pattern and ADR 0021 for why.
+
+5. **`geo/` is empty** (`nodes.json`, `edges.json`, `world.simplified.geojson` are `(planned)`).
+   Deciding whether generation reads real geography or synthesises a graph is the first real
+   design question, and **CLAUDE.md §11 constrains it**: the map may use real cities and
+   distances, but no data file may carry a per-country danger index, and difficulty must come
+   from the route PROFILE and player STATE.
+
+6. **What it unblocks, and the measurement that proves it worked:** a corpus routes file, which
+   is what beat fill at 30.6% is actually asking for. Success is
+   `pnpm sim -- --pack=corpus --runs=5000` showing beat fill materially up with completion still
+   inside 30-50%.
+
+**DoD:** `pnpm typecheck && pnpm lint && pnpm test && pnpm content:lint`, a regression test, both
+sim baselines diffed (`pnpm sim:diff` and `--pack=corpus --diff`), and an ADR if the geography
+question is answered either way.
+
+---
+
+## Open questions for the human
+
+**Two are decisions I am holding, not opinions I lack** — I have a recommendation on both and
+have deliberately not acted:
+
+1. **Apply `MAX_UNIVERSAL_PER_EVENT` 3 to 2?** My recommendation is **no** (ADR 0023 §3). It
+   buys 4pp on a metric distorted by the `random` policy and costs a third of the injection
+   diversity. One-line change if you disagree.
+
+2. **Top the modifier registry up to 140+?** My recommendation is **no** (ADR 0023 §1) —
+   chips/check is already at the top of the band. Say the word and I will add rows in the
+   declaration-free kinds (`condition`, `context`, `momentum`, `skill`, `transport`, `document`),
+   which need no new declarations.
+
+The rest are carried forward unchanged and listed in full further down: `CHECK_DIE_SIDES` still
+a placeholder, **Hermes still unproven** (ADR 0012 §3 — the engine has never executed on the
+runtime it ships on), whether `engine-spec.md` Part I should be deleted, the conformance
+harness's `readonly`-widening gap (ADR 0019), and whether losing a container should mark tickets
+rather than delete them.
+
+**Open question 1 — CLAUDE.md over its cap — is CLOSED**, see below.
 
 ---
 
@@ -790,7 +906,7 @@ no region field, `geo/` is empty, and region-gating events is what §11 warns ag
 
 ---
 
-## Half-done
+## Superseded — Half-done as of session 5
 
 Nothing is broken and nothing is stubbed to make a check pass. What follows is **live data with
 no consumer** — shapes that parse, validate and persist, but that no code path reads yet. Each
@@ -856,7 +972,7 @@ that the behaviour is _right_. All three live in
 
 ---
 
-## Next step (ONE task, start here)
+## Superseded — the session-5 next step (shipped as M0)
 
 **Implement `Outcome.search` — the search check — closing gap 1 above.**
 
@@ -902,7 +1018,9 @@ instruments for writing it; author against `docs/engine-spec.md` Part II. The 12
 
 ---
 
-## Open questions for the human
+## Open questions — the carried-forward list, in full
+
+> Referenced by the current list above. Question 1 is CLOSED; 2-6 are live.
 
 1. ~~**`CLAUDE.md` over its own ~400-line cap.**~~ **CLOSED 2026-08-09, after six sessions.**
    It had reached 502. Now **405**, and everything was MOVED rather than deleted:
