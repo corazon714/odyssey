@@ -19,6 +19,7 @@
     "test:engine": "vitest run --project engine",
     "content:lint": "node packages/tools/content-lint/cli.ts",
     "content:stats": "node packages/tools/content-stats/cli.ts",
+    "geo:audit": "node packages/tools/geo-build/cli.ts",
     "sim": "node packages/tools/sim/cli.ts",
     "sim:diff": "node packages/tools/sim/cli.ts --diff",
     "golden:update": "node packages/tools/sim/regenerate-goldens.ts",

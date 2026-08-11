@@ -23,16 +23,14 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status: Phase 1, 2A and 2B complete (2026-08-09).** Steps **5-7 RUN** against a real
-> corpus — 13 events, 137 modifiers, 25 complications, 15 universal choices, a complete `en`
-> locale, `content:lint` clean, and `--pack=corpus` completing 44.1% inside engine-spec 6's
-> 30-50% band. **Steps 1-4 do NOT**: no map, no route generation, no preparation screen; the
-> route is caller-supplied via `RunInit.route`. Three of §9's four registries are live —
-> `quirks.yaml` is not.
+> **Status: Phases 1, 2A and 2B complete; Phase 3 in progress (2026-08-09).** Steps **5-7 RUN**
+> against a real corpus — 13 events, 137 modifiers, 25 complications, 15 universal choices, a
+> complete `en` locale, `content:lint` clean. **Step 2** has a router now
+> (`packages/engine/src/route/`) with no caller yet; the route is still caller-supplied via
+> `RunInit.route`. Steps 1, 3 and 4 do not exist. Three of §9's four registries are live.
 >
-> **`docs/PROGRESS.md` is the authority on current state and this paragraph is not** — it is a
-> pointer with a date on it. `docs/engine-spec.md` Part II is the authority on what the engine
-> does, written from the code.
+> **`docs/PROGRESS.md` is the authority on current state and this paragraph is not.**
+> `docs/engine-spec.md` Part II is the authority on what the engine does, written from the code.
 
 ---
 
@@ -132,7 +130,7 @@ packages/engine/            Pure TS game engine                      ✅
   src/director/             filters, scoring, ladder, beats, tension ✅
   src/{queue,loop,migrate}/ consequence queue · advanceLeg/resolveChoice/replayRun · saves  ✅
   src/modifiers/            check tags, registry, resolution pipeline ✅ ADR 0015
-  src/route/                route graph, k-shortest paths               (planned — NEXT)
+  src/route/                geo graph · Dijkstra · Yen · diversity   ✅ ADR 0025
 packages/content/                                                    ✅
   events/                   13 seed events, grouped by category      ✅
   __fixtures__/events/      the 9 Phase 1 fixtures, frozen, UNLINTED ✅ ADR 0022
@@ -140,10 +138,11 @@ packages/content/                                                    ✅
   flags/items/npcs/traits/endings.yaml   declaration registries      ✅
   schema/ · loader/         Zod + terse->canonical · YAML w/ file:line:col   ✅ ADR 0009
   i18n/en/                  complete — 157 event keys + 146 chip keys ✅
-  i18n/{tr,ru,de}/ · geo/ · images/                                     (empty)
+  geo/sources.lock.json     source URLs · licences · hash pin        ✅ ADR 0024
+  i18n/{tr,ru,de}/ · images/                                            (empty)
   images/manifest.json      image spec -> asset mapping                 (planned)
 packages/tools/                                                      ✅
-  shared/ · sim/            helpers · headless sim + engine-spec 6 report  ✅
+  shared/ · sim/ · geo-build/  helpers · headless sim · geodesy + candidate audit  ✅
   content-lint/             15 rules, file:line:col, --fix           ✅ CI job
   content-stats/            counts + 4-axis coverage report          ✅
   imagegen/ · i18n-check/                                              (empty)
@@ -224,6 +223,7 @@ pnpm sim -- --pack=corpus     # sim against packages/content/ — the REAL regis
 pnpm sim -- --json            # per-run TRACE (fired events + picks in order) not the report ✅
 pnpm sim:diff                 # compare latest sim to its pack's baseline                ✅
 pnpm golden:update            # regenerate golden-runs.json from the engine — REVIEW the diff ✅
+pnpm geo:audit [-- --real]    # candidate pool vs the ADR 0024 budget; writes nothing        ✅
 
 pnpm images:{plan,gen,sheet}  # build-time AI image pipeline                           (planned)
 pnpm i18n:{check,pseudo}      # key coverage, length audit, pseudo-localization        (planned)

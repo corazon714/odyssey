@@ -6,6 +6,7 @@
   "include": [
     "shared/**/*.ts",
     "sim/**/*.ts",
+    "geo-build/**/*.ts",
     "content-lint/**/*.ts",
     "content-stats/**/*.ts",
     "imagegen/**/*.ts",

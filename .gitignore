@@ -30,6 +30,12 @@ coverage/
 reports/
 packages/content/images/generated/
 
+# Downloaded source archives for `pnpm geo:audit` / geo:build. Never committed: they are tens
+# of megabytes, they are third-party data whose licence terms are recorded in
+# packages/content/geo/sources.lock.json rather than vendored, and the DERIVED artifact is what
+# this repo ships. See docs/geo-data-licensing.md.
+.geo-cache/
+
 # Environment / secrets
 .env
 .env.*
