@@ -39,6 +39,21 @@
       "from": "n.city.g2618425",
       "to": "n.city.g2620583",
       "reason": "Copenhagen-Hedensted. Fixed links across the Danish belts carry road traffic."
+    },
+    {
+      "from": "n.city.g2620583",
+      "to": "n.city.g2891122",
+      "reason": "Jutland-Kiel. Denmark's land border with Germany; the straight line clips the Baltic."
+    },
+    {
+      "from": "n.city.g2525059",
+      "to": "n.city.g3182351",
+      "reason": "Calabria-Puglia. Mainland Italy throughout; the straight line crosses the Gulf of Taranto."
+    },
+    {
+      "from": "n.city.g750269",
+      "to": "n.city.g745044",
+      "reason": "Bursa-Istanbul. Road runs around the head of the gulf; the straight line crosses the Marmara."
     }
   ],
 
@@ -56,9 +71,9 @@
       "seasonality": "all_year"
     },
     {
-      "from": "n.city.g2514301",
+      "from": "n.city.g2512989",
       "to": "n.city.g3128760",
-      "reason": "Menorca-Barcelona. The Balearics are reachable only by sea.",
+      "reason": "Mallorca-Barcelona. The Balearics are reachable only by sea. Replaces an earlier Menorca row the overlay flagged as naming a node the selector had dropped.",
       "seasonality": "all_year"
     },
     {

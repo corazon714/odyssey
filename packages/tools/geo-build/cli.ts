@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { findWorkspaceRoot } from '../shared/workspace-root.ts';
 import { type Overlay } from './apply-overlay.ts';
+import { auditDiversity, formatDiversity, graphFromArtifacts } from './audit-diversity.ts';
 import { buildSlice } from './build-slice.ts';
 import { SETTLEMENT_QUOTA } from './continent.ts';
 import { readLock, verifyLock } from './fetch-sources.ts';
@@ -74,6 +75,18 @@ function main(argv: readonly string[]): number {
   const candidates =
     options.bbox === null ? read.candidates : withinBox(read.candidates, options.bbox);
   const ledger = createEpsilonLedger();
+
+  if (options.stage === 'diversity') {
+    // Reads the COMMITTED artifacts, not an in-memory graph: the question is whether the bytes
+    // the game will load produce different routes.
+    const graph = graphFromArtifacts(
+      readFileSync(join(GEO_DIR, 'nodes.gen.json'), 'utf8'),
+      readFileSync(join(GEO_DIR, 'edges.gen.json'), 'utf8'),
+    );
+    const report = auditDiversity(graph, 200);
+    process.stdout.write(formatDiversity(report));
+    return report.verdict === 'PASS' ? 0 : 1;
+  }
 
   if (options.stage === 'all') {
     if (options.fixture) {
