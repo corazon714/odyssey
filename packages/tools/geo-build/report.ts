@@ -160,6 +160,8 @@ export function formatSlice(
     readonly rejectedForWater: number;
     readonly prunedTwoHop: number;
     readonly boundaryEdges: number;
+    readonly tolledEdges: number;
+    readonly railEdges: number;
     readonly borders: {
       readonly crossings: readonly unknown[];
       readonly requiredForConnectivity: number;
@@ -191,6 +193,12 @@ export function formatSlice(
   lines.push(`water-rejected ${String(slice.rejectedForWater)}   edges dropped as sea crossings`);
   lines.push(`two-hop pruned ${String(slice.prunedTwoHop)}`);
   lines.push(`boundary edges ${String(slice.boundaryEdges)}   (cross an admin polygon boundary)`);
+  // Two of ADR 0025's four structural breakers between `fastest` and `cheapest`. Both were
+  // measured inert — tolled at 0 and train at 93% — so both are printed rather than assumed.
+  const share = (n: number): string =>
+    slice.edges.length === 0 ? '0%' : `${((n * 100) / slice.edges.length).toFixed(0)}%`;
+  lines.push(`tolled edges  ${String(slice.tolledEdges)}   ${share(slice.tolledEdges)}, authored`);
+  lines.push(`rail corridors ${String(slice.railEdges)}   ${share(slice.railEdges)}, derived`);
   lines.push('');
 
   lines.push('## Controlled crossings');

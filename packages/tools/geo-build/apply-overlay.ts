@@ -31,7 +31,13 @@ export type Overlay = {
   readonly forcedCorridors?: readonly OverlayLink[];
   readonly ferries?: readonly OverlayLink[];
   readonly forbiddenCorridors?: readonly OverlayLink[];
-  readonly tolled?: readonly { readonly edge: string }[];
+  /**
+   * NODE PAIRS, like every other row. This field used to be `{ edge: string }` — a GENERATED
+   * edge id — which broke the overlay's one rule and would have rotted on the first retune. It
+   * was also never read: `build-slice.ts` hardcoded `tolled: false`, so any row authored against
+   * the old shape did nothing at all and said nothing about it.
+   */
+  readonly tolled?: readonly OverlayLink[];
   readonly criticalEdges?: readonly { readonly edge: string; readonly reason: string }[];
 };
 
@@ -45,6 +51,8 @@ export type OverlayResult = {
   readonly edges: readonly CandidateEdge[];
   readonly added: readonly OverlayEdge[];
   readonly removed: number;
+  /** Keys `min:max` over node INDICES, for the corridors declared tolled. */
+  readonly tolled: ReadonlySet<string>;
   readonly issues: readonly string[];
 };
 
@@ -135,10 +143,28 @@ export function applyOverlay(
 
   const kept = edges.filter((e) => !forbidden.has(key(e.a, e.b)));
 
+  // Tolls resolve LAST, against the post-overlay edge set, so a toll on a forced corridor works
+  // and a toll on a corridor the overlay just forbade reports as stale rather than vanishing.
+  const survivors = new Set(kept.map((e) => key(e.a, e.b)));
+  for (const e of added) survivors.add(key(e.a, e.b));
+
+  const tolled = new Set<string>();
+  for (const link of overlay.tolled ?? []) {
+    const pair = resolve(link, 'tolled corridor');
+    if (pair === null) continue;
+    const k = key(pair[0], pair[1]);
+    if (!survivors.has(k)) {
+      issues.push(`tolled corridor is STALE — nothing produces it: "${link.reason}"`);
+      continue;
+    }
+    tolled.add(k);
+  }
+
   return {
     edges: [...kept, ...added].sort((x, y) => x.a - y.a || x.b - y.b),
     added,
     removed: edges.length - kept.length,
+    tolled,
     issues,
   };
 }

@@ -1,7 +1,6 @@
 import { type TerrainKind } from '@odyssey/engine';
 
-import { haversineKm, type LatLng } from './geodesy.ts';
-import { cellNeighbourhood, cellOf } from './grid.ts';
+import { type LatLng } from './geodesy.ts';
 import { pointInRing, type BoxedRing } from './read-natural-earth.ts';
 
 /**
@@ -85,40 +84,6 @@ export const MOUNTAIN_M = 1500;
 export const HILL_M = 300;
 /** Height above the local median that makes low ground broken — a gorge cut into a plain. */
 export const HILL_RELIEF_M = 200;
-
-/**
- * Coastline vertices indexed by grid cell, so "how far is the sea" is a bounded search.
- *
- * Vertices rather than segments: at 10m resolution the vertex spacing is far finer than the
- * 25 km threshold, so the error is immaterial and the index is an order of magnitude simpler.
- */
-export type CoastIndex = ReadonlyMap<number, readonly LatLng[]>;
-
-export function buildCoastIndex(land: readonly BoxedRing[]): CoastIndex {
-  const index = new Map<number, LatLng[]>();
-  for (const boxed of land) {
-    for (const position of boxed.ring) {
-      const point = { lng: position[0], lat: position[1] };
-      const cell = cellOf(point);
-      const bucket = index.get(cell);
-      if (bucket === undefined) index.set(cell, [point]);
-      else bucket.push(point);
-    }
-  }
-  return index;
-}
-
-/** Kilometres to the nearest coastline vertex, or `Infinity` if none is nearby. */
-export function distanceToCoastKm(index: CoastIndex, point: LatLng): number {
-  let best = Number.POSITIVE_INFINITY;
-  for (const cell of cellNeighbourhood(cellOf(point))) {
-    for (const vertex of index.get(cell) ?? []) {
-      const km = haversineKm(point, vertex);
-      if (km < best) best = km;
-    }
-  }
-  return best;
-}
 
 export type TerrainInput = {
   readonly point: LatLng;

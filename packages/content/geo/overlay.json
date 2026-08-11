@@ -92,7 +92,188 @@
 
   "forbiddenCorridors": [],
 
-  "tolled": [],
+  "_tolledComment": [
+    "WHY THESE ARE AUTHORED. Nothing in the licensed stack carries road pricing, so a toll is",
+    "declared or it does not exist. ADR 0025 names the toll flag as one of four structural",
+    "breakers between `fastest` and `cheapest`: without it the two are an affine transform of",
+    "each other on a single-mode corridor and return the identical path. The field was declared",
+    "in the Overlay type from the start and NEVER READ — build-slice hardcoded `tolled: false` —",
+    "so this list is the first that does anything.",
+    "",
+    "WHAT COUNTS. A per-use ticket or barrier charge on the motorway that IS the through route.",
+    "A time-based vignette is deliberately excluded: Austria, Switzerland, Czechia, Hungary,",
+    "Slovakia, Slovenia, Bulgaria and Romania sell one, but it is a flat purchase rather than a",
+    "cost that scales with the corridor, and `TOLL_FEE` is a per-edge charge. Germany, the Low",
+    "Countries and Scandinavia charge cars nothing on these roads.",
+    "",
+    "WHAT IS DELIBERATELY ABSENT. Spain, whose AP network was progressively de-tolled between",
+    "2018 and 2021, and Poland, where the state-managed A2 and A4 stopped charging cars in 2023.",
+    "Both are now mixed enough that a row would be a guess, and a wrong row here is a silent",
+    "pricing error rather than a loud failure. Fewer rows that are right.",
+    "",
+    "THIS IS NOT A PLACE JUDGEMENT. CLAUDE.md 11 forbids attaching danger, corruption or",
+    "behaviour to a real place, and forbids a per-country risk field. A toll is infrastructure —",
+    "the same kind of fact as a ferry operating or a strait being wide. It is declared per",
+    "CORRIDOR, never per country, and it says nothing about anybody who lives there."
+  ],
+
+  "tolled": [
+    {
+      "from": "n.city.g2988507",
+      "to": "n.city.g2989317",
+      "reason": "Paris-Orleans. The A10 is a ticket autoroute for its whole length."
+    },
+    {
+      "from": "n.city.g2972191",
+      "to": "n.city.g2989317",
+      "reason": "Tours-Orleans. A10 again, the same concession."
+    },
+    {
+      "from": "n.city.g2988507",
+      "to": "n.city.g3029241",
+      "reason": "Paris-Caen. The A13 charges at Mantes and Dozule."
+    },
+    {
+      "from": "n.city.g2972191",
+      "to": "n.city.g2990969",
+      "reason": "Tours-Nantes. The A85 is tolled across its length."
+    },
+    {
+      "from": "n.city.g2972191",
+      "to": "n.city.g3029241",
+      "reason": "Tours-Caen. The A28 charges on the Tours-Le Mans section."
+    },
+    {
+      "from": "n.city.g2972315",
+      "to": "n.city.g3031582",
+      "reason": "Toulouse-Bordeaux. The A62 is a ticket autoroute."
+    },
+    {
+      "from": "n.city.g2972315",
+      "to": "n.city.g2992166",
+      "reason": "Toulouse-Montpellier. A61 then A9, both tolled."
+    },
+    {
+      "from": "n.city.g2992166",
+      "to": "n.city.g2995469",
+      "reason": "Montpellier-Marseille. The A9 and A7 both charge."
+    },
+    {
+      "from": "n.city.g2980291",
+      "to": "n.city.g2996882",
+      "reason": "Saint-Etienne-Macon. The A6 north of Lyon is tolled."
+    },
+    {
+      "from": "n.city.g2925177",
+      "to": "n.city.g2996882",
+      "reason": "Freiburg-Macon. Free in Germany, then the A36 charges from Mulhouse."
+    },
+    {
+      "from": "n.city.g2993458",
+      "to": "n.city.g3165524",
+      "reason": "Monaco-Turin. The A8 and the Italian A10 both charge."
+    },
+    {
+      "from": "n.city.g3173435",
+      "to": "n.city.g3176219",
+      "reason": "Milan-Genoa. The A7 is a barrier autostrada."
+    },
+    {
+      "from": "n.city.g3165524",
+      "to": "n.city.g3173435",
+      "reason": "Turin-Milan. The A4 charges by ticket."
+    },
+    {
+      "from": "n.city.g3165524",
+      "to": "n.city.g3176219",
+      "reason": "Turin-Genoa. A6 then A26, both tolled."
+    },
+    {
+      "from": "n.city.g3169070",
+      "to": "n.city.g3172394",
+      "reason": "Rome-Naples. The A1 is tolled throughout."
+    },
+    {
+      "from": "n.city.g3172394",
+      "to": "n.city.g3182351",
+      "reason": "Naples-Bari. The A16 crosses the Apennines on a ticket."
+    },
+    {
+      "from": "n.city.g3164419",
+      "to": "n.city.g3173435",
+      "reason": "Vicenza-Milan. The A4 across the Po plain."
+    },
+    {
+      "from": "n.city.g3165803",
+      "to": "n.city.g3169070",
+      "reason": "Teramo-Rome. The A24 through the Gran Sasso tunnel."
+    },
+    {
+      "from": "n.city.g2775220",
+      "to": "n.city.g3164419",
+      "reason": "Innsbruck-Vicenza. The Brenner charges on both the Austrian and Italian sides."
+    },
+    {
+      "from": "n.city.g2267057",
+      "to": "n.city.g2267095",
+      "reason": "Lisbon-Leiria. The A1 and A8 both charge."
+    },
+    {
+      "from": "n.city.g2267095",
+      "to": "n.city.g2735943",
+      "reason": "Leiria-Porto. The A1 is tolled for its whole length."
+    },
+    {
+      "from": "n.city.g2735943",
+      "to": "n.city.g2738785",
+      "reason": "Porto-Guarda. The A25 charges electronically."
+    },
+    {
+      "from": "n.city.g255683",
+      "to": "n.city.g264371",
+      "reason": "Patra-Athens. Olympia Odos is a barrier motorway."
+    },
+    {
+      "from": "n.city.g252601",
+      "to": "n.city.g255683",
+      "reason": "Tripoli-Patra. The Moreas motorway charges by barrier."
+    },
+    {
+      "from": "n.city.g255683",
+      "to": "n.city.g735563",
+      "reason": "Patra-Kozani. Ionia Odos then Egnatia, both tolled."
+    },
+    {
+      "from": "n.city.g734077",
+      "to": "n.city.g735563",
+      "reason": "Thessaloniki-Kozani. Egnatia charges at its western stations."
+    },
+    {
+      "from": "n.city.g745044",
+      "to": "n.city.g750269",
+      "reason": "Istanbul-Bursa. The Osmangazi bridge crossing is tolled."
+    },
+    {
+      "from": "n.city.g745044",
+      "to": "n.city.g748893",
+      "reason": "Istanbul-Corlu. The O-3 charges electronically."
+    },
+    {
+      "from": "n.city.g311046",
+      "to": "n.city.g750269",
+      "reason": "Izmir-Bursa. The O-5 is tolled for its whole run."
+    },
+    {
+      "from": "n.city.g745044",
+      "to": "n.city.g749780",
+      "reason": "Istanbul-Canakkale. The O-6 and its Dardanelles bridge both charge."
+    },
+    {
+      "from": "n.city.g2964180",
+      "to": "n.city.g2964574",
+      "reason": "Galway-Dublin. The M6 has a barrier plaza at Ballinasloe."
+    }
+  ],
 
   "criticalEdges": []
 }
