@@ -88,6 +88,46 @@
       "retrievedUtc": "2026-08-11",
       "file": "ne_10m_railroads.geojson",
       "conversion": "unzip, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
+    },
+    {
+      "id": "natural-earth-geography-regions-10m",
+      "url": "https://naciscdn.naturalearthdata.com/download/10m/physical/ne_10m_geography_regions_polys.zip",
+      "license": "public-domain",
+      "attribution": "Physical region labels from Natural Earth (https://www.naturalearthdata.com), public domain.",
+      "sha256": "51525e9c1a2bcaf449108ccc414290c6fc9652fcf67553547baf672e91d9beed",
+      "retrievedUtc": "2026-08-11",
+      "file": "ne_10m_geography_regions_polys.geojson",
+      "conversion": "unzip the 10m physical bundle, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
+    },
+    {
+      "id": "natural-earth-land-10m",
+      "url": "https://naciscdn.naturalearthdata.com/download/10m/physical/ne_10m_land.zip",
+      "license": "public-domain",
+      "attribution": "Land polygons from Natural Earth (https://www.naturalearthdata.com), public domain.",
+      "sha256": "895ff762734b1ee840dadbee735ad1b85131e575d6e0bbf56c10b16e87703dc6",
+      "retrievedUtc": "2026-08-11",
+      "file": "ne_10m_land.geojson",
+      "conversion": "unzip the 10m physical bundle, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
+    },
+    {
+      "id": "natural-earth-lakes-10m",
+      "url": "https://naciscdn.naturalearthdata.com/download/10m/physical/ne_10m_lakes.zip",
+      "license": "public-domain",
+      "attribution": "Lakes and reservoirs from Natural Earth (https://www.naturalearthdata.com), public domain.",
+      "sha256": "08174d666eaa236a8be04790a3c914e7bf7b4da56c7c973e4c60aac7c347e2ec",
+      "retrievedUtc": "2026-08-11",
+      "file": "ne_10m_lakes.geojson",
+      "conversion": "unzip the 10m physical bundle, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
+    },
+    {
+      "id": "natural-earth-playas-10m",
+      "url": "https://naciscdn.naturalearthdata.com/download/10m/physical/ne_10m_playas.zip",
+      "license": "public-domain",
+      "attribution": "Salt pans and intermittent lakes from Natural Earth (https://www.naturalearthdata.com), public domain.",
+      "sha256": "eb5ddc2d97b477bbe7ecce948bcb75a8f0e1725fdf02ed20a4ff786d9d97e06c",
+      "retrievedUtc": "2026-08-11",
+      "file": "ne_10m_playas.geojson",
+      "conversion": "unzip the 10m physical bundle, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
     }
   ]
 }
