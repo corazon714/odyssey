@@ -7,15 +7,43 @@ import { pointInRing, type BoxedRing } from './read-natural-earth.ts';
 /**
  * What kind of ground a place sits on. Physical facts only — CLAUDE.md 11.
  *
- * Three sources in priority order, and the order is the decision:
+ * Four sources, and the ORDER is the decision:
  *
- * 1. **Settlement size.** A metro is `urban` whatever the rock underneath, because the terrain
- *    field drives LEG DENSITY and travel through a conurbation is slow and dense regardless of
- *    what it was built on.
- * 2. **Natural Earth's named physical regions**, which classify 60.6% of real candidates —
- *    measured, not assumed. This is the only licence-clean source for desert and steppe, which
- *    elevation cannot express.
- * 3. **Elevation, local relief and distance to coast**, for the remaining 39.4%.
+ * 1. **Hard ground — Natural Earth's `Desert` and `Range/mtn` polygons, and anything above
+ *    `MOUNTAIN_M`.** These outrank settlement size.
+ * 2. **Settlement size.** A metro on unremarkable ground is `urban`, because terrain drives LEG
+ *    DENSITY and travel through a conurbation is slow and dense whatever it was built on.
+ * 3. **Natural Earth's other named physical regions**, which classify 60.6% of real candidates —
+ *    measured, not assumed. The only licence-clean source for steppe, which elevation cannot
+ *    express.
+ * 4. **Elevation, local relief and distance to coast**, for the rest.
+ *
+ * ## Why 1 outranks 2, measured
+ *
+ * It did not, and that was a bug with three symptoms. `isUrban` fired first, so a third of every
+ * selected node set came out `urban` — 318 of 720 at planet scale against 3.5% of the candidate
+ * pool, because selection deliberately favours big cities and `urban` then erased whatever they
+ * were built on. An Alpine metro scored `terrainDifficulty` 0 and `scenic` 0. Moving hard ground
+ * ahead of size took mountain from 68 to 124 and desert from 5 to 16.
+ *
+ * ## Why elevation now outranks the coast
+ *
+ * `coastKm <= COASTAL_KM` used to be checked before the hill thresholds, so a town 600 m up and
+ * 20 km from the sea came out `coast` — difficulty 1, when the ground is plainly difficulty 2.
+ * Mediterranean and Norwegian coasts are hill country, and the old order could not say so.
+ *
+ * ## Why `HILL_M` is 300
+ *
+ * 500 m sat above the 78th percentile of settlement elevation (p50 is 128 m, p75 is 378 m), so
+ * `hill` could only fire for the handful of upland towns that were also inland and outside every
+ * named polygon: 23 of 720 nodes, 3.2%, against 6.3% of the candidate pool. 300 m is both the
+ * conventional cartographic break for upland and the value that reproduces the pool's own share
+ * — 52 of 720, 7.2%. The relief fallback moved 300 -> 200 for the same reason.
+ *
+ * ## `desert` is empty on the European slice, and that is correct
+ *
+ * Zero `Desert` polygons overlap `--bbox=-12,36,30,60`. There is no desert in Europe, so a slice
+ * with none is honest geography rather than a classifier fault. Judge `desert` at planet scale.
  *
  * `forest` and `marsh` are absent from `TERRAIN_KINDS` because nothing can fill them; see
  * `geo-terrain.ts`.
@@ -53,7 +81,10 @@ export type TerrainRing = BoxedRing & { readonly kind: TerrainKind };
 export const COASTAL_KM = 25;
 /** Elevation at which ground stops being hills and becomes mountains, in metres. */
 export const MOUNTAIN_M = 1500;
-export const HILL_M = 500;
+/** Elevation at which flat ground becomes upland. See the header for why this is 300, not 500. */
+export const HILL_M = 300;
+/** Height above the local median that makes low ground broken — a gorge cut into a plain. */
+export const HILL_RELIEF_M = 200;
 
 /**
  * Coastline vertices indexed by grid cell, so "how far is the sea" is a bounded search.
@@ -98,20 +129,37 @@ export type TerrainInput = {
   readonly coastKm: number;
 };
 
+/**
+ * Named physical region at a point, or null. First match in file order — overlaps are real (a
+ * desert can sit on a plateau) and taking the first is a stable, arbitrary rule rather than an
+ * adjudication.
+ */
+export function ringKindAt(point: LatLng, rings: readonly TerrainRing[]): TerrainKind | null {
+  for (const ring of rings) {
+    if (pointInRing(point, ring)) return ring.kind;
+  }
+  return null;
+}
+
 export function classifyTerrain(input: TerrainInput, rings: readonly TerrainRing[]): TerrainKind {
+  const ring = ringKindAt(input.point, rings);
+
+  // 1. Hard ground, ahead of settlement size. A metro in the Alps is a mountain city; calling it
+  //    `urban` gave it terrainDifficulty 0 and scenic 0, and both are wrong.
+  if (ring === 'mountain' || ring === 'desert') return ring;
+  if (input.dem >= MOUNTAIN_M) return 'mountain';
+
+  // 2. Size, for ground with no stronger claim on it.
   if (input.isUrban) return 'urban';
 
-  // Named physical regions, first match in file order. Overlaps are real — a desert can sit on a
-  // plateau — and taking the first is a stable, arbitrary rule rather than an adjudication.
-  for (const ring of rings) {
-    if (pointInRing(input.point, ring)) return ring.kind;
-  }
+  // 3. Every other named region.
+  if (ring !== null) return ring;
 
-  if (input.dem >= MOUNTAIN_M) return 'mountain';
-  if (input.coastKm <= COASTAL_KM) return 'coast';
+  // 4. Elevation BEFORE the coast: upland that happens to be near water is still upland, and the
+  //    old order reported a 600 m coastal town as difficulty 1.
   if (input.dem >= HILL_M) return 'hill';
-  // Relief catches a place that is low but broken — a river gorge on a plain.
-  if (Math.abs(input.dem - input.localMedianDem) >= 300) return 'hill';
+  if (Math.abs(input.dem - input.localMedianDem) >= HILL_RELIEF_M) return 'hill';
+  if (input.coastKm <= COASTAL_KM) return 'coast';
   return 'plain';
 }
 
