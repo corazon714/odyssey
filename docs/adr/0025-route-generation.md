@@ -95,12 +95,22 @@ one flipped tie changes the entire candidate set.
    precondition; **strict positivity is what the tie-break argument above actually needs**, and the
    resulting failure would present as a heap bug rather than a cost-function bug.
 
-Adjacency is stored CSR with edge indices ascending within each node. **CSR typed arrays are not a
-micro-optimisation:** `noUncheckedIndexedAccess` (`tsconfig.base.json:16`) types `dist[v]` as
-`number | undefined` and `no-non-null-assertion` is an error outside tests, so a `number[][]`
-Dijkstra needs `?? Infinity` fallbacks that convert an out-of-range index into a plausible value —
-hiding exactly the bug the flag exists to catch. TypeScript types TypedArray element access as
-`number`.
+Adjacency is stored CSR with edge indices ascending within each node.
+
+> **Correction, made while implementing M3.2.** This ADR originally justified typed arrays by
+> claiming TypeScript types TypedArray element access as `number`, so the hot loop could avoid
+> `?? Infinity` fallbacks entirely. **That is false.** `noUncheckedIndexedAccess` applies to
+> numeric index signatures, TypedArrays included — `packages/engine/src/route/` is the first
+> TypedArray in the engine, so there was no precedent to check the claim against and it went in
+> unverified. `tsc` rejected it immediately.
+>
+> The typed arrays stay for the reasons that survive — flat memory, a length fixed at
+> allocation, zero-initialisation, integrality enforced by the container rather than by review —
+> and every read is written `?? <sentinel>` with sentinels that **fail closed**: an unreadable
+> distance reads as `INFINITE` so the node is skipped, `otherEnd` returns `-1` rather than node
+> 0, and an unreadable heap slot sorts last. The concern behind the original claim was right —
+> `?? 0` on a distance would convert an impossible index into a plausible number — but the fix
+> is choosing the fallback, not avoiding it.
 
 **The acceptance test:** insert an unrelated, disconnected node into the mini graph, regenerate, and
 assert the produced `RouteState` is byte-identical under `canonicalJson`.

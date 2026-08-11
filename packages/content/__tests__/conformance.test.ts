@@ -92,6 +92,13 @@ export const _modifier: Equals<
 > = true;
 export const _context: Equals<ParsedEvent['context'], engine.EventContext> = true;
 
+// Geo. The node schema's output is a RECORD — `{ node, name }` — because `name` is the one
+// user-visible literal content data may carry (ADR 0028) and the engine's `GeoNode` deliberately
+// does not have it. Asserting against `['node']` is what keeps that separation honest: if the
+// name ever leaked into the engine type, this stops compiling.
+export const _geoNode: Equals<z.infer<typeof schema.geoNodeSchema>['node'], engine.GeoNode> = true;
+export const _geoEdge: Equals<z.infer<typeof schema.geoEdgeSchema>, engine.GeoEdge> = true;
+
 // ── L1' — anti-vacuity ───────────────────────────────────────────────────────────────────
 export const _predicateReal: Equals<z.input<typeof schema.predicateSchema>, unknown> = false;
 export const _effectReal: Equals<z.input<typeof schema.effectSchema>, unknown> = false;
@@ -109,10 +116,14 @@ const VOCABULARIES: Readonly<Record<string, z.ZodType>> = {
   EVENT_PRIORITIES: schema.eventPrioritySchema,
   LOCATION_TYPES: schema.locationTypeSchema,
   NUMBER_OPS: schema.numberOpSchema,
+  POPULATION_BANDS: schema.populationBandSchema,
   RESOURCE_KEYS: schema.resourceKeySchema,
   ROUTE_PROFILES: schema.routeProfileSchema,
   RUN_STATUSES: schema.runStatusSchema,
+  SEASONALITY_KINDS: schema.seasonalitySchema,
+  SERVICE_KINDS: schema.serviceKindSchema,
   SKILL_KEYS: schema.skillKeySchema,
+  TERRAIN_KINDS: schema.terrainKindSchema,
   TIMES_OF_DAY: schema.timeOfDaySchema,
   TRANSPORT_MODES: schema.transportModeSchema,
 };
