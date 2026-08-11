@@ -143,6 +143,7 @@ const NOT_CONTENT: Readonly<Record<string, string>> = {
   ENGINE_ERROR_CODES: 'engine output, never authored',
   PENDING_DROP_REASONS: 'engine output, never authored',
   RELAXATION_RUNGS: 'director configuration, not content',
+  DIVERSITY_RUNGS: 'route-generation configuration, not content — the sibling of RELAXATION_RUNGS',
   SCORING_FACTORS: 'director configuration, not content',
   MIGRATIONS: 'save-schema ladder, not content',
   PHASE_1_MODIFIER_SOURCES: 'engine wiring, not content',

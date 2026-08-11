@@ -154,6 +154,12 @@ Two corrections that matter: reject on `> DIVERSITY_MAX_PERCENT`, **not `>=`** �
 accepted route **and the union of all accepted edges**, rejecting on the larger, because a candidate
 sharing a different 45% with each of two accepted routes is 90% covered.
 
+> **Simplified at M3.3.** "Both, rejecting on the larger" is redundant: the union is a superset of
+> every pairwise set, so its shared distance is never smaller and the union is _always_ the larger.
+> The implementation keeps the union check alone, which is exactly equivalent and half the work.
+> The 45%-plus-45% case that motivated the clause is still the one that matters and it has its own
+> test — the clause was right about the risk and wrong about needing two measurements to catch it.
+
 The ladder, written in the shape of `RELAXATION_RUNGS`: 0 nothing · 1 run Yen for each rejected
 profile · 2 threshold 70→80 · 3 80→90 · 4 drop the profile's mode and season masks and re-run
 Dijkstra · 5 accept what exists. The threshold never reaches 100. Consideration order is fixed:

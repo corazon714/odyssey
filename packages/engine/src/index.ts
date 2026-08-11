@@ -317,6 +317,29 @@ export {
 } from './route/cost-function.ts';
 export { pathKey, shortestPath, type GeoPath, type ShortestPathOptions } from './route/dijkstra.ts';
 export {
+  MAX_SPUR_NODES,
+  kShortestPaths,
+  type YenOptions,
+  type YenResult,
+} from './route/yen-k-shortest.ts';
+export {
+  DIVERSITY_MAX_PERCENT,
+  DIVERSITY_RUNGS,
+  acceptByDiversity,
+  overlapPercent,
+  type DiversityRung,
+  type DiversityVerdict,
+} from './route/route-diversity.ts';
+export {
+  MAX_CANDIDATE_ROUTES,
+  MIN_CANDIDATE_ROUTES,
+  selectPaths,
+  type PathShortfall,
+  type RejectedPath,
+  type SelectPathsResult,
+  type SelectedPath,
+} from './route/select-paths.ts';
+export {
   collectComplications,
   EMPTY_COMPLICATIONS,
   PHASE_1_COMPLICATION_SOURCES,
