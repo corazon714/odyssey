@@ -22,6 +22,7 @@ import {
 import { analyseConnectivity, degreeHistogram } from './connectivity.ts';
 import { haversineKm, type EpsilonLedger } from './geodesy.ts';
 import { cellNeighbourhood } from './grid.ts';
+import { placeBorders, type BorderResult } from './place-borders.ts';
 import { type BoxedRing, type Region, regionIndexAt } from './read-natural-earth.ts';
 import { type Candidate } from './read-geonames.ts';
 import { scoreCandidates } from './score-candidates.ts';
@@ -70,6 +71,7 @@ export type SliceResult = {
   readonly rejectedForWater: number;
   readonly prunedTwoHop: number;
   readonly boundaryEdges: number;
+  readonly borders: BorderResult;
   readonly overlayIssues: readonly string[];
   readonly overlayAdded: number;
 };
@@ -200,46 +202,119 @@ export function buildSlice(input: SliceInput): SliceResult {
   const railAt = edgeNodes.map(railNear);
   const regionAt = edgeNodes.map((point) => regionIndexAt(input.regions, point));
 
+  const modesOfEdge = overlaid.edges.map((candidate) =>
+    ferryPairs.has(`${String(candidate.a)}:${String(candidate.b)}`)
+      ? modeMask(['ferry'])
+      : modeMask(modesFor((railAt[candidate.a] ?? false) && (railAt[candidate.b] ?? false))),
+  );
+
+  // ── controlled crossings, then the surgery ───────────────────────────────────────────────
+  //
+  // Without this step four of five profiles cannot use a boundary edge at all, and the slice
+  // measured 43 components once those are removed. `place-borders.ts` says why at length.
+  const borders = placeBorders({
+    points: edgeNodes,
+    ids: nodes.map((node) => String(node.id)),
+    populations: nodes.map((node) => node.population),
+    edges: overlaid.edges,
+    regionAt,
+    regions: input.regions,
+  });
+
+  // Crossings are APPENDED, so every settlement index computed above stays valid.
+  const allNodes: GeoNode[] = [...nodes];
+  const tokenOf: string[] = edgeNodes.map((node) => `g${String(node.key)}`);
+  const splitOf = new Map<number, number>();
+
+  for (const crossing of borders.crossings) {
+    const parent = overlaid.edges[crossing.parentEdge];
+    if (parent === undefined) continue;
+    const a = nodes[parent.a];
+    const b = nodes[parent.b];
+    if (a === undefined || b === undefined) continue;
+
+    // Physical facts interpolated from the two ends. A crossing has no population, which is why
+    // `servicesFor` gives it fuel and nothing else (ADR 0024 Decision 4).
+    const nearer = crossing.distanceFromA * 2 <= parent.distanceKm ? a : b;
+    const span = parent.distanceKm === 0 ? 0 : crossing.distanceFromA / parent.distanceKm;
+    splitOf.set(crossing.parentEdge, allNodes.length);
+    tokenOf.push(`b${crossing.id.slice(crossing.id.lastIndexOf('.') + 2)}`);
+    allNodes.push(
+      buildNode({
+        id: nodeId(crossing.id),
+        type: 'border_crossing',
+        terrain: nearer.terrain,
+        elevationM: Math.round(a.elevationM + (b.elevationM - a.elevationM) * span),
+        population: 'none',
+        closedMonths: [],
+      }),
+    );
+    // `name: null` — GEO_NAMED_BORDER. The UI composes "a border crossing, 40 km past X".
+    extras.set(crossing.id, { name: null, lat: crossing.point.lat, lng: crossing.point.lng });
+  }
+
   let boundaryEdges = 0;
-  const edges: GeoEdge[] = overlaid.edges.map((candidate) => {
-    const a = nodes[candidate.a];
-    const b = nodes[candidate.b];
-    const terrainA = a?.terrain ?? 'plain';
-    const terrainB = b?.terrain ?? 'plain';
+  const linked: { readonly a: number; readonly b: number; readonly distanceKm: number }[] = [];
+  const edges: GeoEdge[] = [];
+
+  const emit = (
+    a: number,
+    b: number,
+    distanceKm: number,
+    modes: number,
+    crosses: boolean,
+  ): void => {
+    const from = allNodes[a];
+    const to = allNodes[b];
+    if (from === undefined || to === undefined) return;
+    if (crosses) boundaryEdges += 1;
+    linked.push({ a, b, distanceKm });
+    edges.push({
+      id: edgeId(`e.${tokenOf[a] ?? '?'}__${tokenOf[b] ?? '?'}`),
+      from: from.id,
+      to: to.id,
+      distanceKm,
+      modes,
+      terrainDifficulty: terrainDifficultyOf(from.terrain, to.terrain),
+      scenic: scenicOf(from.terrain, to.terrain),
+      seasonality: seasonalityOf(Math.max(from.elevationM, to.elevationM)),
+      tolled: false,
+      adminBoundary: crosses,
+    });
+  };
+
+  for (let i = 0; i < overlaid.edges.length; i += 1) {
+    const candidate = overlaid.edges[i];
+    if (candidate === undefined) continue;
     // GEOMETRIC: the two ends sit in different admin polygons. Says nothing about what is there.
     const adminBoundary =
       regionAt[candidate.a] !== null &&
       regionAt[candidate.b] !== null &&
       regionAt[candidate.a] !== regionAt[candidate.b];
-    if (adminBoundary) boundaryEdges += 1;
-    return {
-      id: edgeId(
-        `e.g${String(edgeNodes[candidate.a]?.key ?? 0)}__g${String(edgeNodes[candidate.b]?.key ?? 0)}`,
-      ),
-      from: a?.id ?? nodeId('n.missing'),
-      to: b?.id ?? nodeId('n.missing'),
-      distanceKm: candidate.distanceKm,
-      modes: ferryPairs.has(`${String(candidate.a)}:${String(candidate.b)}`)
-        ? modeMask(['ferry'])
-        : modeMask(modesFor((railAt[candidate.a] ?? false) && (railAt[candidate.b] ?? false))),
-      terrainDifficulty: terrainDifficultyOf(terrainA, terrainB),
-      scenic: scenicOf(terrainA, terrainB),
-      seasonality: seasonalityOf(Math.max(a?.elevationM ?? 0, b?.elevationM ?? 0)),
-      tolled: false,
-      adminBoundary,
-    };
-  });
+    const modes = modesOfEdge[i] ?? 0;
+    const via = splitOf.get(i);
 
-  const connectivity = analyseConnectivity(
-    nodes.length,
-    overlaid.edges.map((e) => ({ a: e.a, b: e.b })),
-  );
+    if (via === undefined) {
+      emit(candidate.a, candidate.b, candidate.distanceKm, modes, adminBoundary);
+      continue;
+    }
+    // BOTH halves keep `adminBoundary`. Neither one crosses the line on its own any more, but
+    // the flag is what records that a boundary is crossed here at all — and if a later filter
+    // ever drops the crossing node, `uncontrolledBoundary` must go back to being true rather
+    // than silently letting four profiles through a border for free. Fail-safe, not precise.
+    const crossing = borders.crossings.find((c) => c.parentEdge === i);
+    const near = crossing?.distanceFromA ?? Math.max(1, Math.floor(candidate.distanceKm / 2));
+    emit(candidate.a, via, near, modes, true);
+    emit(via, candidate.b, candidate.distanceKm - near, modes, true);
+  }
+
+  const connectivity = analyseConnectivity(allNodes.length, linked);
 
   return {
-    nodes,
+    nodes: allNodes,
     edges,
     artifacts: writeArtifacts(
-      nodes,
+      allNodes,
       (node) => extras.get(String(node.id)) ?? { name: null, lat: 0, lng: 0 },
       edges,
     ),
@@ -250,6 +325,7 @@ export function buildSlice(input: SliceInput): SliceResult {
     rejectedForWater: built.rejectedForWater,
     prunedTwoHop: built.prunedTwoHop,
     boundaryEdges,
+    borders,
     overlayIssues: overlaid.issues,
     overlayAdded: overlaid.added.length,
   };

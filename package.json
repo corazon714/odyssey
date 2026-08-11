@@ -20,6 +20,8 @@
     "content:lint": "node packages/tools/content-lint/cli.ts",
     "content:stats": "node packages/tools/content-stats/cli.ts",
     "geo:audit": "node packages/tools/geo-build/cli.ts",
+    "geo:build": "node packages/tools/geo-build/cli.ts --stage=all --real --bbox=-12,36,30,60",
+    "geo:diversity": "node packages/tools/geo-build/cli.ts --stage=diversity --real",
     "sim": "node packages/tools/sim/cli.ts",
     "sim:diff": "node packages/tools/sim/cli.ts --diff",
     "golden:update": "node packages/tools/sim/regenerate-goldens.ts",

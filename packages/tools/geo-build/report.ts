@@ -160,6 +160,12 @@ export function formatSlice(
     readonly rejectedForWater: number;
     readonly prunedTwoHop: number;
     readonly boundaryEdges: number;
+    readonly borders: {
+      readonly crossings: readonly unknown[];
+      readonly requiredForConnectivity: number;
+      readonly uncontrolled: number;
+      readonly issues: readonly string[];
+    };
     readonly overlayIssues: readonly string[];
     readonly overlayAdded: number;
     readonly selection: {
@@ -185,6 +191,21 @@ export function formatSlice(
   lines.push(`water-rejected ${String(slice.rejectedForWater)}   edges dropped as sea crossings`);
   lines.push(`two-hop pruned ${String(slice.prunedTwoHop)}`);
   lines.push(`boundary edges ${String(slice.boundaryEdges)}   (cross an admin polygon boundary)`);
+  lines.push('');
+
+  lines.push('## Controlled crossings');
+  lines.push('');
+  lines.push(`  placed        ${String(slice.borders.crossings.length)}`);
+  // The floor is the number that matters: below it, four of five profiles cannot reach across a
+  // boundary at all and the diversity audit measures mask starvation instead of cost functions.
+  lines.push(`  of which forced by connectivity  ${String(slice.borders.requiredForConnectivity)}`);
+  lines.push(`  left uncontrolled  ${String(slice.borders.uncontrolled)}   (illicit-only)`);
+  if (slice.borders.issues.length === 0) {
+    lines.push('  issues        none');
+  } else {
+    lines.push(`  ISSUES        ${String(slice.borders.issues.length)}`);
+    for (const issue of slice.borders.issues) lines.push(`    ${issue}`);
+  }
   lines.push('');
 
   lines.push('## Overlay');
