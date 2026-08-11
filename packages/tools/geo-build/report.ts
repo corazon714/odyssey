@@ -136,6 +136,91 @@ export function formatAudit(input: AuditInput): string {
   return `${lines.join('\n')}\n`;
 }
 
+/**
+ * The `--stage=all` report: what the slice actually came out as.
+ *
+ * Every line is a number the review gate needs. Connectivity first, because one component is
+ * the property everything else assumes.
+ */
+export function formatSlice(
+  slice: {
+    readonly nodes: readonly { readonly terrain: string; readonly type: string }[];
+    readonly edges: readonly { readonly distanceKm: number; readonly adminBoundary: boolean }[];
+    readonly connectivity: {
+      readonly componentCount: number;
+      readonly orphans: readonly number[];
+      readonly bridges: readonly number[];
+      readonly leafBranches: readonly { readonly stranded: number }[];
+    };
+    readonly degrees: readonly number[];
+    readonly terrainTally: ReadonlyMap<string, number>;
+    readonly rejectedForWater: number;
+    readonly prunedTwoHop: number;
+    readonly boundaryEdges: number;
+    readonly selection: {
+      readonly shortfall: readonly {
+        readonly continent: string;
+        readonly got: number;
+        readonly want: number;
+      }[];
+    };
+  },
+  ledger: EpsilonLedger,
+): string {
+  const lines: string[] = ['', '# Slice', ''];
+  lines.push(`nodes         ${String(slice.nodes.length)}`);
+  lines.push(`edges         ${String(slice.edges.length)}`);
+  lines.push(`components    ${String(slice.connectivity.componentCount)}   (must be 1)`);
+  lines.push(`orphans       ${String(slice.connectivity.orphans.length)}`);
+  lines.push(`bridges       ${String(slice.connectivity.bridges.length)}`);
+  const bigBranches = slice.connectivity.leafBranches.filter((b) => b.stranded >= 5).length;
+  lines.push(
+    `  stranding >=5 nodes  ${String(bigBranches)}   (these are the ones worth declaring)`,
+  );
+  lines.push(`water-rejected ${String(slice.rejectedForWater)}   edges dropped as sea crossings`);
+  lines.push(`two-hop pruned ${String(slice.prunedTwoHop)}`);
+  lines.push(`boundary edges ${String(slice.boundaryEdges)}   (cross an admin polygon boundary)`);
+  lines.push('');
+
+  lines.push('## Degree distribution');
+  lines.push('');
+  for (let degree = 0; degree < slice.degrees.length; degree += 1) {
+    const count = slice.degrees[degree] ?? 0;
+    if (count === 0) continue;
+    lines.push(`  ${String(degree).padStart(2)}  ${String(count).padStart(5)}`);
+  }
+  lines.push('');
+
+  lines.push('## Terrain');
+  lines.push('');
+  for (const [kind, count] of [...slice.terrainTally].sort((a, b) => b[1] - a[1])) {
+    const share = ((count / Math.max(1, slice.nodes.length)) * 100).toFixed(1);
+    lines.push(`  ${kind.padEnd(10)}${String(count).padStart(5)}  ${share.padStart(5)}%`);
+  }
+  lines.push('');
+
+  const distances = slice.edges.map((e) => e.distanceKm).sort((a, b) => a - b);
+  lines.push('## Edge length, km');
+  lines.push('');
+  lines.push(
+    `  p10 ${String(percentile(distances, 0.1))}   p50 ${String(percentile(distances, 0.5))}   ` +
+      `p90 ${String(percentile(distances, 0.9))}   max ${String(distances[distances.length - 1] ?? 0)}`,
+  );
+  lines.push('');
+
+  if (slice.selection.shortfall.length > 0) {
+    lines.push('## Quota shortfall');
+    lines.push('');
+    for (const s of slice.selection.shortfall) {
+      lines.push(`  ${s.continent.padEnd(16)}${String(s.got)} of ${String(s.want)}`);
+    }
+    lines.push('');
+  }
+
+  lines.push(`epsilon resolutions   ${String(ledger.resolutions)}`);
+  return `${lines.join('\n')}\n`;
+}
+
 /** Integer-indexed, so no float rounding decides a reported statistic. Mirrors sim/percentile.ts. */
 function percentile(sorted: readonly number[], fraction: number): number {
   if (sorted.length === 0) return 0;

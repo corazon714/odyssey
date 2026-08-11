@@ -7,7 +7,7 @@ import { type BoundingBox } from './read-geonames.ts';
  * states and for the same reason: a typo'd `--bbox` that silently audited the whole planet would
  * produce a report that reads as a finding about the slice.
  */
-export const STAGES = ['fetch', 'audit'] as const;
+export const STAGES = ['fetch', 'audit', 'all'] as const;
 export type Stage = (typeof STAGES)[number];
 
 export type GeoBuildOptions = {

@@ -1,13 +1,16 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { findWorkspaceRoot } from '../shared/workspace-root.ts';
+import { buildSlice } from './build-slice.ts';
+import { SETTLEMENT_QUOTA } from './continent.ts';
 import { readLock, verifyLock } from './fetch-sources.ts';
 import { createEpsilonLedger } from './geodesy.ts';
 import { parseArgs } from './parse-args.ts';
-import { formatAudit } from './report.ts';
-import { readGeonames, withinBox } from './read-geonames.ts';
+import { formatAudit, formatSlice } from './report.ts';
+import { readGeonames, withinBox, type Candidate } from './read-geonames.ts';
+import { readLand, readLines, readRegions } from './read-natural-earth.ts';
 import { scoreCandidates } from './score-candidates.ts';
 
 /**
@@ -25,7 +28,8 @@ import { scoreCandidates } from './score-candidates.ts';
 
 const ROOT = findWorkspaceRoot(dirname(fileURLToPath(import.meta.url)));
 const CACHE_DIR = join(ROOT, '.geo-cache');
-const LOCK_PATH = join(ROOT, 'packages', 'content', 'geo', 'sources.lock.json');
+const GEO_DIR = join(ROOT, 'packages', 'content', 'geo');
+const LOCK_PATH = join(GEO_DIR, 'sources.lock.json');
 const FIXTURE = join(
   dirname(fileURLToPath(import.meta.url)),
   '__fixtures__',
@@ -69,6 +73,19 @@ function main(argv: readonly string[]): number {
   const candidates =
     options.bbox === null ? read.candidates : withinBox(read.candidates, options.bbox);
   const ledger = createEpsilonLedger();
+
+  if (options.stage === 'all') {
+    if (options.fixture) {
+      process.stderr.write(
+        'geo-build: --stage=all needs the real sources. Re-run with --real.\n' +
+          '  Generating a world from the synthetic fixture would ship invented places AS\n' +
+          '  geography, which is the one thing this pipeline exists not to do.\n',
+      );
+      return 2;
+    }
+    return generate(candidates, ledger, options.check);
+  }
+
   const scores = scoreCandidates(candidates);
 
   process.stdout.write(
@@ -94,6 +111,60 @@ function main(argv: readonly string[]): number {
       '\nNOTE: this is the SYNTHETIC fixture. The numbers above exercise the pipeline; they say\n' +
         'nothing about the real world. Re-run with --real once .geo-cache/ is populated.\n',
     );
+  }
+  return 0;
+}
+
+/**
+ * `--stage=all`: derive the slice and write the artifacts.
+ *
+ * `--check` regenerates and byte-compares instead of writing, which is what makes the build
+ * reproducible rather than merely deterministic-looking.
+ */
+function generate(
+  candidates: readonly Candidate[],
+  ledger: ReturnType<typeof createEpsilonLedger>,
+  check: boolean,
+): number {
+  const read = (name: string): string => readFileSync(join(CACHE_DIR, name), 'utf8');
+
+  const slice = buildSlice({
+    candidates,
+    regions: readRegions(read('ne_10m_admin_0_countries.geojson')),
+    land: readLand(read('ne_10m_land.geojson')),
+    terrainGeoJson: read('ne_10m_geography_regions_polys.geojson'),
+    railLines: readLines(read('ne_10m_railroads.geojson')),
+    quota: SETTLEMENT_QUOTA,
+    ledger,
+  });
+
+  process.stdout.write(formatSlice(slice, ledger));
+
+  const nodesPath = join(GEO_DIR, 'nodes.gen.json');
+  const edgesPath = join(GEO_DIR, 'edges.gen.json');
+
+  if (check) {
+    const same =
+      existsSync(nodesPath) &&
+      existsSync(edgesPath) &&
+      readFileSync(nodesPath, 'utf8') === slice.artifacts.nodesJson &&
+      readFileSync(edgesPath, 'utf8') === slice.artifacts.edgesJson;
+    process.stdout.write(same ? '\n--check: byte-identical.\n' : '\n--check: DIFFERS.\n');
+    return same ? 0 : 1;
+  }
+
+  writeFileSync(nodesPath, slice.artifacts.nodesJson);
+  writeFileSync(edgesPath, slice.artifacts.edgesJson);
+  process.stdout.write(`\nwrote ${nodesPath}\nwrote ${edgesPath}\n`);
+
+  // Fail closed. More than one component means a node no route can reach, and a second
+  // component is not a curiosity — it is a map the player can be stranded on. ADR 0024.
+  if (slice.connectivity.componentCount !== 1) {
+    process.stderr.write(
+      `\ngeo-build: ${String(slice.connectivity.componentCount)} components. The graph is not ` +
+        'one piece; the overlay must join them before this data is usable.\n',
+    );
+    return 1;
   }
   return 0;
 }
