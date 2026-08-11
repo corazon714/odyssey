@@ -1,0 +1,149 @@
+{
+  "_comment": [
+    "CIRCUITY CALIBRATION SAMPLE. 13 real road distances against the great-circle distance",
+    "between the same two nodes, measured 2026-08-12.",
+    "",
+    "PROVENANCE AND LICENCE. `roadKm` and `roadHours` come from a routing service whose network",
+    "is OSM-derived. Thirteen lookups is comfortably inside the OSMF Substantial Guideline's",
+    "'less than 100 Features' line, so this is an insubstantial extraction and no ODbL",
+    "obligation attaches. It is used ONLY to fit a single scalar. No OSM value is shipped: the",
+    "generated edges carry great-circle distance times that scalar, computed from GeoNames",
+    "coordinates. See docs/geo-data-licensing.md.",
+    "",
+    "Pairs are EDGES OF THE ACTUAL SLICE, stratified by terrainDifficulty, so the residual",
+    "measures the thing the generator produces rather than an unrelated benchmark.",
+    "",
+    "WHAT IT SHOWED, and it contradicted the plan:",
+    "  circuity mean 1.388, p50 1.387, range 1.111 to 1.773",
+    "  single global factor 1.39 -> mean |err| 12.3%, p50 11.6%, p90 21.8%",
+    "  per-terrain-class factors -> mean 10.3% but p90 31.5% and max 37.5%",
+    "",
+    "Per-class is WORSE at the tail. terrainDifficulty does not predict circuity — the spread",
+    "inside a class is as wide as the spread between classes, and with three samples per class",
+    "the per-class medians are fitting noise. One global factor it is.",
+    "",
+    "n=13 is small and a p90 from thirteen samples is one data point. The direction is",
+    "consistent, but treat 21.8% as indicative. Widening this file is the cheapest way to firm",
+    "it up, and the format below is what --stage=calibrate will read."
+  ],
+  "circuityFactorUsed": 1.39,
+  "pairs": [
+    {
+      "from": "Usak",
+      "to": "Izmir",
+      "td": 2,
+      "terrain": "hill/urban",
+      "greatCircleKm": 199,
+      "roadKm": 221,
+      "roadHours": 2.73
+    },
+    {
+      "from": "Belfast",
+      "to": "Letterkenny",
+      "td": 1,
+      "terrain": "coast/coast",
+      "greatCircleKm": 122,
+      "roadKm": 146,
+      "roadHours": 1.89
+    },
+    {
+      "from": "Pecs",
+      "to": "Budapest",
+      "td": 0,
+      "terrain": "plain/urban",
+      "greatCircleKm": 170,
+      "roadKm": 205,
+      "roadHours": 2.57
+    },
+    {
+      "from": "Letterkenny",
+      "to": "Galway",
+      "td": 1,
+      "terrain": "coast/coast",
+      "greatCircleKm": 205,
+      "roadKm": 249,
+      "roadHours": 3.57
+    },
+    {
+      "from": "Pilsen",
+      "to": "Liberec",
+      "td": 4,
+      "terrain": "plain/mountain",
+      "greatCircleKm": 165,
+      "roadKm": 205,
+      "roadHours": 2.38
+    },
+    {
+      "from": "Lisbon",
+      "to": "Madrid",
+      "td": 0,
+      "terrain": "urban/urban",
+      "greatCircleKm": 502,
+      "roadKm": 628,
+      "roadHours": 6.78
+    },
+    {
+      "from": "Turin",
+      "to": "Genoa",
+      "td": 0,
+      "terrain": "urban/urban",
+      "greatCircleKm": 124,
+      "roadKm": 172,
+      "roadHours": 2.13
+    },
+    {
+      "from": "Chisinau",
+      "to": "Piatra Neamt",
+      "td": 4,
+      "terrain": "urban/mountain",
+      "greatCircleKm": 192,
+      "roadKm": 274,
+      "roadHours": 5.2
+    },
+    {
+      "from": "Souk Ahras",
+      "to": "Ali Mendjeli",
+      "td": 4,
+      "terrain": "mountain/mountain",
+      "greatCircleKm": 124,
+      "roadKm": 178,
+      "roadHours": 2.64
+    },
+    {
+      "from": "Usak",
+      "to": "Mugla",
+      "td": 2,
+      "terrain": "hill/coast",
+      "greatCircleKm": 186,
+      "roadKm": 284,
+      "roadHours": 3.66
+    },
+    {
+      "from": "Klaipeda",
+      "to": "Suwalki",
+      "td": 0,
+      "terrain": "plain/plain",
+      "greatCircleKm": 211,
+      "roadKm": 330,
+      "roadHours": 3.43
+    },
+    {
+      "from": "Usak",
+      "to": "Istanbul",
+      "td": 2,
+      "terrain": "hill/urban",
+      "greatCircleKm": 263,
+      "roadKm": 451,
+      "roadHours": 5.62
+    },
+    {
+      "from": "Monaco",
+      "to": "Turin",
+      "td": 1,
+      "terrain": "coast/urban",
+      "greatCircleKm": 150,
+      "roadKm": 266,
+      "roadHours": 3.18
+    }
+  ]
+}

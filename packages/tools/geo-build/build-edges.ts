@@ -26,6 +26,24 @@ import { isOnLand, landFractionPercent, type BoxedRing } from './read-natural-ea
  *    would be indistinguishable from a fact.
  */
 
+/**
+ * Great-circle distance times this is the road distance. **ONE global factor, not one per
+ * terrain class** — and that is a correction to the plan, made from measurement.
+ *
+ * 13 real road distances against the same node pairs (`__fixtures__/road-distances.json`):
+ * circuity ran 1.111 to 1.773 with p50 1.387. A single factor of 1.39 leaves mean |error| 12.3%
+ * and p90 21.8%. Fitting a factor PER TERRAIN CLASS scored better on the mean, 10.3%, and
+ * **worse at the tail — p90 31.5%, max 37.5%** — because `terrainDifficulty` does not predict
+ * circuity: the spread inside a class is as wide as the spread between classes, so per-class
+ * medians drawn from three samples are fitting noise.
+ *
+ * What actually drives circuity is whether a direct road happens to exist — the Alps between
+ * Monaco and Turin (1.77), the Baltic coast between Klaipeda and Suwalki (1.56) — and that is
+ * corridor topology, which the overlay expresses far better than a coefficient can.
+ */
+export const CIRCUITY_FACTOR_NUM = 139;
+export const CIRCUITY_FACTOR_DEN = 100;
+
 export const NEAREST_K = 6;
 /** An edge survives only if any two-hop alternative is at least this much longer. */
 export const TWO_HOP_RATIO_NUM = 16;
@@ -59,6 +77,16 @@ export type BuildEdgesResult = {
   readonly rejectedForWater: number;
   readonly prunedTwoHop: number;
 };
+
+/**
+ * Great-circle scaled to a road distance, as an integer of at least 1.
+ *
+ * Applied HERE rather than downstream so nothing anywhere else can hold a raw great-circle and
+ * mistake it for a travelled distance.
+ */
+function roadDistanceKm(a: LatLng, b: LatLng): number {
+  return Math.max(1, Math.round((distanceKm(a, b) * CIRCUITY_FACTOR_NUM) / CIRCUITY_FACTOR_DEN));
+}
 
 /** Undirected key, smaller index first, so an edge has one identity however it was proposed. */
 function pairKey(a: number, b: number): string {
@@ -129,7 +157,7 @@ export function buildEdges(input: BuildEdgesInput): BuildEdgesResult {
       proposed.set(pairKey(i, j), {
         a: Math.min(i, j),
         b: Math.max(i, j),
-        distanceKm: distanceKm(nodeI, nodeJ),
+        distanceKm: roadDistanceKm(nodeI, nodeJ),
       });
     }
     // Gabriel, over a bounded neighbourhood — the full set is unnecessary and slow.
@@ -143,7 +171,7 @@ export function buildEdges(input: BuildEdgesInput): BuildEdgesResult {
       proposed.set(pairKey(i, j), {
         a: Math.min(i, j),
         b: Math.max(i, j),
-        distanceKm: distanceKm(nodeI, nodeJ),
+        distanceKm: roadDistanceKm(nodeI, nodeJ),
       });
     }
   }
@@ -179,8 +207,13 @@ export function buildEdges(input: BuildEdgesInput): BuildEdgesResult {
         const nodeB = nodes[edge.b];
         const nodeVia = nodes[via];
         if (nodeA === undefined || nodeB === undefined || nodeVia === undefined) continue;
+        // BOTH SIDES RAW great-circle. `edge.distanceKm` is already scaled by the circuity
+        // factor, so comparing it against an unscaled two-hop sum made the prune 1.39x more
+        // aggressive and silently cost 34 edges and three extra components when the factor
+        // landed. Compare like with like.
         const twoHop = haversineKm(nodeA, nodeVia) + haversineKm(nodeVia, nodeB);
-        if (twoHop * TWO_HOP_RATIO_DEN < edge.distanceKm * TWO_HOP_RATIO_NUM) {
+        const direct = haversineKm(nodeA, nodeB);
+        if (twoHop * TWO_HOP_RATIO_DEN < direct * TWO_HOP_RATIO_NUM) {
           shortcut = true;
           break;
         }
