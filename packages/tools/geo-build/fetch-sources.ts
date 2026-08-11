@@ -35,10 +35,33 @@ export type SourceEntry = {
   readonly url: string;
   readonly license: string;
   readonly attribution: string;
-  /** Null until `--stage=fetch` has run and recorded what it actually downloaded. */
+  /**
+   * Null until the source has been fetched and recorded.
+   *
+   * It hashes the file in `.geo-cache/` that the BUILD READS, not the archive the URL served.
+   * That is the value `--check` needs — a byte-identical rebuild depends on the bytes going in,
+   * and for the Natural Earth layers those bytes are post-conversion (see `conversion`).
+   */
   readonly sha256: string | null;
   readonly retrievedUtc: string | null;
   readonly file: string;
+  /**
+   * How the archive became the cached file.
+   *
+   * Natural Earth's own downloads are SHAPEFILES, not GeoJSON — ADR 0024 Decision 5 originally
+   * claimed otherwise and was wrong. The conversion happens out of tree, which is what that
+   * decision actually mandates, and recording the command here is what makes the cached bytes
+   * reproducible by someone else.
+   */
+  readonly conversion?: string;
+  /**
+   * `false` for a source no current stage consumes. Defaults to required.
+   *
+   * `alternateNames` is 200 MB compressed and is read only by the exonym pass (ADR 0028
+   * Decision 4, M3.11). Demanding it be unpacked and hashed to run an audit that never opens it
+   * would be a checklist item people learn to skip.
+   */
+  readonly required?: boolean;
 };
 
 export type SourcesLock = {
@@ -89,7 +112,7 @@ export function verifyLock(
       issues.push({ id: entry.id, message: 'no attribution string recorded' });
     }
 
-    if (!opts.requireFetched) continue;
+    if (!opts.requireFetched || entry.required === false) continue;
 
     if (entry.sha256 === null) {
       issues.push({ id: entry.id, message: 'never fetched — run `--stage=fetch` first' });

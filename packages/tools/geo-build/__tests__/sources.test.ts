@@ -34,14 +34,40 @@ describe('the shipped sources.lock.json', () => {
     expect(verifyLock(LOCK, join(ROOT, '.geo-cache'), NOT_FETCHED)).toEqual([]);
   });
 
-  it('records every source as unfetched, honestly', () => {
-    // Null is the true state until a human runs --stage=fetch. A placeholder hash would be a
-    // lie that `--check` would then compare against.
+  it('records a hash and a retrieval date for every source it claims to have fetched', () => {
+    // The two travel together or the record is meaningless: a hash with no date cannot be
+    // re-verified against what the URL serves today, and a date with no hash pins nothing.
     for (const source of LOCK.sources) {
-      expect(source.sha256, source.id).toBeNull();
-      expect(source.retrievedUtc, source.id).toBeNull();
+      expect(source.sha256 === null, source.id).toBe(source.retrievedUtc === null);
+      if (source.sha256 !== null) expect(source.sha256, source.id).toMatch(/^[0-9a-f]{64}$/);
     }
-    expect(LOCK.nodeMajor).toBeNull();
+  });
+
+  it('pins the build-host Node major once anything has been fetched', () => {
+    // Transcendental results can shift between majors, so a byte comparison across two of them
+    // is not a comparison. ADR 0024 Decision 6.
+    const anyFetched = LOCK.sources.some((s) => s.sha256 !== null);
+    if (anyFetched) expect(LOCK.nodeMajor).not.toBeNull();
+  });
+
+  it('records how each archive became the file the build reads', () => {
+    // Natural Earth ships SHAPEFILES, not GeoJSON — ADR 0024 Decision 5 said otherwise and was
+    // wrong. The conversion happens out of tree, so the command is the only thing that makes
+    // the cached bytes reproducible by someone else.
+    for (const source of LOCK.sources) {
+      if (source.sha256 === null) continue;
+      expect(source.conversion, source.id).toBeDefined();
+      if (source.file.endsWith('.geojson')) {
+        expect(source.conversion, source.id).toContain('mapshaper');
+      }
+    }
+  });
+
+  it('marks a source no current stage reads as not required', () => {
+    // alternateNames is 200 MB compressed and is opened only by the exonym pass. Demanding it
+    // for an audit that never touches it is the kind of checklist item people learn to skip.
+    const alternates = LOCK.sources.find((s) => s.id === 'geonames-alternate-names');
+    expect(alternates?.required).toBe(false);
   });
 
   it('carries an attribution string for every CC BY source', () => {
