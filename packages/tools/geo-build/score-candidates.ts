@@ -36,15 +36,29 @@ export function populationScore(population: number): number {
   return 0;
 }
 
-/** Relief against the local median elevation — a pass or a valley floor is interesting. */
+/**
+ * Relief against the local median elevation — a pass or a valley floor is interesting.
+ *
+ * **Bands calibrated against the real distribution, not chosen.** The first pass used
+ * 1000/400/100 m and scored ZERO for 83% of 34,078 candidates, which made the term decoration.
+ * Measured, `|dem − local median|` runs p50 20 m, p75 58 m, p90 178 m: settlements sit near
+ * their neighbours' elevation far more often than intuition suggests, because settlements
+ * follow valleys and coasts. The bands below track those percentiles, so roughly a tenth score
+ * top, a quarter middle, and 45% still score zero — which is the honest share of places that
+ * genuinely are not on interesting ground.
+ */
+export const RELIEF_BAND_HIGH_M = 150;
+export const RELIEF_BAND_MID_M = 50;
+export const RELIEF_BAND_LOW_M = 15;
+
 export function reliefScore(candidate: Candidate, neighbours: readonly Candidate[]): number {
   if (neighbours.length === 0) return 0;
   const elevations = [...neighbours.map((n) => n.dem)].sort((a, b) => a - b);
   const median = elevations[Math.floor(elevations.length / 2)] ?? 0;
   const delta = Math.abs(candidate.dem - median);
-  if (delta >= 1000) return 18;
-  if (delta >= 400) return 12;
-  if (delta >= 100) return 6;
+  if (delta >= RELIEF_BAND_HIGH_M) return 18;
+  if (delta >= RELIEF_BAND_MID_M) return 12;
+  if (delta >= RELIEF_BAND_LOW_M) return 6;
   return 0;
 }
 
@@ -55,7 +69,19 @@ export function reliefScore(candidate: Candidate, neighbours: readonly Candidate
  * pattern rather than of the settlement itself — a small town at a crossroads is more useful to
  * a route graph than a larger one at the end of a valley.
  */
-export const JUNCTION_RADIUS_KM = 250;
+/**
+ * **60 km, calibrated down from 250.** At 250 km the term was SATURATED — 80% of candidates saw
+ * a neighbour in all six sectors and scored the maximum, so it ranked nothing. Measured
+ * saturation by radius: 250 km 80%, 200 km 75%, 120 km 62%, 90 km 52%, **60 km 38%**.
+ *
+ * 60 km is also the scale that means something in a road-trip game — roughly an hour's driving,
+ * so "routes converge here" is a claim about a day's travel rather than about a whole region.
+ *
+ * Note the fixture failed in the OPPOSITE direction: 66 scattered synthetic candidates scored
+ * zero everywhere. A threshold cannot be calibrated against a fixture; only real data has the
+ * density that makes saturation visible.
+ */
+export const JUNCTION_RADIUS_KM = 60;
 const SECTOR_DEGREES = 60;
 
 export function junctionScore(candidate: Candidate, neighbours: readonly Candidate[]): number {

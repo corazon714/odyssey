@@ -162,7 +162,7 @@
     {
       "id": "n.z1",
       "type": "village",
-      "terrain": "forest",
+      "terrain": "hill",
       "elevationM": 300,
       "population": "hamlet",
       "services": ["fuel", "market"],

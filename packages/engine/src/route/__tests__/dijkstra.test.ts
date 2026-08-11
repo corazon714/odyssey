@@ -114,7 +114,7 @@ describe('shortestPath', () => {
     const intruder = {
       id: nodeId('n.aaa_unrelated'),
       type: 'village' as const,
-      terrain: 'forest' as const,
+      terrain: 'hill' as const,
       elevationM: 10,
       population: 'hamlet' as const,
       services: serviceMask([]),
