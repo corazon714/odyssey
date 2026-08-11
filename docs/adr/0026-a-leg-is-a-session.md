@@ -211,6 +211,40 @@ the exact problem leg-as-time-slice was rejected for.
 Recorded as an open incoherence rather than presented as "failing in the direction that keeps the
 game playable". It needs an owner and a phase.
 
+## Addendum, measured 2026-08-09 — the 22–48 band is not survivable today
+
+Decision 4's clamp targets 22–48 legs. **The corpus cannot survive that, and the gap is not
+tuning.** Measured on the corpus pack, 2000 runs per point, all five policies, synthetic routes
+varying only `legCount`:
+
+| legs       |    10 |    16 |   24 |   30 |   36 |   42 |   48 |
+| ---------- | ----: | ----: | ---: | ---: | ---: | ---: | ---: |
+| completion | 97.0% | 36.6% | 0.1% | 0.0% | 0.0% | 0.0% | 0.0% |
+
+Only **2 of 2000** runs reach leg 25. At 48 legs the split is 70.5% `failure_collapsed`, 29.5%
+`failure_gave_up`, **zero arrivals**.
+
+Three things that measurement establishes, each of which matters to a different decision:
+
+1. **`totalKm` is inert.** The same sweep with `totalKm` fixed at 620 returned digit-for-digit
+   identical numbers. Drain today is purely per-leg, which is the collision Decision 1 exists to
+   resolve — but resolving it does **not** fix this, because more legs still means more hours.
+2. **Health is a one-way ratchet.** Two outcomes in the entire 13-event corpus restore it
+   (`rest.the_shared_room/see_to_your_feet`, `weather.the_storm_you_cannot_drive_through/see_to_the_damage`),
+   both +2. Health p10/p50/p90 runs `9/10/10` at leg 5 → `0/2/4` at leg 15 → `0/0/0` at leg 25.
+3. **The shipped 44.1% corpus completion is an averaging artefact**, not a distribution:
+   `fixture.short` (10 legs) 97.3%, `fixture.scenic` (16) 34.2%, `fixture.illicit` (24) **0.0%**.
+   Mean 43.8%. A route that always succeeds, one that always fails, and one in between.
+
+**Consequence for the phase.** Generation still emits the 22–48 band as specified — the band is a
+design target and the generator should not be bent to hide a balance problem. But **M3.10b's
+acceptance criterion is unreachable until a recovery economy exists**, and M3.10a's short-trip
+band (10–16) is the only honest measurement point until then. The fix is content and `worldTick`
+tuning — more restoration, or `healthCost` regraded, or recovery scaled off the `rationsNeeded`
+figure Decision 6 already computes — and it is a milestone this phase does not currently contain.
+
+Recorded rather than worked around.
+
 ## Consequences
 
 - All nine golden digests move at the field addition; **neither sim baseline should**, because
