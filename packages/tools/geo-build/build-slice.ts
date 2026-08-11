@@ -1,5 +1,6 @@
 import { edgeId, modeMask, nodeId, type GeoEdge, type GeoNode } from '@odyssey/engine';
 
+import { applyOverlay, type Overlay } from './apply-overlay.ts';
 import { buildEdges, type EdgeNode } from './build-edges.ts';
 import {
   buildCoastIndex,
@@ -55,6 +56,7 @@ export type SliceInput = {
   readonly railLines: readonly BoxedRing[];
   readonly quota: Readonly<Record<Continent, number>>;
   readonly ledger: EpsilonLedger;
+  readonly overlay: Overlay;
 };
 
 export type SliceResult = {
@@ -68,6 +70,8 @@ export type SliceResult = {
   readonly rejectedForWater: number;
   readonly prunedTwoHop: number;
   readonly boundaryEdges: number;
+  readonly overlayIssues: readonly string[];
+  readonly overlayAdded: number;
 };
 
 /** Score bonus for a coastal place. A port town is a different proposition to an inland one. */
@@ -162,6 +166,18 @@ export function buildSlice(input: SliceInput): SliceResult {
 
   const built = buildEdges({ nodes: edgeNodes, land: input.land, ledger: input.ledger });
 
+  // The overlay is applied to a FRESHLY generated graph every build — declared intent, never a
+  // diff against a previous output, so retuning the generator cannot rot it.
+  const overlaid = applyOverlay(
+    input.overlay,
+    nodes.map((n) => String(n.id)),
+    edgeNodes,
+    built.edges,
+  );
+  const ferryPairs = new Set(
+    overlaid.added.filter((e) => e.kind === 'ferry').map((e) => `${String(e.a)}:${String(e.b)}`),
+  );
+
   const railNear = (point: { lat: number; lng: number }): boolean => {
     for (const line of input.railLines) {
       if (
@@ -185,7 +201,7 @@ export function buildSlice(input: SliceInput): SliceResult {
   const regionAt = edgeNodes.map((point) => regionIndexAt(input.regions, point));
 
   let boundaryEdges = 0;
-  const edges: GeoEdge[] = built.edges.map((candidate) => {
+  const edges: GeoEdge[] = overlaid.edges.map((candidate) => {
     const a = nodes[candidate.a];
     const b = nodes[candidate.b];
     const terrainA = a?.terrain ?? 'plain';
@@ -203,7 +219,9 @@ export function buildSlice(input: SliceInput): SliceResult {
       from: a?.id ?? nodeId('n.missing'),
       to: b?.id ?? nodeId('n.missing'),
       distanceKm: candidate.distanceKm,
-      modes: modeMask(modesFor((railAt[candidate.a] ?? false) && (railAt[candidate.b] ?? false))),
+      modes: ferryPairs.has(`${String(candidate.a)}:${String(candidate.b)}`)
+        ? modeMask(['ferry'])
+        : modeMask(modesFor((railAt[candidate.a] ?? false) && (railAt[candidate.b] ?? false))),
       terrainDifficulty: terrainDifficultyOf(terrainA, terrainB),
       scenic: scenicOf(terrainA, terrainB),
       seasonality: seasonalityOf(Math.max(a?.elevationM ?? 0, b?.elevationM ?? 0)),
@@ -214,7 +232,7 @@ export function buildSlice(input: SliceInput): SliceResult {
 
   const connectivity = analyseConnectivity(
     nodes.length,
-    built.edges.map((e) => ({ a: e.a, b: e.b })),
+    overlaid.edges.map((e) => ({ a: e.a, b: e.b })),
   );
 
   return {
@@ -232,5 +250,7 @@ export function buildSlice(input: SliceInput): SliceResult {
     rejectedForWater: built.rejectedForWater,
     prunedTwoHop: built.prunedTwoHop,
     boundaryEdges,
+    overlayIssues: overlaid.issues,
+    overlayAdded: overlaid.added.length,
   };
 }

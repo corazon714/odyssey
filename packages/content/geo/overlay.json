@@ -1,0 +1,83 @@
+{
+  "_comment": [
+    "THE ONLY FILE IN packages/content/geo/ A HUMAN EDITS. Everything else is generated.",
+    "",
+    "DECLARED INTENT, NOT A PATCH. Every entry names NODE IDS and is applied against a freshly",
+    "generated candidate graph on every build. It is never a diff against a previous output, so",
+    "retuning the generator cannot rot it — a stale entry fails loudly instead of silently doing",
+    "nothing. Node ids derive from geonameid, so they survive a re-selection.",
+    "",
+    "WHY forcedCorridors EXIST, measured. The water test samples the straight line between two",
+    "nodes and refuses the edge when too much of it is at sea. That is correct for a strait and",
+    "WRONG wherever a coast is concave: Athens to Patra is 177 km of Greek mainland, but the",
+    "great-circle between them crosses the Gulf of Corinth. The real road goes around, and the",
+    "circuity factor already prices that in. Concave coasts are the Mediterranean's whole",
+    "character, so this list is expected to be long around it.",
+    "",
+    "WHY ferries ARE AUTHORED AND NEVER GENERATED. Nothing in the geometry knows which straits",
+    "carry a service. Inventing one would be indistinguishable from a fact, and a player would",
+    "have no way to tell. Each row is a crossing that really operates.",
+    "",
+    "JSON rather than YAML for now: `yaml` is not a declared dependency of packages/tools, and",
+    "reaching it transitively through packages/content is the kind of thing that breaks later.",
+    "M3.6 moves this to overlay.yaml behind a loader in packages/content, where `yaml` IS",
+    "declared and where locate.ts can give findings a file:line:col."
+  ],
+
+  "forcedCorridors": [
+    {
+      "from": "n.city.g264371",
+      "to": "n.city.g255683",
+      "reason": "Athens-Patra. 177 km of mainland; the straight line crosses the Gulf of Corinth."
+    },
+    {
+      "from": "n.city.g745044",
+      "to": "n.city.g749780",
+      "reason": "Istanbul-Canakkale. Mainland Thrace; the straight line crosses the Sea of Marmara."
+    },
+    {
+      "from": "n.city.g2618425",
+      "to": "n.city.g2620583",
+      "reason": "Copenhagen-Hedensted. Fixed links across the Danish belts carry road traffic."
+    }
+  ],
+
+  "ferries": [
+    {
+      "from": "n.city.g2523920",
+      "to": "n.city.g2525059",
+      "reason": "Palermo-Calabria across the Strait of Messina. Sicily's road link to the mainland.",
+      "seasonality": "all_year"
+    },
+    {
+      "from": "n.city.g3167096",
+      "to": "n.city.g3128760",
+      "reason": "Sardinia-Barcelona. Sardinia has no land link at any price.",
+      "seasonality": "all_year"
+    },
+    {
+      "from": "n.city.g2514301",
+      "to": "n.city.g3128760",
+      "reason": "Menorca-Barcelona. The Balearics are reachable only by sea.",
+      "seasonality": "all_year"
+    },
+    {
+      "from": "n.city.g2507480",
+      "to": "n.city.g3128760",
+      "reason": "Algiers-Barcelona. The western Mediterranean crossing.",
+      "seasonality": "all_year"
+    },
+    {
+      "from": "n.city.g2464470",
+      "to": "n.city.g2523920",
+      "reason": "Tunis-Palermo. Joins the Maghreb to Sicily and so to Europe.",
+      "seasonality": "all_year"
+    }
+  ],
+
+  "forbiddenCorridors": [],
+
+  "tolled": [],
+
+  "criticalEdges": []
+}

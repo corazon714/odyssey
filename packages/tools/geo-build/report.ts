@@ -122,9 +122,12 @@ export function formatAudit(input: AuditInput): string {
     lines.push(`    ${site.padEnd(24)}${String(count).padStart(6)}`);
   }
   lines.push('');
-  lines.push('  Non-zero means a selection boundary was decided by an integer tie-break rather');
-  lines.push('  than by the float, because the two were within one part in a million. Until this');
-  lines.push('  is zero AND stable across Node majors, `geo:build --check` cannot gate CI.');
+  lines.push('  A selection boundary decided by the integer tie-break rather than by the float,');
+  lines.push(
+    '  because the two were within one part in a million. NON-ZERO IS FINE AND EXPECTED —',
+  );
+  lines.push('  the tie-break is a fixed rule, so those decisions are deterministic. What would');
+  lines.push('  block `--check` as a CI gate is the count MOVING between runs or Node majors.');
   lines.push('');
 
   lines.push('## Not measured here');
@@ -157,6 +160,8 @@ export function formatSlice(
     readonly rejectedForWater: number;
     readonly prunedTwoHop: number;
     readonly boundaryEdges: number;
+    readonly overlayIssues: readonly string[];
+    readonly overlayAdded: number;
     readonly selection: {
       readonly shortfall: readonly {
         readonly continent: string;
@@ -180,6 +185,19 @@ export function formatSlice(
   lines.push(`water-rejected ${String(slice.rejectedForWater)}   edges dropped as sea crossings`);
   lines.push(`two-hop pruned ${String(slice.prunedTwoHop)}`);
   lines.push(`boundary edges ${String(slice.boundaryEdges)}   (cross an admin polygon boundary)`);
+  lines.push('');
+
+  lines.push('## Overlay');
+  lines.push('');
+  lines.push(`  applied       ${String(slice.overlayAdded)} links`);
+  if (slice.overlayIssues.length === 0) {
+    lines.push('  issues        none');
+  } else {
+    // A rejected overlay row is the whole point of declared-intent-over-patch: it is stale or
+    // wrong, and it says so instead of quietly doing nothing.
+    lines.push(`  ISSUES        ${String(slice.overlayIssues.length)}`);
+    for (const issue of slice.overlayIssues) lines.push(`    ${issue}`);
+  }
   lines.push('');
 
   lines.push('## Degree distribution');
@@ -208,10 +226,13 @@ export function formatSlice(
   );
   lines.push('');
 
-  if (slice.selection.shortfall.length > 0) {
+  // Only continents that HAD candidates. A continent outside the bbox reporting "0 of 195"
+  // reads as a failure and is noise — it is the bbox working, not the selector failing.
+  const realShortfall = slice.selection.shortfall.filter((s) => s.got > 0);
+  if (realShortfall.length > 0) {
     lines.push('## Quota shortfall');
     lines.push('');
-    for (const s of slice.selection.shortfall) {
+    for (const s of realShortfall) {
       lines.push(`  ${s.continent.padEnd(16)}${String(s.got)} of ${String(s.want)}`);
     }
     lines.push('');

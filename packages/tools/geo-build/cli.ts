@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { findWorkspaceRoot } from '../shared/workspace-root.ts';
+import { type Overlay } from './apply-overlay.ts';
 import { buildSlice } from './build-slice.ts';
 import { SETTLEMENT_QUOTA } from './continent.ts';
 import { readLock, verifyLock } from './fetch-sources.ts';
@@ -135,6 +136,7 @@ function generate(
     terrainGeoJson: read('ne_10m_geography_regions_polys.geojson'),
     railLines: readLines(read('ne_10m_railroads.geojson')),
     quota: SETTLEMENT_QUOTA,
+    overlay: JSON.parse(readFileSync(join(GEO_DIR, 'overlay.json'), 'utf8')) as Overlay,
     ledger,
   });
 

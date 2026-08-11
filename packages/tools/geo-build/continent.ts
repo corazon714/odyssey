@@ -44,6 +44,38 @@ type Box = {
  * north, which matters because the Darién is where the two continents stop being connected
  * overland at all.
  */
+/**
+ * The Mediterranean, as a piecewise latitude threshold by longitude.
+ *
+ * **No bounding box can separate Europe from Africa here**, and the first attempt proved it:
+ * Europe's box ran to 34N, was checked first, and swallowed seven Maghreb-coast nodes into
+ * Europe's quota. But a latitude cut alone cannot work either — Crete sits at 35.3N and Tripoli
+ * at 32.9N, so any single parallel puts one of them on the wrong continent.
+ *
+ * What does work is that the African shore *slopes*: ~36N off Morocco, ~37.5N at Tunis, then
+ * dropping to ~33N across Libya and ~32N at the Nile. A point south of that line is Africa.
+ *
+ * Checked against real places: Tangier 35.8N/-5.8 -> Africa · Malaga 36.7N/-4.4 -> Europe ·
+ * Tunis 36.8N/10.2 -> Africa · Palermo 38.1N/13.4 -> Europe · Malta 35.9N/14.5 -> Europe ·
+ * Tripoli 32.9N/13.2 -> Africa · Crete 35.3N/25 -> Europe · Alexandria 31.2N/29.9 -> Africa.
+ *
+ * Still geometric: a coordinate in, a landmass out. Nothing reads a country.
+ */
+const AFRICAN_SHORE: readonly { readonly maxLng: number; readonly northLimit: number }[] = [
+  { maxLng: 0, northLimit: 36 },
+  { maxLng: 12, northLimit: 37.5 },
+  { maxLng: 25, northLimit: 33 },
+  { maxLng: 37, northLimit: 32 },
+];
+
+function southOfTheMediterranean(point: LatLng): boolean {
+  if (point.lng < -18 || point.lng > 37) return false;
+  for (const segment of AFRICAN_SHORE) {
+    if (point.lng <= segment.maxLng) return point.lat < segment.northLimit;
+  }
+  return false;
+}
+
 const BOXES: readonly Box[] = [
   { continent: 'europe', minLat: 34, maxLat: 72, minLng: -25, maxLng: 40 },
   { continent: 'africa', minLat: -36, maxLat: 38, minLng: -19, maxLng: 52 },
@@ -56,6 +88,8 @@ const BOXES: readonly Box[] = [
 ];
 
 export function continentOf(point: LatLng): Continent {
+  // Before the boxes, because Europe's box overlaps the whole North African coast.
+  if (southOfTheMediterranean(point)) return 'africa';
   for (const box of BOXES) {
     if (
       point.lat >= box.minLat &&
