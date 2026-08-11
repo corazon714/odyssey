@@ -70,6 +70,11 @@ const AFRICAN_SHORE: readonly { readonly maxLng: number; readonly northLimit: nu
 
 function southOfTheMediterranean(point: LatLng): boolean {
   if (point.lng < -18 || point.lng > 37) return false;
+  // A LATITUDE BAND, not just a southern test. Without the lower bound this asks "is it south
+  // of the African shore", which Antarctica trivially is — and the first version returned
+  // 'africa' for the South Pole. The band covers only the stretch where Europe's box and
+  // Africa's genuinely overlap; everything below it is already unambiguous to the boxes.
+  if (point.lat > 38 || point.lat < 20) return false;
   for (const segment of AFRICAN_SHORE) {
     if (point.lng <= segment.maxLng) return point.lat < segment.northLimit;
   }
