@@ -221,7 +221,7 @@ pnpm content:stats            # counts by category/tag/check-tag + a 4-axis cove
 pnpm sim -- --runs=20000      # headless balance simulation (fixture pack)                 ✅
 pnpm sim -- --pack=corpus     # sim against packages/content/ — the REAL registries         ✅
 pnpm sim -- --json            # per-run TRACE (fired events + picks in order) not the report ✅
-pnpm sim:diff                 # compare latest sim to its pack's baseline                ✅
+pnpm sim:diff -- --runs=2000  # vs the pack's baseline. REFUSES another count — see DoD 6  ✅
 pnpm golden:update            # regenerate golden-runs.json from the engine — REVIEW the diff ✅
 pnpm geo:audit [-- --real]    # candidate pool vs the ADR 0024 budget; writes nothing        ✅
 
@@ -259,12 +259,15 @@ A change is not done until all of these pass:
 4. `pnpm content:lint` clean (if content or schema touched) ✅ **exists since Phase 2A M2A.6**.
    Exits 1 on an error, 0 with warnings — the warnings are real findings, so read them.
 5. New behavior has a test. Bug fixes have a **regression test that fails before the fix**.
-6. If engine behavior changed: `pnpm sim -- --runs=5000` run and the report delta explained.
+6. If engine behavior changed: `pnpm sim:diff -- --runs=2000` run and the delta explained.
    ✅ **the harness exists** — it has since Phase 1 M10, and this item said otherwise for four
    sessions. Two packs, two baselines: `--pack=fixture` (default) against `docs/sim-baseline.md`
    is the stable control the golden runs are built on; `--pack=corpus` against
    `docs/sim-baseline-corpus.md` is the real content. **Diff both** — a change can move one and
    not the other, and which one it moves is the finding.
+   **`--runs=2000`, and the count is not a suggestion** — this item said 5,000 for four sessions,
+   and diffing a 2,000-run baseline at 5,000 moves endings ~0.7pp and checks 2,923 → 7,325, which
+   reads as a regression. `sim:diff` now refuses a mismatched count instead.
 7. If a decision was non-obvious: an ADR added to `docs/adr/NNNN-title.md`.
 8. `CLAUDE.md` updated if a command, rule, or layout changed.
 

@@ -21,6 +21,24 @@ function normalise(line: string): string {
   return line.replace(/seed=\S+/, 'seed=*').replace(/runs=\d+/, 'runs=*');
 }
 
+/**
+ * The run count a report was generated at, or null if the header does not say.
+ *
+ * **`normalise` blanks `runs=`, and that is exactly why a mismatched count was invisible.**
+ * Blanking it is right for the diff itself — the count is not a balance property — but it hides
+ * the one input that changes every sampled number underneath. Diffing a 2,000-run baseline
+ * against a 5,000-run report showed endings moved ~0.7pp and the check count going 2,923 to
+ * 7,325, with nothing anywhere saying the samples were different sizes. It read as a balance
+ * regression and was bisected across twenty commits.
+ *
+ * So the count is checked BEFORE the diff and the comparison is refused, rather than being
+ * folded into the diff where it would be one more line to overlook.
+ */
+export function runCountOf(report: string): number | null {
+  const found = /\bruns=(\d+)/.exec(report)?.[1];
+  return found === undefined ? null : Number(found);
+}
+
 export type ReportDiff = {
   readonly changed: boolean;
   readonly lines: readonly string[];

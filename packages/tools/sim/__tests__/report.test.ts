@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createContentPack, collectFlagUsage } from '@odyssey/engine';
-import { diffReports } from '../diff-report.ts';
+import { diffReports, runCountOf } from '../diff-report.ts';
 import { formatReport } from '../format-report.ts';
 import { loadFixturePack, loadFixtureScenarios } from '../load-pack.ts';
 import { ascending, percentile } from '../percentile.ts';
@@ -117,5 +117,44 @@ describe('diffReports', () => {
     const result = diffReports(REPORT, changed);
     expect(result.changed).toBe(true);
     expect(result.lines.some((line) => line.startsWith('+'))).toBe(true);
+  });
+});
+
+describe('runCountOf — the guard on comparing two different sample sizes', () => {
+  it('reads the count out of a report header', () => {
+    expect(runCountOf('# Sim Report — seed=base contentVersion=aee5a082 runs=2000\n')).toBe(2000);
+  });
+
+  it('reads it past a leading HTML comment block, as a committed baseline has', () => {
+    const baseline = [
+      '<!--',
+      '  THE FIXTURE BALANCE BASELINE.',
+      '  Regenerate deliberately:  pnpm sim -- --runs=2000',
+      '-->',
+      '',
+      '# Sim Report — seed=base contentVersion=aee5a082 runs=2000',
+    ].join('\n');
+    // The comment block mentions the count too, and the first match is the one that counts —
+    // both say 2000 for the same reason, so either is right.
+    expect(runCountOf(baseline)).toBe(2000);
+  });
+
+  it('returns null when the header does not say, rather than guessing', () => {
+    expect(runCountOf('# Sim Report — seed=base contentVersion=aee5a082\n')).toBeNull();
+    expect(runCountOf('')).toBeNull();
+  });
+
+  it('does not match a number that merely contains the digits', () => {
+    expect(runCountOf('overruns=99')).toBeNull();
+  });
+
+  it('is what `diffReports` cannot tell you, because normalise blanks the count', () => {
+    // The whole reason the check lives outside the diff. These two reports differ ONLY in run
+    // count, and the diff calls them identical — correctly, since the count is not a balance
+    // property. But every sampled rate underneath would move, and nothing would say why.
+    const at = (runs: number): string =>
+      `# Sim Report — seed=base contentVersion=aee5a082 runs=${String(runs)}\nCompleted 44.1%\n`;
+    expect(diffReports(at(2000), at(5000)).changed).toBe(false);
+    expect(runCountOf(at(2000))).not.toBe(runCountOf(at(5000)));
   });
 });
