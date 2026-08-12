@@ -5,7 +5,86 @@
 
 ---
 
-## Shipped this session (2026-08-12, session 8) — **M3.6: the geo data is loaded and linted**
+## Shipped this session (2026-08-12, session 8) — **M3.6 and M3.7**
+
+Two milestones. M3.6 made the geo data loadable and linted; M3.7 put `legKm` and `montageLegs`
+on `RouteState` at uniform values and bumped `SAVE_VERSION` to 5.
+
+---
+
+## M3.7 — `legKm`, `montageLegs`, `SAVE_VERSION` 5
+
+**The values are uniform everywhere. M3.9 replaces them.** Shipping the field, the save bump and
+the migration on their own is the whole point: when the numbers change, the golden diff is
+attributable to the numbers rather than to the format.
+
+### The prediction held exactly
+
+ADR 0026 said all nine golden digests would move and nothing else would. That is what happened:
+
+- `golden-runs.json` diff is **9 lines, every one an `expectedDigest`**. `contentVersion`,
+  `choiceSequence`, `expectedHistoryKeys`, `expectedLegs` and `expectedEndings` byte-identical.
+- **Both sim baselines report "No change."** `progressKm` is write-only telemetry, so a
+  digests-only signature is what distinguishes a save-format bump from a behaviour change — and
+  this was the cheapest milestone in the phase to find out otherwise.
+
+Tests **1480 → 1498 across 73 files**.
+
+```bash
+pnpm typecheck && pnpm lint && pnpm test && pnpm content:lint && pnpm format:check
+pnpm sim:diff -- --runs=2000                    # "No change vs docs/sim-baseline.md."
+pnpm sim -- --pack=corpus --runs=2000 --diff    # "No change vs docs/sim-baseline-corpus.md."
+```
+
+### The allocator is cumulative-floor, and ADR 0026 was wrong about it
+
+The ADR specified "largest-remainder". **Largest-remainder is ill-defined on a uniform split** —
+every leg has the identical remainder, so ranking them is a whole-array tie and the output depends
+on the sort's tie-break. That is a nondeterminism surface in a value that feeds `stateDigest`.
+Decision 5 of the same ADR had already rejected largest-remainder for `arrivalLegOfEdge` on
+exactly those grounds; Decision 3 did not notice it was specifying the thing Decision 5 threw out.
+
+`uniformSplit` is `floor((i+1)·total/n) − floor(i·total/n)`. The sum is exact **by construction**
+rather than by a correction pass, and the remainder **spreads** instead of clumping at the front —
+which is cosmetic now and stops being cosmetic at M3.8, when `legHours` divides `legKm` by speed
+and a front-loaded remainder would put a duration bump on the opening legs of every route. There
+is a test for the spread, not just the sum. ADR 0026 has an addendum recording the correction.
+
+### What landed
+
+`state/uniform-split.ts` (new) · `route-state.ts` +2 fields · `validate-route.ts` +3 checks ·
+`ENGINE_ERROR_CODES` +2 (`route/leg-distance-mismatch`, `route/montage-out-of-range`) ·
+`SAVE_VERSION` 5 · `migrate_4_to_5` · `save-v5{,-loaded}.json` · `routes.json` ×3 ·
+`load-fixtures.ts` guards · `make-route.ts` · `golden-runs.json` · `state/__tests__/leg-km.test.ts`
+(new, 12 cases) · 2 migration tests.
+
+### Three things worth carrying forward
+
+1. **The digest is NOT the forcing function.** `canonicalJson` serialises `Object.keys`, so an
+   absent key contributes nothing — adding a field to the TYPE without editing `routes.json` moves
+   no digest and leaves `state.route.legKm` as `undefined` inside a type that says
+   `readonly number[]`. The `requireArray` guards in `load-fixtures.ts` are the only thing that
+   makes it loud. **Any new `RouteState` field lands with its guard in the same commit.**
+2. **`migrate_4_to_5` WRITES rather than omits**, the same trap `migrate_3_to_4` had to learn:
+   `isRunStateShape` checks only that `route` is present (`run-state-shape.ts:39`), never its
+   fields. It writes the CORRECT value too — a v4 save was produced by an engine whose every leg
+   covered `totalKm/legCount`, so `uniformSplit` is what that run was already doing, which is what
+   makes the bump safe to ship mid-journey.
+3. **The extra hand-built mid-route v4 save was not needed.** That instruction came from v3→v4,
+   whose branch no fixture reached. `migrate_4_to_5` has no branch, and `save-v4.json` is already
+   mid-route at `legIndex: 7` of 24.
+
+### Still true, and M3.8a is where it goes away
+
+`world-tick.ts:126` still applies `Math.round(totalKm/legCount)` per leg — M3.7 did not touch
+`world-tick.ts` at all. So a run's accumulated `progressKm` is built at a rate summing to
+`legCount × round(totalKm/legCount)` rather than `totalKm` (24 × 89 = 2136 against 2140 on the
+illicit fixture). Harmless in play; **do not write a test asserting the clamp can never fire**, as
+ADR 0026's last bullet warns.
+
+---
+
+## M3.6 — the geo data is loaded and linted
 
 `packages/content/geo/` held 263 nodes, 404 edges and a 42-row overlay that **nothing in
 `packages/content` could read**. It shipped validated by nothing except the tool that generated
@@ -177,42 +256,44 @@ Nothing is left broken. These are absent or partial, with paths:
 
 ## Next step — ONE task
 
-**M3.7: `legKm` and `montageLegs` on `RouteState`, at UNIFORM values everywhere. `SAVE_VERSION`
-5, `migrate_4_to_5`, and the `load-fixtures.ts` guard. The plan calls this "the T1 milestone; a
-session on its own" and it is the first thing this phase does that moves a golden digest.**
+**M3.8a: the hours model. `legHours(km, mode, montage)` replaces `HOURS_PER_LEG`, lifted out of
+`world-tick.ts` into `loop/leg-hours.ts`.**
 
-The plan is `~/.claude/plans/plan-mode-build-the-synthetic-bird.md`; the leg model is its §"The
-leg model", and ADR 0026 is the decision record. A fresh agent can start here:
+The plan is `~/.claude/plans/plan-mode-build-the-synthetic-bird.md` §"The leg model"; ADR 0026
+Decision 6 is the table. A fresh agent can start here:
 
-1. **Ship uniform values, not the real ones.** M3.7 adds the FIELDS and nothing that computes
-   them: `legKm = uniformSplit(totalKm, legCount)` and `montageLegs = []`. Leg sizing, terrain
-   density and compression are M3.9. Splitting it this way is what makes the digest movement
-   attributable — see step 4.
-2. **`SAVE_VERSION` → 5 and `MIGRATIONS` gains a fourth entry.** `migrate_4_to_5` writes
-   `uniformSplit(totalKm, legCount)`, which is the **correct** value for a v4 save rather than a
-   placeholder. The `legLocations` precedent does NOT transfer: that field is read only through
-   `locationAtLeg` with a `?? 'roadside'` fallback, so an absent one degrades. `legKm` has a sum
-   invariant a per-element fallback would violate, and an absent ARRAY makes `route.legKm[i]` a
-   `TypeError` thrown out of a function whose contract says it returns `EngineError` and never
-   throws.
-3. **Do NOT backfill `legKm` into `save-v1..v4`.** That makes the migration a no-op on every
-   checked-in save and ships it untested — the exact hole `migrate.test.ts:130-159` exists to
-   close. Ship `save-v5{,-loaded}.json` plus a hand-built mid-route v4 save.
-   `migrate.test.ts:127` hard-codes `save-v4-loaded.json` as terminal and must move.
-4. **The digest is NOT the forcing function, and this is the trap.** `canonicalJson` serialises
-   `Object.keys`, so an absent key contributes nothing: adding a field to the TYPE without editing
-   `routes.json` moves **no** golden digest and leaves `state.route.legKm` as `undefined` inside a
-   type that says `readonly number[]`. Nothing typechecks `routes.json` —
-   `load-fixtures.ts:117-127` shape-checks five named fields then casts at `:129`. **Any new
-   `RouteState` field lands with a `requireArray` line in `load-fixtures.ts` in the same commit.**
-5. Also touched: `routes.json` ×3, `state/__tests__/support/make-route.ts` (**imported by 13 test
-   files**; `Partial<RouteState>` shields callers), `create-run-state.ts`, `validate-route.ts`.
-6. **Expected movement: all 9 golden digests, and NOTHING else.** `progressKm` is write-only
-   telemetry, so **neither sim baseline should move** — a digests-only diff is the signature of a
-   save-format bump, and anything more is a finding. This is the cheapest milestone to find it in.
+1. **The strongest structural result in the design is that this is nearly free.** `worldTick`'s
+   drift model is ALREADY denominated in hours rather than legs (ADR 0014, restated at
+   `world-tick.ts:20-27`: "TIME makes you hungry, not legs"). So once hours become a function of
+   distance, montage drain becomes proportional **with no new code** — clock, `progressKm`,
+   hunger (`spanPoints`), energy and health all scale by themselves.
 
-**DoD:** the five checks, `pnpm sim:diff -- --runs=2000` and `--pack=corpus --diff` both reporting
-"No change", regenerated `golden-runs.json` with the diff reviewed, and a regression test.
+   ```
+   legHours(km, mode, montage) = clamp(LEG_OVERHEAD_HOURS[mode] + mulDivRound(km, 1, KMH[mode]),
+                                       MIN_LEG_HOURS[mode], montage ? 30 : 12)
+   LEG_OVERHEAD_HOURS = {foot 0, bus 3, train 2, car 4, truck 4, ferry 4, rideshare 3}
+   KMH                = {foot 4, bus 50, train 80, car 70, truck 50, ferry 30, rideshare 65}
+   ```
+
+2. **The table is calibrated so the three fixtures reproduce their current `HOURS_PER_LEG`
+   exactly**, and stably across the ±1 km split `uniformSplit` now produces: car 62 km → 4+1 = 5 ✓,
+   truck 89/90 km → 4+2 = 6 ✓, bus 86/87 km → 3+2 = 5 ✓. **So the fixture baseline must move by
+   NOTHING.** If `Median legs` or `Median in-game days` moves on `--pack=fixture`, the calibration
+   is wrong and that is a spec bug, not a finding.
+3. **This is also where `world-tick.ts:126`'s `Math.round(totalKm/legCount)` goes away** — see the
+   note under M3.7 above. Until it does, a run's `progressKm` accumulates to
+   `legCount × round(totalKm/legCount)` rather than `totalKm`.
+4. **Graded hygiene is M3.8b, a SEPARATE commit with its own predicted diff.** `world-tick.ts:131`
+   reads `hours >= 6 ? −1 : 0`, which today never fires for car (5), bus (5) or train (4) — so
+   hygiene is effectively static. Grading it makes it drain every leg, and `modifiers.yaml:61,69`
+   make hygiene mechanically live across five check tags, so it WILL move
+   `Modifier chips / check` off 6.7 and every DC it touches. Write the prediction before the run.
+5. **Morale stays ungraded, deliberately.** `world-tick.ts:94-104` measured that a second rung on
+   a floored meter _synchronises_ the collapse (`0/2/6` → `0/0/0` at leg 15). Montage gets no
+   exception.
+
+**DoD:** the five checks, both `sim:diff`s explained (fixture unmoved; corpus explained at M3.8b),
+regenerated goldens with the diff reviewed, and a regression test.
 
 ---
 

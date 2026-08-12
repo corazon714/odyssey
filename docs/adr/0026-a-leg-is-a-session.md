@@ -1,6 +1,7 @@
 # 0026 — A leg is a session: `legKm`, montage, and the cost in hours
 
-- **Status:** Accepted
+- **Status:** Accepted; Decisions 2–3 **implemented at M3.7, 2026-08-12** (see the addendum at
+  the end). The hours table and montage selection remain design-only until M3.8/M3.9.
 - **Date:** 2026-08-09
 - **Relates to:** ADR 0006 (run-state shape), ADR 0014 (world-tick drift), ADR 0016/0017 (the two prior save bumps)
 - **Bumps:** `SAVE_VERSION` 4 → 5
@@ -258,3 +259,64 @@ Recorded rather than worked around.
   `legCount × round(totalKm/legCount)`, not `totalKm` (2140/24 → 24×89 = 2136). Harmless in play,
   but "the `apply-world-effects.ts:115` clamp can never fire from the world tick" is **already**
   false today for round-up routes. Scope that test to fresh runs on generated routes, or drop it.
+
+---
+
+## Addendum — implemented at M3.7 (2026-08-12)
+
+Decisions 2 and 3 shipped: `RouteState` carries `legKm` and `montageLegs`, `SAVE_VERSION` is 5,
+and `migrate_4_to_5` is appended. **Values are uniform everywhere** — M3.9 replaces them.
+
+**The prediction held exactly.** All nine golden digests moved and nothing else did:
+`contentVersion`, `choiceSequence`, `expectedHistoryKeys`, `expectedLegs` and `expectedEndings`
+are byte-identical, and both sim baselines report "No change". That digests-only signature is what
+distinguishes a save-format bump from a behaviour change, and this ADR predicted it as the cheap
+place to find out otherwise.
+
+### Deviation: the allocator is cumulative-floor, NOT largest-remainder
+
+Decision 3 above says `uniformSplit` is "largest-remainder, exact sum". It is not, and the
+sentence should be read as superseded by this paragraph.
+
+**Largest-remainder is ill-defined on a uniform split.** Every leg has the identical remainder, so
+ranking them is a tie across the whole array and the allocator's output depends entirely on
+whatever tie-break the sort happens to use — which is a nondeterminism surface in a value that
+feeds `stateDigest`, and the exact class of thing ADR 0005 §3 exists to keep out of this engine.
+Decision 5 had already rejected largest-remainder for `arrivalLegOfEdge` on the same grounds
+("requires ranking float remainders with exact ties on any equal-length run"); Decision 3 simply
+did not notice it was specifying the thing Decision 5 threw out.
+
+So `uniformSplit` is **cumulative-floor** — `floor((i+1)·total/n) − floor(i·total/n)` — matching
+Decision 5. Two further reasons, and the second is the one that matters later:
+
+- The sum is exact **by construction** rather than by correction. The series telescopes to
+  `floor(total)`, so there is no fix-up pass that a refactor can drop while the tests still pass.
+- The remainder **spreads** instead of clumping at the front. That is cosmetic while nothing reads
+  `legKm`, and it stops being cosmetic at M3.8: `legHours` divides `legKm` by speed, so a
+  front-loaded remainder would put a deterministic duration bump on the opening legs of every
+  route in the game. There is a test asserting the spread, not just the sum.
+
+This is the same allocator Decision 5 chose for `arrivalLegOfEdge`, for the same family of reason.
+
+### Deviations from the Consequences section, both minor
+
+- The two new `ENGINE_ERROR_CODES` are `route/leg-distance-mismatch` and
+  `route/montage-out-of-range`, as named here. **`montage-out-of-range` also carries the
+  ascending/unique violation**, which this ADR implied in the type comment but did not name a code
+  for; folding it in kept the count at the two members promised rather than inventing a third.
+- The `legKm` **length** check returns `route/leg-count-mismatch`, reusing the code `legLocations`
+  already uses for the identical failure. That is why three checks landed against two new codes.
+- **The extra hand-built mid-route v4 save was not needed and was not added.** That instruction
+  was inherited from v3→v4, whose branch (`presentation.kind === 'event'`) no fixture reached.
+  `migrate_4_to_5` has no branch — every save has a route — and `save-v4.json` is _already_
+  mid-route at `legIndex: 7` of `legCount: 24`, so the v1→v5 chain exercises it on real values.
+  Two tests assert the outcome rather than the fact it ran: that the keys are WRITTEN rather than
+  left absent, and that the result sums to `totalKm` and passes `validateRoute`.
+
+### The caveat in the last bullet was real, and no test was written against it
+
+`world-tick.ts:126` still applies `Math.round(totalKm/legCount)` per leg, so a v4 run's
+accumulated `progressKm` was built at a rate summing to `legCount × round(totalKm/legCount)`
+rather than `totalKm` — 24 × 89 = 2136 against 2140 on the illicit fixture. M3.7 did not change
+`world-tick.ts` at all, so this is unchanged and still true. **M3.8a is where it goes away**, when
+the hours model replaces that line; until then, do not write the test this ADR warned about.
