@@ -149,6 +149,8 @@ export function formatSlice(
   slice: {
     readonly nodes: readonly { readonly terrain: string; readonly type: string }[];
     readonly edges: readonly { readonly distanceKm: number; readonly adminBoundary: boolean }[];
+    readonly droppedFragmentNodes: number;
+    readonly droppedFragmentCount: number;
     readonly connectivity: {
       readonly componentCount: number;
       readonly components: readonly (readonly number[])[];
@@ -204,6 +206,13 @@ export function formatSlice(
     lines.push(
       `  components with >=${String(floor).padStart(2)} nodes: ${String(above).padStart(3)}` +
         `   fragments below: ${String(sizes.length - above).padStart(3)}`,
+    );
+  }
+  // A silent drop of a hundred nodes is exactly what must not happen, so say it.
+  if (slice.droppedFragmentNodes > 0) {
+    lines.push(
+      `  DROPPED ${String(slice.droppedFragmentNodes)} node(s) in ` +
+        `${String(slice.droppedFragmentCount)} fragment(s) — too small to be a landmass (ADR 0036)`,
     );
   }
   lines.push(`orphans       ${String(slice.connectivity.orphans.length)}`);
