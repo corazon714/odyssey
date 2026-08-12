@@ -13,11 +13,13 @@ import {
   TIMES_OF_DAY,
   TRANSPORT_MODES,
   complicationId,
+  edgeId,
   endingId,
   eventId,
   flagId,
   itemId,
   languageId,
+  nodeId,
   npcId,
   regionId,
   traitId,
@@ -74,6 +76,8 @@ export const endingIdSchema = rawId.transform(endingId);
 export const regionIdSchema = rawId.transform(regionId);
 export const complicationIdSchema = rawId.transform(complicationId);
 export const languageIdSchema = rawId.transform(languageId);
+export const nodeIdSchema = rawId.transform(nodeId);
+export const edgeIdSchema = rawId.transform(edgeId);
 
 /**
  * An omitted or explicitly-null key becomes `null`.

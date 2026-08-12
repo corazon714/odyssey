@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createContentPack, collectFlagUsage } from '@odyssey/engine';
-import { diffReports } from '../diff-report.ts';
+import { diffReports, runCountOf } from '../diff-report.ts';
 import { formatReport } from '../format-report.ts';
-import { loadFixturePack, loadFixtureScenarios } from '../load-pack.ts';
+import { loadCorpusPack, loadFixturePack, loadFixtureScenarios } from '../load-pack.ts';
 import { ascending, percentile } from '../percentile.ts';
 import { runMany } from '../run-many.ts';
 
@@ -117,5 +117,76 @@ describe('diffReports', () => {
     const result = diffReports(REPORT, changed);
     expect(result.changed).toBe(true);
     expect(result.lines.some((line) => line.startsWith('+'))).toBe(true);
+  });
+});
+
+describe('runCountOf — the guard on comparing two different sample sizes', () => {
+  it('reads the count out of a report header', () => {
+    expect(runCountOf('# Sim Report — seed=base contentVersion=aee5a082 runs=2000\n')).toBe(2000);
+  });
+
+  it('reads it past a leading HTML comment block, as a committed baseline has', () => {
+    const baseline = [
+      '<!--',
+      '  THE FIXTURE BALANCE BASELINE.',
+      '  Regenerate deliberately:  pnpm sim -- --runs=2000',
+      '-->',
+      '',
+      '# Sim Report — seed=base contentVersion=aee5a082 runs=2000',
+    ].join('\n');
+    // The comment block mentions the count too, and the first match is the one that counts —
+    // both say 2000 for the same reason, so either is right.
+    expect(runCountOf(baseline)).toBe(2000);
+  });
+
+  it('returns null when the header does not say, rather than guessing', () => {
+    expect(runCountOf('# Sim Report — seed=base contentVersion=aee5a082\n')).toBeNull();
+    expect(runCountOf('')).toBeNull();
+  });
+
+  it('does not match a number that merely contains the digits', () => {
+    expect(runCountOf('overruns=99')).toBeNull();
+  });
+
+  it('is what `diffReports` cannot tell you, because normalise blanks the count', () => {
+    // The whole reason the check lives outside the diff. These two reports differ ONLY in run
+    // count, and the diff calls them identical — correctly, since the count is not a balance
+    // property. But every sampled rate underneath would move, and nothing would say why.
+    const at = (runs: number): string =>
+      `# Sim Report — seed=base contentVersion=aee5a082 runs=${String(runs)}\nCompleted 44.1%\n`;
+    expect(diffReports(at(2000), at(5000)).changed).toBe(false);
+    expect(runCountOf(at(2000))).not.toBe(runCountOf(at(5000)));
+  });
+});
+
+describe('the modifier target is only printed against a pack that could meet it', () => {
+  // The fixture pack carries `registries.modifiers: []` ON PURPOSE — it is the empty-registry
+  // control the golden runs are built on. Printing "target 3-7" against it reported a standing
+  // failure that could never be fixed without destroying the control, and it cost an
+  // investigation before anyone checked whether the pack had a registry at all.
+  it('the fixture pack really does have no modifier registry', () => {
+    expect(PACK.modifiers).toHaveLength(0);
+  });
+
+  it('says so, and does not print a band the pack cannot reach', () => {
+    expect(REPORT).toContain('NO modifier registry in this pack');
+    expect(REPORT).not.toContain('target 3-7');
+    // The starved-check count is still reported — it is just no longer called a finding.
+    expect(REPORT).toContain('Checks under 2 chips');
+    expect(REPORT).not.toContain('each one draws nothing the registry exists for');
+  });
+
+  it('prints the band again as soon as the pack has rows', () => {
+    // The REAL corpus rather than a hand-built row, so this cannot pass against a registry
+    // shape the loader would reject. The summary is the fixture's and does not describe the
+    // corpus — deliberately: which parenthetical renders depends only on whether the pack has
+    // rows, and pairing a mismatched summary with it proves exactly that.
+    const corpus = loadCorpusPack().pack;
+    expect(corpus.modifiers.length).toBeGreaterThan(0);
+
+    const report = formatReport(SUMMARY, corpus, { seed: 'report', runs: 200, elapsedMs: 42 });
+    expect(report).toContain('target 3-7');
+    expect(report).toContain('each one draws nothing the registry exists for');
+    expect(report).not.toContain('NO modifier registry in this pack');
   });
 });

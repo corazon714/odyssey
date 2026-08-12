@@ -1,0 +1,133 @@
+{
+  "_comment": [
+    "WHERE THE GEOGRAPHY COMES FROM, and the only hosts this repo will take bytes from.",
+    "",
+    "`sha256` and `retrievedUtc` are null until `pnpm geo:audit -- --stage=fetch --real` has run.",
+    "That is an honest unfetched state, not a placeholder: nothing reads these files yet, and",
+    "`--check` refuses to proceed while any hash is null, because a byte comparison against",
+    "nothing is not a comparison.",
+    "",
+    "`nodeMajor` records the Node major that produced the artifacts. Math.sin and Math.atan2 are",
+    "implementation-approximated, so a last-bit change between majors can flip a selection",
+    "boundary and rewrite both generated files on a pull request that touched nothing.",
+    "ADR 0024 Decision 6.",
+    "",
+    "The full licence record, with the operative clauses quoted, is docs/geo-data-licensing.md.",
+    "OpenStreetMap and everything derived from it is absent on purpose: ODbL 4.6 would oblige us",
+    "to publish our route graph free of charge to every player."
+  ],
+  "nodeMajor": 26,
+  "sources": [
+    {
+      "id": "geonames-cities15000",
+      "url": "https://download.geonames.org/export/dump/cities15000.zip",
+      "license": "cc-by-4.0",
+      "attribution": "Place data © GeoNames contributors, licensed under CC BY 4.0. https://www.geonames.org — filtered, thinned and reformatted for this game.",
+      "sha256": "f04f7f3392c57260aea416b271b72c982fa970461732d895550eedc5be6f7e2f",
+      "retrievedUtc": "2026-08-11",
+      "file": "cities15000.txt",
+      "conversion": "unzip only"
+    },
+    {
+      "id": "geonames-alternate-names",
+      "url": "https://download.geonames.org/export/dump/alternateNames.zip",
+      "license": "cc-by-4.0",
+      "attribution": "Place data © GeoNames contributors, licensed under CC BY 4.0. https://www.geonames.org — filtered, thinned and reformatted for this game.",
+      "sha256": null,
+      "retrievedUtc": null,
+      "file": "alternateNames.txt",
+      "required": false,
+      "conversion": "unzip only — not needed until the exonym pass (ADR 0028, M3.11)"
+    },
+    {
+      "id": "natural-earth-countries-10m",
+      "url": "https://naciscdn.naturalearthdata.com/download/10m/cultural/ne_10m_admin_0_countries.zip",
+      "license": "public-domain",
+      "attribution": "Country outlines from Natural Earth (https://www.naturalearthdata.com), public domain.",
+      "sha256": "d2c80cc2887cde73c25375deb272d5a67d47b80e7736e2eea02fb91c8c151be7",
+      "retrievedUtc": "2026-08-11",
+      "file": "ne_10m_admin_0_countries.geojson",
+      "conversion": "unzip, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
+    },
+    {
+      "id": "natural-earth-boundary-lines-10m",
+      "url": "https://naciscdn.naturalearthdata.com/download/10m/cultural/ne_10m_admin_0_boundary_lines_land.zip",
+      "license": "public-domain",
+      "attribution": "Boundary lines from Natural Earth (https://www.naturalearthdata.com), public domain.",
+      "sha256": "95f42eb1285bccb04617c49ecea3e494c5ab430dcbf234494d74997f066a3a91",
+      "retrievedUtc": "2026-08-11",
+      "file": "ne_10m_admin_0_boundary_lines_land.geojson",
+      "conversion": "unzip, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
+    },
+    {
+      "id": "natural-earth-land-50m",
+      "url": "https://naciscdn.naturalearthdata.com/download/50m/physical/ne_50m_land.zip",
+      "license": "public-domain",
+      "attribution": "Coastlines from Natural Earth (https://www.naturalearthdata.com), public domain.",
+      "sha256": "73a95724973ad48befa5619ed462df1fadad8fb3b40090779d5e4db0b7ebe309",
+      "retrievedUtc": "2026-08-11",
+      "file": "ne_50m_land.geojson",
+      "conversion": "unzip, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
+    },
+    {
+      "id": "natural-earth-ports-10m",
+      "url": "https://naciscdn.naturalearthdata.com/download/10m/cultural/ne_10m_ports.zip",
+      "license": "public-domain",
+      "attribution": "Port locations from Natural Earth (https://www.naturalearthdata.com), public domain.",
+      "sha256": "88f26638aa66c52fa794a6da73ec0a07f2d72d76add568eb5beb67f1b342179e",
+      "retrievedUtc": "2026-08-11",
+      "file": "ne_10m_ports.geojson",
+      "conversion": "unzip, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
+    },
+    {
+      "id": "natural-earth-railroads-10m",
+      "url": "https://naciscdn.naturalearthdata.com/download/10m/cultural/ne_10m_railroads.zip",
+      "license": "public-domain",
+      "attribution": "Railway lines from Natural Earth (https://www.naturalearthdata.com), public domain.",
+      "sha256": "65c0b5b400ccc89c6e3752bab121b8ea262790554a24bad68ae67b80a8db82de",
+      "retrievedUtc": "2026-08-11",
+      "file": "ne_10m_railroads.geojson",
+      "conversion": "unzip, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
+    },
+    {
+      "id": "natural-earth-geography-regions-10m",
+      "url": "https://naciscdn.naturalearthdata.com/download/10m/physical/ne_10m_geography_regions_polys.zip",
+      "license": "public-domain",
+      "attribution": "Physical region labels from Natural Earth (https://www.naturalearthdata.com), public domain.",
+      "sha256": "51525e9c1a2bcaf449108ccc414290c6fc9652fcf67553547baf672e91d9beed",
+      "retrievedUtc": "2026-08-11",
+      "file": "ne_10m_geography_regions_polys.geojson",
+      "conversion": "unzip the 10m physical bundle, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
+    },
+    {
+      "id": "natural-earth-land-10m",
+      "url": "https://naciscdn.naturalearthdata.com/download/10m/physical/ne_10m_land.zip",
+      "license": "public-domain",
+      "attribution": "Land polygons from Natural Earth (https://www.naturalearthdata.com), public domain.",
+      "sha256": "895ff762734b1ee840dadbee735ad1b85131e575d6e0bbf56c10b16e87703dc6",
+      "retrievedUtc": "2026-08-11",
+      "file": "ne_10m_land.geojson",
+      "conversion": "unzip the 10m physical bundle, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
+    },
+    {
+      "id": "natural-earth-lakes-10m",
+      "url": "https://naciscdn.naturalearthdata.com/download/10m/physical/ne_10m_lakes.zip",
+      "license": "public-domain",
+      "attribution": "Lakes and reservoirs from Natural Earth (https://www.naturalearthdata.com), public domain.",
+      "sha256": "08174d666eaa236a8be04790a3c914e7bf7b4da56c7c973e4c60aac7c347e2ec",
+      "retrievedUtc": "2026-08-11",
+      "file": "ne_10m_lakes.geojson",
+      "conversion": "unzip the 10m physical bundle, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
+    },
+    {
+      "id": "natural-earth-playas-10m",
+      "url": "https://naciscdn.naturalearthdata.com/download/10m/physical/ne_10m_playas.zip",
+      "license": "public-domain",
+      "attribution": "Salt pans and intermittent lakes from Natural Earth (https://www.naturalearthdata.com), public domain.",
+      "sha256": "eb5ddc2d97b477bbe7ecce948bcb75a8f0e1725fdf02ed20a4ff786d9d97e06c",
+      "retrievedUtc": "2026-08-11",
+      "file": "ne_10m_playas.geojson",
+      "conversion": "unzip the 10m physical bundle, then: npx -y mapshaper <layer>.shp -o format=geojson <layer>.geojson"
+    }
+  ]
+}

@@ -28,8 +28,12 @@
 
   STILL OPEN, and it is content work rather than tuning:
     - Beat fill 30.1%. The corpus fills border_crossing and midpoint_crisis; the fixture routes
-      also schedule departure, ferry_boarding, approach and finale. Wants corpus routes, which
-      want route generation — Phase 2B engine/src/route/.
+      also schedule departure, approach and finale. Wants corpus routes, which want route
+      generation — Phase 3 engine/src/route/.
+      CORRECTED at Phase 3 M3.1: ferry_boarding was listed here and NO fixture route schedules
+      it. Measured: 13 slots = departure x3, border_crossing x2, midpoint_crisis x3, approach x2,
+      finale x3. Ceiling is 5/13 = 38.5%, so 30.1% is 78% of what is reachable, and route
+      generation alone lands at 39-49%. See docs/adr/0027 Decision 5.
 
   REPORT FORMAT CHANGED at the Phase 2B verification pass: four lines added — modifier chips
   per check, checks under 2 chips, and universal-choice offer/pick rates. The numbers they

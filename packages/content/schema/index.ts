@@ -43,7 +43,21 @@ export {
   timeOfDaySchema,
   traitIdSchema,
   transportModeSchema,
+  nodeIdSchema,
+  edgeIdSchema,
 } from './common.ts';
+
+export {
+  buildGeoEdge,
+  buildGeoNode,
+  geoEdgeSchema,
+  geoNodeSchema,
+  populationBandSchema,
+  seasonalitySchema,
+  serviceKindSchema,
+  terrainKindSchema,
+  type GeoNodeRecord,
+} from './geo.ts';
 
 export { predicateSchema, type TersePredicate } from './predicate.ts';
 export { effectSchema } from './effect.ts';

@@ -306,8 +306,15 @@ demekten çok daha iyi sonuç verir.
 > and every list below was printed out of the built barrel rather than transcribed.
 >
 > Where Part I and Part II disagree, **Part II is what runs**. Each divergence names the ADR
-> that authorised it. `packages/content/schema/` is still empty (Phase 2); until it exists the
-> engine's TypeScript types are the only authority on shape — see ADR 0009.
+> that authorised it. `packages/content/schema/` now holds nine modules and is authoritative over
+> content SEMANTICS; the engine's TypeScript types remain authoritative over SHAPE — see ADR 0009
+> and ADR 0019.
+>
+> **§II.1 was re-printed from the built barrel on 2026-08-09 (Phase 3 M3.1).** It had gone stale in
+> five places since Phase 1 — `EFFECT_OPS` was 12 against 15, `RESOURCE_KEYS` still said `money`,
+> the predicate count said 27 against 28, `SAVE_VERSION` said 1 against 4, and the barrel-export
+> count said 159 against 192. A block that claims to be printed from the code has to be reprinted
+> when the code moves; **reprint it rather than patch it.**
 
 ## II.1 Vocabularies, as exported
 
@@ -316,22 +323,28 @@ RNG_STREAMS       eventPick · outcomeRoll · skillCheck · npcGen · encounterF
                   worldTick · routeGen · chanceGate            ← 8, spec §5 listed 7
 EFFECT_OPS        resource · skill · flag · clearFlag · relationship · advanceTime
                   scheduleEvent · unlockEnding · item · transport · document · route
-                                                                ← 12, spec implied 11
+                  moveItem · loseContainer · grantContainer     ← 15, spec implied 11
 EVENT_PRIORITIES  filler · normal · beat · critical
 BEAT_TYPES        departure · border_crossing · ferry_boarding · midpoint_crisis
                   approach · finale
 LOCATION_TYPES    border_crossing · checkpoint · city · town · village · roadside
                   rest_stop · station · port · wilderness
-RESOURCE_KEYS     money · energy · health · morale · hunger · hygiene · heat · reputation
+RESOURCE_KEYS     cash · bank · energy · health · morale · hunger · hygiene · heat
+                  reputation                                    ← 9, ADR 0016 split money
 SKILL_KEYS        negotiation · stealth · mechanics · streetwise · endurance
 TRANSPORT_MODES   foot · bus · train · car · truck · ferry · rideshare
 ROUTE_PROFILES    fastest · cheapest · safest · scenic · illicit
 RUN_STATUSES      preparing · travelling · ended
-PREDICATE kinds   27, kind-tagged (ADR 0007)
+CONTAINER_KINDS   person · bag · vehicle · stash                ← ADR 0017
+BEAT_SLOT_STATUSES pending · filled · slid · expired            ← ADR 0013
+CHECK_TAGS        social · haggle · deception · intimidate · authority · bribery · language
+                  stealth · crime · search · documents · physical · endurance · mechanics
+                  medical · navigate · perception · luck        ← 18, ADR 0015
+PREDICATE kinds   28, kind-tagged (ADR 0007)
 ERROR CODES       11, all RETURNED — the engine never throws
 ```
 
-`SAVE_VERSION = 1` · `CHECK_DIE_SIDES = 20` · `MAX_PENDING = 32` / 3 per event · 159 barrel
+`SAVE_VERSION = 4` · `CHECK_DIE_SIDES = 20` · `MAX_PENDING = 32` / 3 per event · 192 barrel
 exports.
 
 ## II.2 Divergences from Part I

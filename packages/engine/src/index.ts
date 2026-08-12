@@ -271,6 +271,74 @@ export {
 export { tagSaturation } from './director/tag-saturation.ts';
 export { pickWeight, scoreEvent } from './director/score-event.ts';
 export { FILLER_RUNG, RELAXATION_RUNGS, UNEVENTFUL_RUNG } from './director/relaxation-rung.ts';
+
+// ── route generation ───────────────────────────────────────────────────────────────────────
+// The graph is a PARAMETER, never loaded here: the engine may not read a file, and geography is
+// a build-time input rather than pack content because it cannot change how an existing run
+// plays. ADR 0024 Decision 3.
+export { TERRAIN_KINDS, type TerrainKind } from './route/geo-terrain.ts';
+export {
+  SERVICE_KINDS,
+  hasService,
+  serviceCount,
+  serviceMask,
+  servicesOf,
+  type ServiceKind,
+} from './route/geo-services.ts';
+export {
+  POPULATION_BANDS,
+  populationRank,
+  type GeoNode,
+  type PopulationBand,
+} from './route/geo-node.ts';
+export {
+  SEASONALITY_KINDS,
+  hasMode,
+  modeMask,
+  modesOf,
+  type GeoEdge,
+  type Seasonality,
+} from './route/geo-edge.ts';
+export {
+  createGeoGraph,
+  edgeAt,
+  nodeAt,
+  otherEnd,
+  type GeoGraph,
+  type GeoGraphResult,
+} from './route/geo-graph.ts';
+export { createIntHeap, type IntHeap } from './route/int-heap.ts';
+export {
+  NO_RELAXATION,
+  RELAX_ALL_MASKS,
+  costFor,
+  type CostRelaxation,
+  type EdgeCost,
+} from './route/cost-function.ts';
+export { pathKey, shortestPath, type GeoPath, type ShortestPathOptions } from './route/dijkstra.ts';
+export {
+  MAX_SPUR_NODES,
+  kShortestPaths,
+  type YenOptions,
+  type YenResult,
+} from './route/yen-k-shortest.ts';
+export {
+  DIVERSITY_MAX_PERCENT,
+  DIVERSITY_RUNGS,
+  acceptByDiversity,
+  overlapPercent,
+  type DiversityRung,
+  type DiversityVerdict,
+} from './route/route-diversity.ts';
+export {
+  MAX_CANDIDATE_ROUTES,
+  MIN_CANDIDATE_ROUTES,
+  selectPaths,
+  type PathShortfall,
+  type RejectedPath,
+  type SelectPathsResult,
+  type SelectedPath,
+} from './route/select-paths.ts';
 export {
   collectComplications,
   EMPTY_COMPLICATIONS,

@@ -35,14 +35,14 @@ Long-range payoff rate     100.0%   (target 80%)
 Beat fill rate              51.8%
 Repeat-event rate           58.5%
 Complication rate            0.0%   (target 60%)
-Modifier chips / check        0.2   (target 3-7, over 2923 checks)
-Checks under 2 chips         2923   (each one draws nothing the registry exists for)
+Modifier chips / check        0.2   (over 2923 checks; NO modifier registry in this pack)
+Checks under 2 chips         2923   (expected — there is no registry here, so this is not a finding)
 Universal choices offered    0.0%   (share of choices shown)
 Universal choices picked     0.0%   (over ~30% means they are flattening the corpus)
 Unresolved threads              0
 
-Wall clock                 702 ms   (0.35 ms/run)
-Extrapolated to 20,000     7.0 s   (target <30 s)
+Wall clock                 459 ms   (0.23 ms/run)
+Extrapolated to 20,000     4.6 s   (target <30 s)
 
 ## Endings
   ending.failure_collapsed            35.8%

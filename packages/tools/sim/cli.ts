@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findWorkspaceRoot } from '../shared/workspace-root.ts';
-import { diffReports } from './diff-report.ts';
+import { diffReports, runCountOf } from './diff-report.ts';
 import { formatReport } from './format-report.ts';
 import { loadCorpusPack, loadFixturePack, loadFixtureScenarios } from './load-pack.ts';
 import { parseArgs } from './parse-args.ts';
@@ -103,6 +103,19 @@ if (parsed.options.diff) {
   const baseline = readBaseline();
   if (baseline === null) {
     console.error(`sim: no baseline at ${BASELINE_PATH} — copy ${LATEST_PATH} there.`);
+    process.exit(1);
+  }
+
+  // A baseline is only comparable against the run count it was GENERATED at. Every rate in it
+  // is a sample, and a bigger sample is a different sample — see `runCountOf`.
+  const baselineRuns = runCountOf(baseline);
+  if (baselineRuns !== null && baselineRuns !== parsed.options.runs) {
+    console.error(
+      `sim: ${baselineName} was generated at runs=${String(baselineRuns)}, and you asked for ` +
+        `runs=${String(parsed.options.runs)}. Those are not comparable — the diff would be ` +
+        `sampling noise dressed as a finding. Re-run with --runs=${String(baselineRuns)}, or ` +
+        `regenerate the baseline deliberately if the new count is the one you want.`,
+    );
     process.exit(1);
   }
 
