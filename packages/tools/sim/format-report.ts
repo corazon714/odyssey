@@ -76,6 +76,15 @@ export function formatReport(summary: SimSummary, pack: ContentPack, meta: Repor
         ? '(each one draws nothing the registry exists for)'
         : '(expected — there is no registry here, so this is not a finding)'
     }`,
+    // The MEAN alone cannot tell "everything crept up" from "a few late checks pull fifteen",
+    // and those want opposite fixes — a band recalibration versus a tail. Pillar 2 is what the
+    // band is for: a result screen the player cannot reconstruct is the failure, so the worst
+    // check matters more than the average one.
+    `Checks over 7 chips        ${String(summary.checksOverBand).padStart(6)}   ${
+      hasRegistry
+        ? `(${pct(summary.checksRolled === 0 ? 0 : summary.checksOverBand / summary.checksRolled)} of checks; worst pulls ${String(summary.maxChips)})`
+        : '(no registry in this pack)'
+    }`,
     `Universal choices offered  ${pct(summary.universalOfferRate).padStart(6)}   (share of choices shown)`,
     `Universal choices picked   ${pct(summary.universalPickRate).padStart(6)}   (over ~30% means they are flattening the corpus)`,
     `Unresolved threads         ${String(summary.unresolvedThreads).padStart(6)}`,

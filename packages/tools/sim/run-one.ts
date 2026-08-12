@@ -48,6 +48,9 @@ export type SimRun = {
   readonly checksRolled: number;
   readonly chipsTotal: number;
   readonly checksUnderTwoChips: number;
+  /** Checks pulling more chips than the 3-7 legibility band allows, and the worst one. */
+  readonly checksOverBand: number;
+  readonly maxChips: number;
   /**
    * Universal choices, offered vs taken. BOTH, because either alone misleads: a row offered
    * everywhere and never picked is clutter, and a row picked far more often than it is offered
@@ -112,6 +115,8 @@ export function runOne(
   let checksRolled = 0;
   let chipsTotal = 0;
   let checksUnderTwoChips = 0;
+  let checksOverBand = 0;
+  let maxChips = 0;
   let choicesOffered = 0;
   let universalOffered = 0;
   let picks = 0;
@@ -193,6 +198,8 @@ export function runOne(
       checksRolled += 1;
       chipsTotal += resolved.resolution.modifiers.length;
       if (resolved.resolution.modifiers.length < 2) checksUnderTwoChips += 1;
+      if (resolved.resolution.modifiers.length > 7) checksOverBand += 1;
+      maxChips = Math.max(maxChips, resolved.resolution.modifiers.length);
     }
     if (resolved.outcome === null) noOutcomeChoices += 1;
     for (const applied of resolved.applied) {
@@ -218,6 +225,8 @@ export function runOne(
     checksRolled,
     chipsTotal,
     checksUnderTwoChips,
+    checksOverBand,
+    maxChips,
     choicesOffered,
     universalOffered,
     picks,
@@ -259,6 +268,8 @@ function blank(
     checksRolled: 0,
     chipsTotal: 0,
     checksUnderTwoChips: 0,
+    checksOverBand: 0,
+    maxChips: 0,
     choicesOffered: 0,
     universalOffered: 0,
     picks: 0,

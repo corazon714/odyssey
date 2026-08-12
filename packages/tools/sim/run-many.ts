@@ -34,6 +34,8 @@ export type SimSummary = {
   readonly meanChipsPerCheck: number;
   readonly checksRolled: number;
   readonly checksUnderTwoChips: number;
+  readonly checksOverBand: number;
+  readonly maxChips: number;
   readonly universalOfferRate: number;
   readonly universalPickRate: number;
   readonly beatsExpired: number;
@@ -108,6 +110,8 @@ export function summarise(runs: readonly SimRun[], pack: ContentPack): SimSummar
     meanChipsPerCheck: checksRolled === 0 ? 0 : chipsTotal / checksRolled,
     checksRolled,
     checksUnderTwoChips: usable.reduce((sum, r) => sum + r.checksUnderTwoChips, 0),
+    checksOverBand: usable.reduce((sum, r) => sum + r.checksOverBand, 0),
+    maxChips: usable.reduce((most, r) => Math.max(most, r.maxChips), 0),
     universalOfferRate: rate(universalOffered, choicesOffered),
     universalPickRate: rate(universalPicked, picks),
     unfillableBeatTypes: pack.unfillableBeatTypes,

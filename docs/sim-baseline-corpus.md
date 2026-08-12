@@ -69,6 +69,12 @@
   one endpoint four times. Endpoints are now >=900 km apart pairwise: 4 destinations, 4
   transport modes, 22-46 legs. Completion 47.3% -> 38.7% is the harder, more varied route set,
   not a balance regression — and it sits more centrally in the 30-50 band.
+
+  REPORT FORMAT CHANGED at M3.11: a "Checks over 7 chips" line joins the modifier block, and it
+  is what turned the 7.3 mean into an actionable finding — 38.5% of checks exceed the band and
+  the worst pulls 13. Across-the-board, not a tail. MEASURED, NOT FIXED: see docs/adr/0023 and
+  the handoff note. The mechanical impact is bounded (diminish after 3, clamp +6/-8), so this is
+  a pillar-2 legibility problem rather than a balance one.
 -->
 
 # Sim Report — seed=base contentVersion=c10af194 runs=2000
@@ -85,12 +91,13 @@ Repeat-event rate           64.5%
 Complication rate           59.8%   (target 60%)
 Modifier chips / check        7.3   (target 3-7, over 19553 checks)
 Checks under 2 chips            0   (each one draws nothing the registry exists for)
+Checks over 7 chips          7525   (38.5% of checks; worst pulls 13)
 Universal choices offered   38.5%   (share of choices shown)
 Universal choices picked    39.7%   (over ~30% means they are flattening the corpus)
 Unresolved threads             93
 
-Wall clock                 2318 ms   (1.16 ms/run)
-Extrapolated to 20,000     23.2 s   (target <30 s)
+Wall clock                 2393 ms   (1.20 ms/run)
+Extrapolated to 20,000     23.9 s   (target <30 s)
 
 ## Endings
   ending.failure_gave_up              39.2%

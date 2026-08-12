@@ -36,6 +36,9 @@
 
   M3.10b FINAL: starvation softened again, 16/9 -> 28/14, after the morale conversion changed
   what the lever does. See docs/adr/0035.
+
+  REPORT FORMAT CHANGED at M3.11: a "Checks over 7 chips" line joins the modifier block. The
+  mean alone could not distinguish a band-wide creep from a tail, and those want opposite fixes.
 -->
 
 # Sim Report — seed=base contentVersion=aee5a082 runs=2000
@@ -52,12 +55,13 @@ Repeat-event rate           65.0%
 Complication rate            0.0%   (target 60%)
 Modifier chips / check        0.3   (over 3521 checks; NO modifier registry in this pack)
 Checks under 2 chips         3521   (expected — there is no registry here, so this is not a finding)
+Checks over 7 chips             0   (no registry in this pack)
 Universal choices offered    0.0%   (share of choices shown)
 Universal choices picked     0.0%   (over ~30% means they are flattening the corpus)
 Unresolved threads              2
 
-Wall clock                 548 ms   (0.27 ms/run)
-Extrapolated to 20,000     5.5 s   (target <30 s)
+Wall clock                 772 ms   (0.39 ms/run)
+Extrapolated to 20,000     7.7 s   (target <30 s)
 
 ## Endings
   ending.failure_gave_up              43.1%
