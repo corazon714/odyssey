@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createContentPack, collectFlagUsage } from '@odyssey/engine';
 import { diffReports, runCountOf } from '../diff-report.ts';
 import { formatReport } from '../format-report.ts';
-import { loadFixturePack, loadFixtureScenarios } from '../load-pack.ts';
+import { loadCorpusPack, loadFixturePack, loadFixtureScenarios } from '../load-pack.ts';
 import { ascending, percentile } from '../percentile.ts';
 import { runMany } from '../run-many.ts';
 
@@ -156,5 +156,37 @@ describe('runCountOf — the guard on comparing two different sample sizes', () 
       `# Sim Report — seed=base contentVersion=aee5a082 runs=${String(runs)}\nCompleted 44.1%\n`;
     expect(diffReports(at(2000), at(5000)).changed).toBe(false);
     expect(runCountOf(at(2000))).not.toBe(runCountOf(at(5000)));
+  });
+});
+
+describe('the modifier target is only printed against a pack that could meet it', () => {
+  // The fixture pack carries `registries.modifiers: []` ON PURPOSE — it is the empty-registry
+  // control the golden runs are built on. Printing "target 3-7" against it reported a standing
+  // failure that could never be fixed without destroying the control, and it cost an
+  // investigation before anyone checked whether the pack had a registry at all.
+  it('the fixture pack really does have no modifier registry', () => {
+    expect(PACK.modifiers).toHaveLength(0);
+  });
+
+  it('says so, and does not print a band the pack cannot reach', () => {
+    expect(REPORT).toContain('NO modifier registry in this pack');
+    expect(REPORT).not.toContain('target 3-7');
+    // The starved-check count is still reported — it is just no longer called a finding.
+    expect(REPORT).toContain('Checks under 2 chips');
+    expect(REPORT).not.toContain('each one draws nothing the registry exists for');
+  });
+
+  it('prints the band again as soon as the pack has rows', () => {
+    // The REAL corpus rather than a hand-built row, so this cannot pass against a registry
+    // shape the loader would reject. The summary is the fixture's and does not describe the
+    // corpus — deliberately: which parenthetical renders depends only on whether the pack has
+    // rows, and pairing a mismatched summary with it proves exactly that.
+    const corpus = loadCorpusPack().pack;
+    expect(corpus.modifiers.length).toBeGreaterThan(0);
+
+    const report = formatReport(SUMMARY, corpus, { seed: 'report', runs: 200, elapsedMs: 42 });
+    expect(report).toContain('target 3-7');
+    expect(report).toContain('each one draws nothing the registry exists for');
+    expect(report).not.toContain('NO modifier registry in this pack');
   });
 });

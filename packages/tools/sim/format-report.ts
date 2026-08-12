@@ -36,6 +36,23 @@ export function formatReport(summary: SimSummary, pack: ContentPack, meta: Repor
   const usable = summary.runs.filter((r) => r.error === null);
   const lines: string[] = [];
 
+  /**
+   * **A target only means something against a pack that could meet it.**
+   *
+   * These two lines used to print "target 3-7" and "each one draws nothing the registry exists
+   * for" unconditionally. On `--pack=fixture` that reads as a standing failure — 0.2 against a
+   * band of 3-7, with every one of 2,923 checks flagged as starved — and it is not one. The
+   * fixture pack carries `registries.modifiers: []` ON PURPOSE: it is the empty-registry control
+   * the golden runs are built on (`load-pack.ts` says so at length), and it has four checks and
+   * four choice-local modifiers between them. It cannot reach 3-7 without ceasing to be the
+   * control, so the only thing that number could ever prompt is a wasted investigation. It
+   * prompted one.
+   *
+   * The corpus, with 137 rows, reads 6.7 and zero starved checks. That is the measurement this
+   * target exists for, and it still prints exactly as before.
+   */
+  const hasRegistry = pack.modifiers.length > 0;
+
   lines.push(
     `# Sim Report — seed=${meta.seed} contentVersion=${pack.version.slice(0, 8)} runs=${String(meta.runs)}`,
     '',
@@ -49,8 +66,16 @@ export function formatReport(summary: SimSummary, pack: ContentPack, meta: Repor
     `Beat fill rate             ${pct(summary.beatFillRate).padStart(6)}`,
     `Repeat-event rate          ${pct(repeatRate(usable)).padStart(6)}`,
     `Complication rate          ${pct(summary.complicationRate).padStart(6)}   (target ${String(ATTACH_PERCENT)}%)`,
-    `Modifier chips / check     ${summary.meanChipsPerCheck.toFixed(1).padStart(6)}   (target 3-7, over ${String(summary.checksRolled)} checks)`,
-    `Checks under 2 chips       ${String(summary.checksUnderTwoChips).padStart(6)}   (each one draws nothing the registry exists for)`,
+    `Modifier chips / check     ${summary.meanChipsPerCheck.toFixed(1).padStart(6)}   ${
+      hasRegistry
+        ? `(target 3-7, over ${String(summary.checksRolled)} checks)`
+        : `(over ${String(summary.checksRolled)} checks; NO modifier registry in this pack)`
+    }`,
+    `Checks under 2 chips       ${String(summary.checksUnderTwoChips).padStart(6)}   ${
+      hasRegistry
+        ? '(each one draws nothing the registry exists for)'
+        : '(expected — there is no registry here, so this is not a finding)'
+    }`,
     `Universal choices offered  ${pct(summary.universalOfferRate).padStart(6)}   (share of choices shown)`,
     `Universal choices picked   ${pct(summary.universalPickRate).padStart(6)}   (over ~30% means they are flattening the corpus)`,
     `Unresolved threads         ${String(summary.unresolvedThreads).padStart(6)}`,
