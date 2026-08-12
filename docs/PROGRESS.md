@@ -383,8 +383,48 @@ Nothing is left broken. These are absent or partial, with paths:
 
 ## Next step — ONE task
 
-**M3.10a: wire `generateRoutes` into the sim and ship a corpus routes file in the SHORT-TRIP
-BAND (10–16 legs).**
+**M3.10b: raise the corpus to the full 22–48 leg band — and it inherits the survivability
+problem, which is the real work.**
+
+**M3.10a is DONE** (`63c5aa7`). `--pack=corpus` now generates its routes from the geo slice
+(ADR 0034 — built at sim time, not committed), `generateRoutes` is barrel-exported, and CI runs
+50 corpus journeys on generated routes. **The control held: `pnpm sim:diff -- --runs=2000`
+reports "No change".** Never-fired events went to **0** — every corpus event is reachable for
+the first time.
+
+Two findings from the first generated set, both fixed and both worth remembering:
+
+- **Every route came out `mode=bus`**, because `startingMode` ordered by best-supported and
+  bus/car/truck tie on every road edge. That erases transport as a decision and makes
+  car/truck-gated content unreachable. Mode is now chosen by PROFILE preference.
+- **The first pair list crossed no borders** — it came off the overlay's tolled corridors, which
+  are deliberately intra-country, so `border.night_crossing` never fired in 2,000 runs. Pairs
+  were re-chosen by measurement; four of six now cross.
+
+A fresh agent can start here:
+
+1. **The band is the whole milestone, and it is known to be unsurvivable.** ADR 0026's addendum
+   measured the corpus at **0.1% completion at 24 legs and 0.0% beyond** — 2 of 2000 runs reach
+   leg 25. M3.10a's 74.4% at median 15 legs sits exactly on that curve. Raising the band without
+   touching the economy will produce ~0% completion, so **this milestone is a content and
+   `worldTick` problem wearing a route-generation hat.**
+2. The lever is **recovery, not drain**. Health is a one-way ratchet: two outcomes in the entire
+   13-event corpus restore it (`rest.the_shared_room/see_to_your_feet`,
+   `weather.the_storm_you_cannot_drive_through/see_to_the_damage`), both +2. Long-range payoff
+   already fell to 13.9% with 62 unresolved threads at 15 legs, because runs end before
+   consequences land.
+3. Widening the band is a one-line change to `SHORT_BAND_MIN`/`SHORT_BAND_MAX` in
+   `sim/load-pack.ts` plus a new pair list — **do that last**, after the economy can support it,
+   or the measurement says nothing that ADR 0026 has not already said.
+4. **Do not chase completion by shortening routes.** That is what M3.10a's band did, and it is
+   why its numbers are a measurement point rather than a shipping target.
+
+**DoD:** the five checks, both `sim:diff`s explained, completion back inside 30–50% at 22–48
+legs, and an ADR for whatever the economy change turns out to be.
+
+---
+
+### The M3.10a brief, for reference
 
 **M3.9 is COMPLETE** — `681f621`, `adb36db`, `05dfb93`. `packages/engine/src/route/` now has
 `leg-plan`, `leg-locations`, `beat-schedule`, `materialise-route`, `route-preview` and

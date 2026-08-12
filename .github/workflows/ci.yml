@@ -97,6 +97,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Run 50 full journeys end to end
         run: pnpm sim -- --runs=50
+      # M3.10a: the corpus runs on routes GENERATED from the geo slice, so this exercises the
+      # whole chain the fixture pack cannot — loadGeo, the graph, selectPaths and generation —
+      # and fails closed if no route lands in the 10-16 leg band.
+      - name: Run 50 journeys on the corpus, with generated routes
+        run: pnpm sim -- --pack=corpus --runs=50
 
   content-lint:
     runs-on: ubuntu-latest

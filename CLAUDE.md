@@ -23,12 +23,12 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.9 (2026-08-12).** Steps **5-7 RUN**
+> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.10a (2026-08-12).** Steps **5-7 RUN**
 > against a real corpus — 13 events, 137 modifiers, 25 complications, 15 universal choices, a
 > complete `en` locale, `content:lint` clean. **Step 2 routes on real geography** (ADR 0033) and
-> its diversity gate PASSES at median 59%. Generation is COMPLETE through M3.9 — terrain-derived
-> legs, montage, beats — but has **NO CALLER**: the route still comes from `RunInit.route`, and
-> M3.10a wires it in. Steps 1, 3 and 4 do not exist. Three of §9's registries are live.
+> its diversity gate PASSES at median 59%. Generation is COMPLETE and **the corpus sim runs on
+> generated routes** (ADR 0034); the APP still supplies `RunInit.route`. Steps 1, 3 and 4 do not
+> exist. Three of §9's registries are live.
 >
 > **`docs/PROGRESS.md` is the authority on current state and this paragraph is not.**
 > `docs/engine-spec.md` Part II is the authority on what the engine does, written from the code.
