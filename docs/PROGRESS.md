@@ -5,6 +5,143 @@
 
 ---
 
+## Shipped this session (2026-08-12, session 7) — **PHASE 3 THROUGH M3.5**
+
+Steps 1–5 of the Phase 3 plan (`~/.claude/plans/plan-mode-build-the-synthetic-bird.md`) are
+done. **The route generator runs on real geography and the M3.5 diversity gate PASSES at a
+median 59% route overlap against a 70% ceiling.** It got there after failing at 83%, and almost
+none of the fix was where the plan predicted — see ADRs 0030 and 0031.
+
+### The slice, as committed
+
+`263 nodes` (170 settlements + 93 border crossings) · `404 edges` · **1 connected component** ·
+0 orphans · 35 bridges · 33 tolled edges · 129 rail corridors · 58 `unavoidable` hard edges.
+Derived from GeoNames + Natural Earth only; no OSM anywhere (ADR 0024).
+
+### Prove it
+
+```bash
+pnpm typecheck && pnpm lint && pnpm test && pnpm content:lint && pnpm format:check
+```
+
+```bash
+pnpm geo:build       # 1 component, 0 orphans, overlay issues none
+pnpm geo:diversity   # VERDICT: PASS — median 59% against a 70% ceiling
+pnpm geo:verify      # named pairs, pathologies, benchmark
+node packages/tools/geo-build/cli.ts --stage=all --real --bbox=-12,36,30,60 --check
+pnpm sim:diff -- --runs=2000                    # "No change vs docs/sim-baseline.md."
+pnpm sim -- --pack=corpus --runs=2000 --diff    # "No change vs docs/sim-baseline-corpus.md."
+```
+
+`--stage=all` needs `.geo-cache/` populated (seven archives, `sources.lock.json` lists them).
+Everything else runs on committed artifacts.
+
+### What landed, in commit order
+
+| commit    | what                                                                                     |
+| --------- | ---------------------------------------------------------------------------------------- |
+| `ff5f5e3` | last 5 components closed via overlay; `--stage=diversity`, which names its own cause     |
+| `d9b55be` | `place-borders.ts` — 51 controlled crossings, 42 of them forced by connectivity          |
+| `9d539cd` | `classify-terrain` precedence: `hill` 0 → 12, `desert` correctly still 0 in Europe       |
+| `8e42227` | `tolled` was declared and NEVER READ; `train` tested endpoints not corridors (93% → 36%) |
+| `59d71e0` | `safest`'s terrain mask cut the graph into 52 pieces; `GeoEdge.unavoidable` fixes it     |
+| `b702315` | **the gate PASSES** — `TWO_HOP_RATIO` 1.6 → 1.2 took the median 72% → 59%                |
+| `c9c86ae` | there was no sim baseline drift; `sim:diff` now refuses a mismatched run count           |
+| `606c407` | the fixture pack is the empty-registry control and must stop being reported as failing   |
+| `3f6522a` | `pnpm geo:verify` — and three findings it turned up                                      |
+| `846a4e8` | ADRs 0030–0032                                                                           |
+
+### The three things worth remembering
+
+1. **A mask must not disconnect the graph** (ADR 0030). The boundary mask left 43 components,
+   the terrain mask 52. The ladder then rescued every profile by dropping masks, after which all
+   five searched one identical graph and "diversity" was arithmetic. Both masks now carry a
+   derived Kruskal exemption, and what is NOT exempted is the point.
+2. **Diversity came from graph density, not the cost functions** (ADR 0031). Three real
+   cost-model fixes moved identical `fastest`/`cheapest` pairs 170 → 167. Moving the 2-hop prune
+   from 1.6 to 1.2 took it to 102 and the median from 72% to 59%.
+3. **A report must read its diagnosis off its own measurement** (ADR 0032). Two reports printed
+   conclusions their data did not support. One cost a twenty-commit bisect for a drift that did
+   not exist.
+
+---
+
+## Half-done
+
+Nothing is left broken. These are absent or partial, with paths:
+
+- **`packages/content/geo/overlay.json` should be `overlay.yaml`.** Its own header says M3.6
+  moves it behind a loader in `packages/content`, where `yaml` is already declared. It is JSON
+  today only because `packages/tools` cannot reach `yaml`.
+- **`packages/content/package.json` has no `"./geo"` export.** M3.6 needs one. Adding it is a
+  `ROOT_TRIGGERS` commit and takes the full-monorepo DoD.
+- **`densify-corridors.ts` was never built.** 16 edges (4%) exceed 450 km, the largest `D_max`
+  in the plan; the max is 573 km. A `GEO_EDGE_TOO_LONG` rule added at M3.6 goes red on our own
+  data immediately — the plan warns about exactly this.
+- **`place-borders` and `mark-unavoidable` are global over-approximations.** Both compute one
+  spanning set for the whole graph rather than per origin–destination pair (ADR 0030).
+- **`docs/geo-data-licensing.md` §6 contradicts the code.** It describes a _per-terrain_
+  circuity factor with a "not yet measured" table; `bf1164e` measured ONE global 1.39 and
+  rejected per-terrain. It also references `overlay.yaml`, which does not exist yet.
+- **`world.simplified.json` does not exist.** Deferred to M3.11 with the scale-up.
+- **The 22–48 leg band is unsurvivable** — 0% completion at 24+ legs, measured (ADR 0026
+  addendum). Still open, and it gates M3.10b.
+
+---
+
+## Next step — ONE task
+
+**M3.6: `packages/content/loader/load-geo.ts` plus the `content:lint` geo rules that can hold
+against a 263-node slice.**
+
+A fresh agent can start here:
+
+1. Read `docs/adr/0024-geography-data-and-node-identity.md` (node ids, the OSM firewall, the
+   services table) and the header comment in `packages/content/geo/overlay.json`.
+2. Move `overlay.json` → `overlay.yaml`. `yaml` is already declared in
+   `packages/content/package.json`; `packages/tools/geo-build/cli.ts` currently `JSON.parse`s it
+   in `generate()`, and that call site moves behind the new loader.
+3. Write `load-geo.ts` beside `load-content.ts`, following the `readLocale` precedent
+   (`load-content.ts:84-87`): return `{ geo: null, issues: [] }` when no geo files exist. Do NOT
+   return a missing-file `ContentIssue` — that becomes an `error('SCHEMA', …)` and turns
+   `lint.test.ts:25-28` red for the milestones before the data lands.
+4. Add `"./geo"` to `packages/content/package.json` exports. Full-monorepo DoD.
+5. Write `packages/tools/content-lint/rules-geo.ts`, each rule with a synthetic-bundle test:
+   `GEO_DISCONNECTED`, `GEO_ORPHAN_NODE`, `GEO_EDGE_ENDPOINT_UNRESOLVED`, `GEO_OVERLAY_STALE`,
+   `GEO_NAMED_BORDER`, `GEO_PLACE_BEHAVIOUR`, `GEO_NAME_FIELD_MISPLACED`, `GEO_OSM_SOURCE`,
+   `GEO_NODES_DIGEST_STALE`.
+6. **Do NOT add `GEO_EDGE_TOO_LONG` or a node-count band rule** unless open question 1 below is
+   answered otherwise. Both fail on the current slice by construction. Deferring them is a
+   decision — record it in the commit.
+7. DoD: `pnpm content:lint` clean, and `lint.test.ts` must still pin `MISSING_IMAGE_MANIFEST` as
+   the only gap.
+
+---
+
+## Open questions for the human
+
+1. **`GEO_EDGE_TOO_LONG`: defer to M3.11, or build `densify-corridors.ts` now?** Recommendation
+   is defer — waypoint density is a function of the final node set, so calibrating it against 263
+   nodes means redoing it at 1,200. This is the one M3.6 decision that changes what gets built.
+2. **The 70% diversity guarantee is directional, and nobody decided that.**
+   `acceptByDiversity` tests each new candidate against what is already accepted, normalised by
+   the candidate's length, and never re-tests an earlier route against a later one. On
+   Barcelona–Palermo, `fastest` is 79% inside `safest` while `safest` was accepted at 69%. Is a
+   symmetric check wanted, or is the one-way guarantee the intended contract? (ADR 0031.)
+3. **Yen has no length ceiling.** Vienna–Budapest is 297 km direct and the pool also holds 866,
+   1,186 and 1,352 km routes. Sample-wide the longest/shortest ratio is p50 1.36×, tail 10.32×.
+   Should `kShortestPaths` reject a backfill beyond some multiple of the shortest?
+4. **`illicit` strictly dominates on 9 of 168 sampled pairs** — shorter than every other route,
+   no more borders, no harder ground. The illegal route is meant to be a trade. Accept, or price
+   it?
+5. **The 22–48 leg band is unsurvivable and M3.10b depends on it.** Health is a one-way ratchet
+   with two `+2` restores in the whole corpus. Content problem or tuning problem?
+6. **Is ~40% the accepted beat-fill number for Phase 3**, or do the four missing beat events
+   (`departure`, `ferry_boarding`, `approach`, `finale`) come into scope? Unchanged from session
+   6, and it gates M3.10b's acceptance criteria.
+
+---
+
 ## Shipped this session (2026-08-09, session 6) — **PHASE 2B COMPLETE**, M0 through M-F
 
 **Phase 2B is complete. All seven milestones landed in one session.** The plan — 162
