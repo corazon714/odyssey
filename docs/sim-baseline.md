@@ -39,6 +39,21 @@
 
   REPORT FORMAT CHANGED at M3.11: a "Checks over 7 chips" line joins the modifier block. The
   mean alone could not distinguish a band-wide creep from a tail, and those want opposite fixes.
+
+  M3.11 CHIP COLLAPSE DID NOT MOVE THIS BASELINE, and the null result is the point rather than a
+  missing measurement. `resolveModifiers` now also returns `resolution.chips` — the resolved rows
+  grouped by `sourceKind` for the result screen — and the sim counts THAT instead of
+  `resolution.modifiers`, because the 3-7 band is a budget on what the screen asks the player to
+  hold. This pack carries `registries.modifiers: []` on purpose, so there is nothing to collapse:
+  no check in it ever pulls two rows of one kind, and the two lists are the same list here.
+
+  `pnpm sim:diff -- --runs=2000` reports no change, and the file below is unedited apart from
+  this note. The corpus, which has 137 rows, moved 7.3 -> 6.9 chips/check and 38.5% -> 30.6%
+  over band; see docs/sim-baseline-corpus.md and docs/adr/0037.
+
+  The goldens did not move either, and that is the load-bearing check for this control: the chip
+  list is returned from `resolveChoice` and never written into `RunState`, so `stateDigest`
+  cannot see it. `pnpm golden:update` rewrote golden-runs.json byte-identically.
 -->
 
 # Sim Report — seed=base contentVersion=aee5a082 runs=2000

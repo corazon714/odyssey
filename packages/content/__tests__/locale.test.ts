@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   CONTAINER_KINDS,
+  MODIFIER_SOURCE_KINDS,
   SKILL_KEYS,
   type Choice,
   type GameEvent,
@@ -83,6 +84,7 @@ const requiredKeys = (): readonly string[] => [
   ...universalChoices.flatMap((row) => choiceKeys(row.choice)),
   ...SKILL_KEYS.map((skill) => `check.modifier.skill.${skill}`),
   ...CONTAINER_KINDS.map((kind) => `check.modifier.container.${kind}`),
+  ...MODIFIER_SOURCE_KINDS.map((kind) => `check.kind.${kind}`),
 ];
 
 describe('the en locale', () => {
@@ -128,6 +130,17 @@ describe('the en locale', () => {
       ...CONTAINER_KINDS.map((kind) => `check.modifier.container.${kind}`),
     ];
     expect(synthesised.filter((key) => !locale.has(key))).toEqual([]);
+  });
+
+  it('resolves the collapsed-chip label for EVERY sourceKind', () => {
+    // `collapseChips` mints `check.kind.<sourceKind>` whenever two or more rows of one kind fold
+    // into a single chip, and nothing in the corpus mentions those keys either — the vocabulary
+    // is a closed enum in the engine, not something an author writes. A missing one ships a raw
+    // key to the result screen exactly where the collapse was supposed to make it legible.
+    const kindKeys = MODIFIER_SOURCE_KINDS.map((kind) => `check.kind.${kind}`);
+    expect(kindKeys.filter((key) => !locale.has(key))).toEqual([]);
+    // Anti-vacuous: an empty vocabulary would pass the line above.
+    expect(kindKeys.length).toBe(12);
   });
 
   it('resolves every key the shipped content can ask for, from any source', () => {

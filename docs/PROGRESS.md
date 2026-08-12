@@ -5,6 +5,31 @@
 
 ---
 
+## M3.11 — modifier chips collapse by `sourceKind` (uncommitted, tree left dirty for review)
+
+`ModifierResolution` gained `chips`: the resolved rows grouped by `sourceKind` and summed, as a
+seventh **presentation-only** step of `resolveModifiers`. `modifiers` is unchanged and is still
+what `runSkillCheck` builds the roll from, so the arithmetic cannot move — asserted as a
+property over 600 generated resolutions, the load-bearing one being roll neutrality (same die,
+same total, same verdict off either list). A group of one keeps the row's own
+`check.modifier.<id>` label; a group of two or more takes a new `check.kind.<sourceKind>` key,
+twelve of them, covered both ways by `packages/content/__tests__/locale.test.ts`.
+
+**Measured, corpus, 2,000 runs: chips/check 7.3 → 6.9, over-band 7,525 (38.5%, worst 13) →
+5,980 (30.6%, worst 11). Two lines moved and no others.** The goldens regenerate
+byte-identically, because the chip list is returned from `resolveChoice` and never written into
+`RunState` — `stateDigest` cannot see it.
+
+**IT DOES NOT LAND THE 3–7 BAND, and the reason is worth carrying forward:** 94.6% of groups
+have exactly one member. Checks pull one row from each of eight-to-eleven _different_ kinds, not
+eight rows of one kind, so there is almost nothing to fold. This is a breadth problem, which is
+what `modifiers.yaml`'s own header says the registry was authored for. Two measured follow-ups
+are deferred with their numbers in `docs/adr/0037`: suppressing zero-delta groups reaches 19.1%
+over band, and a top-6-plus-overflow chip reaches 0.0% by construction. Neither is in this
+change; each is its own design decision.
+
+---
+
 ## Shipped this session (2026-08-12, session 8) — **M3.6, M3.7, M3.8a and M3.8b**
 
 Four milestones. M3.6 made the geo data loadable and linted; M3.7 put `legKm` and `montageLegs`

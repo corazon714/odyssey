@@ -1,6 +1,21 @@
 {
   "_comment": "Modifier chips: what the player reads on the result screen to reconstruct the roll (design pillar 2, legible randomness). NOT checked by content:lint — keysOf() walks event-derived keys only — so a missing one here ships a raw key to the screen rather than failing a build. There is a test in packages/content/__tests__ that covers the gap.",
 
+  "_comment_kinds": "check.kind.<sourceKind>: the label a COLLAPSED chip takes when two or more rows of one sourceKind fold together — \"Condition x3, -4\". A chip of one keeps the row's own check.modifier.<id> label instead, so these only ever render for a fold. One per entry of MODIFIER_SOURCE_KINDS; the vocabulary is closed, so the set below is complete by construction. See docs/adr/0037.",
+
+  "check.kind.condition": "How you are",
+  "check.kind.context": "Where and when",
+  "check.kind.item": "What you carry",
+  "check.kind.flag": "Your record",
+  "check.kind.trait": "Who you are",
+  "check.kind.skill": "What you know",
+  "check.kind.relationship": "Who knows you",
+  "check.kind.transport": "How you travel",
+  "check.kind.document": "Your papers",
+  "check.kind.region": "Papers for this crossing",
+  "check.kind.companion": "Your companion",
+  "check.kind.momentum": "How the run is going",
+
   "check.modifier.skill.negotiation": "Negotiation",
   "check.modifier.skill.stealth": "Stealth",
   "check.modifier.skill.mechanics": "Mechanics",

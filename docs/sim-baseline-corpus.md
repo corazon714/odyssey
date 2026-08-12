@@ -75,6 +75,27 @@
   the worst pulls 13. Across-the-board, not a tail. MEASURED, NOT FIXED: see docs/adr/0023 and
   the handoff note. The mechanical impact is bounded (diminish after 3, clamp +6/-8), so this is
   a pillar-2 legibility problem rather than a balance one.
+
+  M3.11 COLLAPSED THE CHIPS, and exactly two lines moved. `resolution.chips` groups the resolved
+  rows by `sourceKind` for the RESULT SCREEN; `resolution.modifiers` is untouched and is still
+  what the roll is built from, so no delta and no verdict can move. That is proved as a property
+  over 600 generated resolutions (roll neutrality: same die, same total, same verdict off either
+  list) and confirmed here — every other line below, completion included, is unchanged. The
+  golden runs regenerate byte-identically, because the chip list never enters `RunState`.
+
+  The sim now counts `resolution.chips`, not `resolution.modifiers`: the 3-7 band is a budget on
+  what the SCREEN asks the player to hold, not on how many rows the registry matched.
+
+    Modifier chips / check   7.3 -> 6.9
+    Checks over 7 chips      7525 (38.5%, worst 13) -> 5980 (30.6%, worst 11)
+
+  STILL OUT OF BAND, and that is recorded rather than hidden. The premise that twelve
+  sourceKinds bound the count well inside 3-7 is FALSE — the bound is 12, and 94.6% of groups
+  have exactly one member, so there is almost nothing to fold. Checks do not pull eight rows of
+  one kind; they pull one row from each of eight-to-eleven DIFFERENT kinds. This is a breadth
+  problem, which is what `modifiers.yaml`'s own header says the registry was authored for.
+  Two measured follow-ups (suppress zero-delta groups -> 19.1%; an overflow chip -> 0.0%) are
+  deferred with their numbers in docs/adr/0037.
 -->
 
 # Sim Report — seed=base contentVersion=c10af194 runs=2000
@@ -89,15 +110,15 @@ Long-range payoff rate      18.2%   (target 80%)
 Beat fill rate              24.2%
 Repeat-event rate           64.5%
 Complication rate           59.8%   (target 60%)
-Modifier chips / check        7.3   (target 3-7, over 19553 checks)
+Modifier chips / check        6.9   (target 3-7, over 19553 checks)
 Checks under 2 chips            0   (each one draws nothing the registry exists for)
-Checks over 7 chips          7525   (38.5% of checks; worst pulls 13)
+Checks over 7 chips          5980   (30.6% of checks; worst pulls 11)
 Universal choices offered   38.5%   (share of choices shown)
 Universal choices picked    39.7%   (over ~30% means they are flattening the corpus)
 Unresolved threads             93
 
-Wall clock                 2393 ms   (1.20 ms/run)
-Extrapolated to 20,000     23.9 s   (target <30 s)
+Wall clock                 2516 ms   (1.26 ms/run)
+Extrapolated to 20,000     25.2 s   (target <30 s)
 
 ## Endings
   ending.failure_gave_up              39.2%

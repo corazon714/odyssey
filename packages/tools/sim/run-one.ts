@@ -44,6 +44,9 @@ export type SimRun = {
    * 08-DIVERSITY-SYSTEMS D1 is actually about: "a typical check should pull 3-7". A check
    * pulling under two is drawing nothing the registry exists to provide, and it is invisible
    * without counting — the roll still happens and the report still looks healthy.
+   *
+   * Counted over `resolution.chips` (the collapsed render list) since M3.11, not over
+   * `resolution.modifiers` (the audit trail). The band is a budget on the SCREEN.
    */
   readonly checksRolled: number;
   readonly chipsTotal: number;
@@ -196,10 +199,14 @@ export function runOne(
     }
     if (resolved.resolution !== null) {
       checksRolled += 1;
-      chipsTotal += resolved.resolution.modifiers.length;
-      if (resolved.resolution.modifiers.length < 2) checksUnderTwoChips += 1;
-      if (resolved.resolution.modifiers.length > 7) checksOverBand += 1;
-      maxChips = Math.max(maxChips, resolved.resolution.modifiers.length);
+      // `chips`, not `modifiers`: the band is a PILLAR-2 budget on what the result screen asks
+      // the player to hold at once, and since M3.11 that is the collapsed list. Counting the
+      // audit trail here would measure a number no screen shows.
+      const chips = resolved.resolution.chips.length;
+      chipsTotal += chips;
+      if (chips < 2) checksUnderTwoChips += 1;
+      if (chips > 7) checksOverBand += 1;
+      maxChips = Math.max(maxChips, chips);
     }
     if (resolved.outcome === null) noOutcomeChoices += 1;
     for (const applied of resolved.applied) {

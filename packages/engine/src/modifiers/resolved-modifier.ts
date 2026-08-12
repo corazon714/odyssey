@@ -1,3 +1,4 @@
+import { type ModifierChip } from './collapse-chips.ts';
 import { type ModifierSourceKind } from './registry-modifier.ts';
 
 /**
@@ -34,8 +35,18 @@ export type SuppressedModifier = {
 };
 
 export type ModifierResolution = {
-  /** Ordered by |delta| descending, then id. The order chips are rendered in. */
+  /**
+   * Every row that reached the total, ordered by |delta| descending then id. THE AUDIT TRAIL,
+   * and what `runSkillCheck` builds the roll from — not the render list. A check can legitimately
+   * match a dozen rows, which is a diversity win and a pillar-2 problem at the same time.
+   */
   readonly modifiers: readonly ResolvedModifier[];
+  /**
+   * THE RENDER LIST: `modifiers` grouped by `sourceKind`, summed. Sums to `total` exactly, by
+   * property test. Never feeds a roll. See `collapse-chips.ts` for why the grouping key is
+   * `sourceKind` and `docs/adr/0037` for what it does and does not fix.
+   */
+  readonly chips: readonly ModifierChip[];
   /** Sum of `delta`. Always equals the sum of the chips — asserted, see resolve-modifiers. */
   readonly total: number;
   readonly suppressed: readonly SuppressedModifier[];
@@ -43,6 +54,7 @@ export type ModifierResolution = {
 
 export const EMPTY_RESOLUTION: ModifierResolution = Object.freeze({
   modifiers: [],
+  chips: [],
   total: 0,
   suppressed: [],
 });
