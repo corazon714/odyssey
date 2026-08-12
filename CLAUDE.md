@@ -23,7 +23,7 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.10a (2026-08-12).** Steps **5-7 RUN**
+> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.10b, band OPEN (2026-08-12).** Steps **5-7 RUN**
 > against a real corpus — 13 events, 137 modifiers, 25 complications, 15 universal choices, a
 > complete `en` locale, `content:lint` clean. **Step 2 routes on real geography** (ADR 0033) and
 > its diversity gate PASSES at median 59%. Generation is COMPLETE and **the corpus sim runs on
@@ -150,7 +150,7 @@ packages/tools/                                                      ✅
   content-lint/             19 rules inc. 10 GEO_*, file:line:col    ✅ CI job
   content-stats/            counts + 4-axis coverage report          ✅
   imagegen/ · i18n-check/                                              (empty)
-docs/                       adr/0001-0033 · engine-spec · PROGRESS   ✅
+docs/                       adr/0001-0035 · engine-spec · PROGRESS   ✅
   enforcement.md            what enforces each §2 rule               ✅
   stack-notes.md            the dependency traps, in full            ✅
   content-style-guide.md    how to author; registry-vs-event         ✅

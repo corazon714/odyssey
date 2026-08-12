@@ -354,6 +354,8 @@ Nothing is left broken. These are absent or partial, with paths:
   exists. That is M3.10a, and it is why both baselines read unmoved through four milestones. `leg-plan.ts` has **no caller** — it is pure and fully tested, so the tree is green and
   both baselines are unmoved, but nothing generates a route yet. The exact continuation is under
   "Next step" above.
+- **M3.10b's band is UNMET: corpus completion 26.1% against 30-50%.** Energy is the binding
+  meter and the `HOURS_PER_MORALE` sweep saturates at ~28%. ADR 0035.
 - **ADR 0026 Decision 6's incoherence is LIVE and has no owner.** `legKm` is baked at generation,
   so a leg planned by bus and walked after `bus_ejection` costs `legHours(86,'foot')` = 22 hours
   capped at 12. It is reachable by one shipped event on one of three fixture routes and is worth
@@ -383,8 +385,48 @@ Nothing is left broken. These are absent or partial, with paths:
 
 ## Next step — ONE task
 
-**M3.10b: raise the corpus to the full 22–48 leg band — and it inherits the survivability
-problem, which is the real work.**
+**M3.10b is PARTLY DONE and its acceptance criterion is OPEN. Completion is 26.1% against a
+30–50% target, and the next lever is ENERGY.**
+
+Two commits landed (`4ffe4cd`, `664c8a5`) and ADR 0035 records the reasoning. The corpus runs
+22–48 leg routes; completion went **3.6% → 26.1%** and median legs **14 → 21** on routes of
+23–31, so runs now nearly finish. The fixture pack moved 31.2% → 35.1% and is still in band.
+
+**What was found, and it overturned the first diagnosis.** The trajectory table showed health
+falling and morale healthy at p50 7 by leg 25 — but that table is **conditioned on survival**,
+and every run that died of `failure_gave_up` had already left the sample. The failure mode is
+CONSERVED: softening starvation converts `failure_collapsed` → `failure_gave_up` (68.1% → 3.0%
+against 28.2% → 72.4%) without saving a run. A reverted diagnostic with hunger made unreachable —
+perfect food forever, zero collapse — still stalled at 26.3%, which bounds the entire
+health-and-food family, content levers included, below the floor.
+
+`moraleCost` was the last per-leg drain in the file and is now per-hour. That is a RATE change,
+not a grading — `ENERGY_TIRED` stays single-rung, pinned by a test.
+
+A fresh agent continues here:
+
+1. **The sweep saturates, so do not keep turning `HOURS_PER_MORALE`.** 8/12/16/20 gives
+   23.5/26.1/27.5/27.8. No value reaches 30.
+2. **ENERGY is the binding meter.** It floors by mid-run, and morale only drains at all because
+   energy is at or below `ENERGY_TIRED`. Fix energy and the morale drain stops being
+   unconditional. Levers, in rough order of cheapness: `HOURS_PER_ENERGY` per mode (currently
+   foot 5 … train 14); an energy floor that is not 0; or content that restores energy — check the
+   pick-rate first, because the health equivalent bought only +0.3pp.
+3. **Content cannot close this gap and there is arithmetic for that.** The four health-restoring
+   choices are picked 0.38 times per run out of 15.5; and universal injection is **saturated** —
+   all 13 events sit at `min(3, authored)`, so a 16th registry row EVICTS one rather than adding
+   coverage. At this route length balance is an engine-rate problem.
+4. **`sim.test.ts`'s payoff floor was lowered 0.5 → 0.2 and that is a weaker guard.** Tighten it
+   and raise the sample if unresolved threads climb in either baseline.
+5. **Do not use `payoffRate` to choose between settings** — it moved non-monotonically
+   (73.9 → 70.8 → 80.0) across a monotone constant, so it is noise-dominated at n=2000.
+
+**DoD:** the five checks, both `sim:diff`s explained, **completion inside 30–50% at 22–48 legs**,
+and an ADR for the energy change.
+
+---
+
+### The original M3.10b brief, for reference
 
 **M3.10a is DONE** (`63c5aa7`). `--pack=corpus` now generates its routes from the geo slice
 (ADR 0034 — built at sim time, not committed), `generateRoutes` is barrel-exported, and CI runs
