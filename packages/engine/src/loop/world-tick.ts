@@ -97,17 +97,19 @@ const HARSH_WEATHER_HOURS = 6;
  * Hunger thresholds, and how fast each rung costs health — in HOURS, like every other drain
  * here.
  *
- * **Halved at M3.10b** (10/5 → 16/9). Every constant in this file was tuned against ~12-leg
+ * **Softened twice at M3.10b** (10/5 → 16/9 → 28/14). Every constant in this file was tuned against ~12-leg
  * routes; generated routes are 22-48, and at that length starvation billed faster than any
  * recovery the corpus can offer. Measured sweep on 22-48-leg corpus routes: 10/5 → 3.6%
- * completion, 12/6 → 8.7%, 16/9 → 18.9%, 26/14 → 24.5%. 16/9 is chosen over the
- * better-scoring 26/14 because the extra 5.6 points cost making health vestigial — collapse
- * falls to 3% — and a mechanic that never fires is worse than a harsh one (pillar 1).
+ * completion; 16/9 got to 26.1% and left collapse at 50.8%, still the majority ending. Once
+ * morale went per-hour the lever was re-swept and 28/14 lands at 47.3%, INSIDE the band, with
+ * median legs 24 against routes of 23-31. 32/16 scores 54.8% and 40/20 59.4%, both ABOVE it and
+ * both making health vestigial (collapse 5.8% and 0.7%) — a mechanic that never fires is worse
+ * than a harsh one (pillar 1), so 28/14 is the value that keeps collapse meaningful at 14.7%.
  */
 const HUNGER_HURTS = 8;
 const HUNGER_STARVING = 10;
-export const HOURS_PER_HUNGER_DAMAGE = 16;
-const HOURS_PER_STARVING_DAMAGE = 9;
+export const HOURS_PER_HUNGER_DAMAGE = 28;
+const HOURS_PER_STARVING_DAMAGE = 14;
 
 /**
  * Energy at or below this costs morale — and it is charged PER HOUR, not per leg (M3.10b).

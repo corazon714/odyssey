@@ -33,35 +33,38 @@
   converted from a per-LEG drain to a per-HOUR one. The fixture pack is 10-16-leg routes, so it
   feels the change far less than the corpus does — but it is an engine change and the control
   necessarily moves with it.
+
+  M3.10b FINAL: starvation softened again, 16/9 -> 28/14, after the morale conversion changed
+  what the lever does. See docs/adr/0035.
 -->
 
 # Sim Report — seed=base contentVersion=aee5a082 runs=2000
 
-Completion rate             35.1%   (target band 30-50%)
-Median legs                    11
+Completion rate             48.5%   (target band 30-50%)
+Median legs                    12
 Median in-game days             6
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
-Long-range payoff rate      61.9%   (target 80%)
-Beat fill rate              55.6%
-Repeat-event rate           63.1%
+Long-range payoff rate      92.9%   (target 80%)
+Beat fill rate              54.0%
+Repeat-event rate           65.0%
 Complication rate            0.0%   (target 60%)
-Modifier chips / check        0.2   (over 3385 checks; NO modifier registry in this pack)
-Checks under 2 chips         3385   (expected — there is no registry here, so this is not a finding)
+Modifier chips / check        0.3   (over 3521 checks; NO modifier registry in this pack)
+Checks under 2 chips         3521   (expected — there is no registry here, so this is not a finding)
 Universal choices offered    0.0%   (share of choices shown)
 Universal choices picked     0.0%   (over ~30% means they are flattening the corpus)
-Unresolved threads              8
+Unresolved threads              2
 
-Wall clock                 549 ms   (0.27 ms/run)
+Wall clock                 548 ms   (0.27 ms/run)
 Extrapolated to 20,000     5.5 s   (target <30 s)
 
 ## Endings
-  ending.failure_collapsed            33.8%
-  ending.failure_gave_up              31.1%
-  ending.arrival_hollow               20.6%
-  ending.arrival_triumphant           13.3%
-  ending.arrival_quiet                 1.2%
+  ending.failure_gave_up              43.1%
+  ending.arrival_hollow               29.8%
+  ending.arrival_triumphant           15.0%
+  ending.failure_collapsed             8.4%
+  ending.arrival_quiet                 3.6%
 
 ## Never-fired events
   (none)
@@ -72,9 +75,9 @@ Extrapolated to 20,000     5.5 s   (target <30 s)
   border.guard_remembers/acknowledge                   0.1%
   border.bribe_attempt/offer_bribe                     0.2%
   border.bribe_attempt/hide_the_cash                   0.4%
-  transit.bus_ejection/get_off                         1.4%
-  crisis.breakdown/find_help                           1.5%
-  transit.bus_ejection/plead_with_driver               1.7%
+  transit.bus_ejection/get_off                         1.3%
+  crisis.breakdown/find_help                           1.4%
+  transit.bus_ejection/plead_with_driver               1.5%
 
 ## Flags
   written: 5   read: 2
@@ -82,10 +85,10 @@ Extrapolated to 20,000     5.5 s   (target <30 s)
   read but NEVER WRITTEN:   (none)   <- gate can never open
 
 ## Resource trajectories (p10/p50/p90 by leg)
-  cash     leg5: 220/280/540   leg15: 400/460/500   leg25: —
-  health   leg5: 9/10/10   leg15: 2/4/6   leg25: —
-  morale   leg5: 4/6/7   leg15: 1/3/5   leg25: —
-  energy   leg5: 0/2/8   leg15: 0/0/5   leg25: —
+  cash     leg5: 220/280/540   leg15: 180/460/500   leg25: —
+  health   leg5: 9/10/10   leg15: 1/6/8   leg25: —
+  morale   leg5: 4/6/7   leg15: 0/3/5   leg25: —
+  energy   leg5: 0/2/8   leg15: 0/0/4   leg25: —
   hygiene  leg5: 0/2/3   leg15: 0/0/0   leg25: —
 
 ## Beat types no event can fill

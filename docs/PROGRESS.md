@@ -354,8 +354,6 @@ Nothing is left broken. These are absent or partial, with paths:
   exists. That is M3.10a, and it is why both baselines read unmoved through four milestones. `leg-plan.ts` has **no caller** — it is pure and fully tested, so the tree is green and
   both baselines are unmoved, but nothing generates a route yet. The exact continuation is under
   "Next step" above.
-- **M3.10b's band is UNMET: corpus completion 26.1% against 30-50%.** Energy is the binding
-  meter and the `HOURS_PER_MORALE` sweep saturates at ~28%. ADR 0035.
 - **ADR 0026 Decision 6's incoherence is LIVE and has no owner.** `legKm` is baked at generation,
   so a leg planned by bus and walked after `bus_ejection` costs `legHours(86,'foot')` = 22 hours
   capped at 12. It is reachable by one shipped event on one of three fixture routes and is worth
@@ -385,8 +383,46 @@ Nothing is left broken. These are absent or partial, with paths:
 
 ## Next step — ONE task
 
-**M3.10b is PARTLY DONE and its acceptance criterion is OPEN. Completion is 26.1% against a
-30–50% target, and the next lever is ENERGY.**
+**M3.11: scale the geo slice from 263 nodes to ~1,200 — widen the bbox, re-audit, re-check,
+regenerate. A DATA commit, and only because node ids are source-derived.**
+
+**M3.10b is DONE.** Corpus completion is **47.3%** on 22–48 leg routes at median 24 (routes are
+23–31, so runs mostly finish); fixture 48.5%. Both packs in band. ADR 0035 and its addendum.
+
+**Two wrong calls were made and corrected inside this milestone, both the same mistake.** First
+the survival-conditioned trajectory table said morale was fine — it only contains runs that
+survived. Then a falling `gave_up` share said morale was the problem and energy was next; slowing
+energy 3× moved completion 26.1% → 27.4% and nothing else. **The ending mix was correct and
+available both times**: at 16/9 it read collapsed 50.8% / arrival 26.0% / gave_up 22.9%, so health
+had never stopped being the wall. When completion moves, read what runs are DYING of before
+picking a lever.
+
+A fresh agent can start here:
+
+1. **`pnpm geo:build` at a wider bbox.** The current pin is `-12,36,30,60`. Node ids derive from
+   `geonameid` and border ids from a hash of their two adjacent settlements (ADR 0024), so the
+   overlay's 42 rows survive re-selection — that is the property that makes this a data commit
+   rather than a re-author, and it was checked on paper at M3.0 precisely so this milestone
+   would be cheap.
+2. **`GEO_UNDECLARED_BRIDGE`'s budget of 13 belongs to the 263-node slice** and must be
+   re-measured, not extrapolated. If it grows faster than the node count, the selector is
+   producing a stringier graph — that is the finding, not the bump. ADR 0033.
+3. **`GEO_EDGE_TOO_LONG` and the node-count band rule were deferred to THIS milestone.**
+   `densify-corridors.ts` is still unbuilt and 16 edges (4%) exceed 450 km, max 573. Decide
+   whether to build densification or ship the rules with a higher threshold.
+4. **`world.simplified.json` is also deferred here** — the map basemap, LOD-tiered from NE 50m,
+   under 400 KB.
+5. Re-run `pnpm geo:diversity` (must stay under the 70% ceiling) and `pnpm geo:verify` (the
+   <150 ms budget was measured on 263 nodes; Dijkstra is O(E log V), so ~8× the work).
+6. **Both sim baselines will move**, because corpus routes are generated from the slice
+   (ADR 0034). That is expected; explain the delta rather than chasing it.
+
+**DoD:** the five checks, `geo:build --check` byte-identical, diversity still passing, both
+`sim:diff`s explained, and an ADR if the densification question is answered either way.
+
+---
+
+### The M3.10b brief, for reference
 
 Two commits landed (`4ffe4cd`, `664c8a5`) and ADR 0035 records the reasoning. The corpus runs
 22–48 leg routes; completion went **3.6% → 26.1%** and median legs **14 → 21** on routes of

@@ -1,6 +1,6 @@
 # 0035 — Morale is a per-hour drain, and the failure mode is conserved
 
-- **Status:** Accepted, implemented 2026-08-12 (M3.10b). **The band is NOT met — see Consequences.**
+- **Status:** Accepted, implemented 2026-08-12 (M3.10b). **The band IS met at 47.3% — see the addendum; the Consequences section's prediction was wrong.**
 - **Relates to:** ADR 0014 (the drift curve is denominated in hours), ADR 0026 (the leg model
   and the survivability addendum), ADR 0034 (generated corpus routes)
 
@@ -73,3 +73,46 @@ a harsh one (pillar 1).
   a population trajectory. The table showed health falling and pointed everyone at health; health
   was merely the first meter to reach zero. The test that would have caught it earlier is the
   ending MIX, which was in the report all along.
+
+---
+
+## Addendum — the band IS met, and this ADR's own prediction was wrong
+
+The Consequences above named **energy** as the next binding meter and said no constant in
+`world-tick.ts` could lift completion past ~28%. **Both claims are false, and the measurement
+that disproves them is cheap enough that it should have been run before the claim was written.**
+
+Slowing energy drain does almost nothing for survival. Scaling `HOURS_PER_ENERGY` by 1.4/1.8/2.2/3.0
+moves completion 26.1% → 27.0/26.9/27.1/**27.4%** while `failure_gave_up` falls 22.9% → 13.5%. So
+energy governs the SHARE of deaths that are morale deaths, and not whether runs survive.
+
+The ending mix said so plainly and nobody read it: at 16/9 the split was **collapsed 50.8%**,
+arrival 26.0%, gave_up 22.9%. Collapse was still the majority ending. Health had never stopped
+being the wall — the morale conversion moved enough runs past the morale cliff that health became
+visible again, and this ADR mistook the falling gave_up share for morale being solved.
+
+**The fix was to re-sweep the lever this ADR had already used.** `16/9` was chosen when morale was
+still per-leg; once morale went per-hour the same lever behaves differently, and it was never
+re-measured:
+
+| hunger/starving | completion | median legs | collapsed | gave_up |
+| --------------- | ---------- | ----------- | --------- | ------- |
+| 16/9            | 26.1%      | 21          | 50.8%     | 22.9%   |
+| 20/10           | 29.5%      | 22          | 43.1%     | 27.2%   |
+| **28/14**       | **47.3%**  | **24**      | 14.7%     | 37.8%   |
+| 32/16           | 54.8%      | 25          | 5.8%      | 39.3%   |
+| 40/20           | 59.4%      | 25          | 0.7%      | 39.8%   |
+
+**`28/14` ships.** It is inside the 30–50% band on 22–48 leg routes at median 24, and collapse
+stays meaningful at 14.7% — 32/16 and 40/20 score higher and are refused for the same reason 26/14
+was refused earlier, that a mechanic which never fires is worse than a harsh one (pillar 1). The
+pair also preserves the 2:1 rung ratio the invariant test pins.
+
+**No energy change ships.** The sweep is recorded so nobody repeats it.
+
+### The lesson, which is the same one twice
+
+Both wrong calls in this milestone came from reading a _derived_ number instead of the ending mix.
+First the survival-conditioned trajectory table said morale was healthy; then a falling `gave_up`
+share said morale was the problem. **The ending mix was correct and available on both occasions.**
+When completion moves, read what runs are DYING of before choosing a lever.
