@@ -5,12 +5,19 @@ import { eventId } from '../ids/content-ids.ts';
 import { type Rng } from '../rng/rng.ts';
 import { type RunState } from '../state/run-state.ts';
 import { type TransportMode } from '../state/transport-state.ts';
+import { legHours } from './leg-hours.ts';
 
 /**
  * What a leg costs whether or not anything happens.
  *
- * Every number here is a BALANCE CONSTANT, gathered in one block so tuning is a diff to this
- * file. They are tuned against the sim, not derived — see docs/adr/0014.
+ * **The hours a leg takes are no longer here.** `HOURS_PER_LEG[mode]` moved to `leg-hours.ts`
+ * at M3.8a and became `legHours(km, mode, montage)` — duration is now derived from the leg's
+ * own distance plus a per-mode overhead, rather than being a property of the mode alone. Every
+ * drain below still reads `hours`, which is why that change cost nothing here: this file was
+ * already denominated in time (rule 1).
+ *
+ * Every number that remains is a BALANCE CONSTANT, gathered in one block so tuning is a diff to
+ * this file. They are tuned against the sim, not derived — see docs/adr/0014.
  *
  * `uneventful` legs run this too: a leg where nothing happened must still cost time and wear,
  * or a run can contain six legs of nothing, which reads as a bug to the player and corrupts
@@ -29,15 +36,6 @@ import { type TransportMode } from '../state/transport-state.ts';
  * The drift covers travel only, which is why it reads `hours` here rather than the clock —
  * there is no hidden accumulator, and the tick stays a pure function of (state, hours).
  */
-const HOURS_PER_LEG: Readonly<Record<TransportMode, number>> = {
-  foot: 9,
-  bus: 5,
-  train: 4,
-  car: 5,
-  truck: 6,
-  ferry: 7,
-  rideshare: 5,
-};
 
 /**
  * Travel hours per point of hunger.
@@ -108,12 +106,27 @@ const WEATHERS = ['clear', 'rain', 'fog', 'wind', 'heat'] as const;
 const TICK_SOURCE = eventId('engine.world_tick');
 
 export function worldTick(state: RunState, rng: Rng): RunState {
-  const base = HOURS_PER_LEG[state.transport.mode];
-  // Jitter so two legs of the same mode are not identical. Drawn from `worldTick`, so adding
-  // director draws later cannot shift the weather or the clock.
-  const hours = base + rng.nextInt(-1, 2, 'worldTick');
+  // `advanceLeg` sets `legIndex` to the leg being travelled BEFORE calling this (`:57`, `:69`),
+  // so this is that leg's distance. `validateRoute` guarantees `legKm.length === legCount` and
+  // `legIndex < legCount`, which is what makes the `?? 0` unreachable rather than a fallback
+  // anybody should rely on — and 0 is chosen over an average deliberately, because an average
+  // would paper over a broken route while 0 leaves it visible.
+  const km = state.route.legKm[state.route.legIndex] ?? 0;
+  const base = legHours(
+    km,
+    state.transport.mode,
+    state.route.montageLegs.includes(state.route.legIndex),
+  );
 
-  const legShare = state.route.legCount > 0 ? state.route.totalKm / state.route.legCount : 0;
+  // Jitter so two legs of the same mode are not identical. Drawn from `worldTick`, so adding
+  // director draws later cannot shift the weather or the clock. The draw and its arguments are
+  // UNCHANGED by M3.8a on purpose: a different draw here would move every RNG cursor downstream
+  // and turn a duration change into a whole-run divergence.
+  //
+  // Floored after the jitter as well as inside `legHours`, so a one-hour leg cannot roll to zero
+  // and stop the clock. No current route reaches it — the shortest leg any fixture produces is
+  // four hours after a −1 — but a zero-hour leg would silently break `spanPoints` for everything.
+  const hours = Math.max(1, base + rng.nextInt(-1, 2, 'worldTick'));
 
   const elapsed = elapsedHours(state);
   const harsh = HARSH_WEATHER.includes(state.weather) && hours >= HARSH_WEATHER_HOURS;
@@ -123,7 +136,11 @@ export function worldTick(state: RunState, rng: Rng): RunState {
 
   const effects: Effect[] = [
     { op: 'advanceTime', hours },
-    { op: 'route', change: { field: 'progressKm', delta: Math.round(legShare) } },
+    // The leg's OWN distance, not `round(totalKm / legCount)`. The old expression is why a run's
+    // accumulated `progressKm` summed to `legCount × round(totalKm/legCount)` rather than
+    // `totalKm` — 24 × 89 = 2136 against 2140 on the illicit fixture. `uniformSplit` sums
+    // exactly, so a completed run now lands on `totalKm` to the kilometre.
+    { op: 'route', change: { field: 'progressKm', delta: km } },
     { op: 'resource', key: 'energy', delta: -energy },
   ];
 
