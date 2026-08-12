@@ -124,6 +124,14 @@ export function loadFixtureRouteEntries(): readonly FixtureRoute[] {
     requireArray(route['edges'], `routes[${i}].route.edges`);
     requireArray(route['beatSchedule'], `routes[${i}].route.beatSchedule`);
     requireArray(route['legLocations'], `routes[${i}].route.legLocations`);
+    // MANDATORY WITH THE FIELD, and the reason is not obvious. `canonicalJson` serialises
+    // `Object.keys`, so an absent key contributes NOTHING to the digest — adding a field to
+    // `RouteState` without editing this file moves no golden run and leaves
+    // `state.route.legKm` as `undefined` inside a type that says `readonly number[]`. Nothing
+    // else typechecks `routes.json`: the guards above are the whole of it, and `:129` casts.
+    // Any new `RouteState` field lands with a line here in the same commit.
+    requireArray(route['legKm'], `routes[${i}].route.legKm`);
+    requireArray(route['montageLegs'], `routes[${i}].route.montageLegs`);
   });
 
   return entries as readonly FixtureRoute[];

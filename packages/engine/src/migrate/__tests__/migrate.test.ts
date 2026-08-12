@@ -7,6 +7,7 @@ import { eventId } from '../../ids/content-ids.ts';
 import { SAVE_VERSION } from '../../state/create-run-state.ts';
 import { type RunState } from '../../state/run-state.ts';
 import { stateDigest } from '../../state/state-digest.ts';
+import { validateRoute } from '../../state/validate-route.ts';
 import { loadMiniPack } from '../../__tests__/support/load-fixtures.ts';
 import { migrateSave } from '../migrate-save.ts';
 import { type Migration } from '../migration.ts';
@@ -124,7 +125,7 @@ describe('migrateSave', () => {
     const loaded = readSave('save-v1-loaded.json');
     const result = migrateSave(loaded);
     if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
-    expect(result.state).toEqual(readSave('save-v4-loaded.json'));
+    expect(result.state).toEqual(readSave('save-v5-loaded.json'));
   });
 
   it('writes complicationId: null onto a save caught mid-event', () => {
@@ -164,6 +165,33 @@ describe('migrateSave', () => {
     const result = migrateSave(readSave('save-v3.json'));
     if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
     expect(result.state.presentation).toEqual({ kind: 'none' });
+  });
+
+  it('v4->v5 WRITES legKm rather than leaving it absent', () => {
+    // The trap `migrate_3_to_4` had to learn, in its second instance. `isRunStateShape` checks
+    // only that `route` is PRESENT (run-state-shape.ts:39), never its fields — so an absent
+    // `legKm` loads clean, reads `undefined`, and turns `route.legKm[i]` into a TypeError
+    // thrown out of a function whose whole contract is that it returns an EngineError.
+    const result = migrateSave(readSave('save-v4.json'));
+    if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
+
+    expect(Object.keys(result.state.route)).toContain('legKm');
+    expect(Object.keys(result.state.route)).toContain('montageLegs');
+    expect(result.state.route.montageLegs).toEqual([]);
+  });
+
+  it('v4->v5 computes the CORRECT distance for a v4 save, not a placeholder', () => {
+    // A v4 save was produced by an engine whose every leg covered totalKm/legCount, so this is
+    // not a guess at what the route meant — it is what that run was actually doing. That is the
+    // property which makes the bump safe to ship to a player mid-journey, and it is why the
+    // migrated save must replay identically rather than merely load.
+    const result = migrateSave(readSave('save-v4.json'));
+    if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
+
+    const route = result.state.route;
+    expect(route.legKm).toHaveLength(route.legCount);
+    expect(route.legKm.reduce((a, b) => a + b, 0)).toBe(route.totalKm);
+    expect(validateRoute(route)).toBeNull();
   });
 
   it('rewrites `money` inside a PERSISTED predicate tree, not just in resources', () => {

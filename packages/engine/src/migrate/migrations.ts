@@ -1,3 +1,4 @@
+import { uniformSplit } from '../state/uniform-split.ts';
 import { type Migration } from './migration.ts';
 
 /**
@@ -175,4 +176,39 @@ const migrate_3_to_4: Migration = {
   },
 };
 
-export const MIGRATIONS: readonly Migration[] = [migrate_1_to_2, migrate_2_to_3, migrate_3_to_4];
+/**
+ * v4 -> v5: a route records its per-leg distance and which legs are montage.
+ *
+ * IT WRITES THE CORRECT VALUE, NOT A PLACEHOLDER. A v4 save was produced by an engine whose
+ * every leg covered `totalKm / legCount`, so `uniformSplit` is not a guess at what the route
+ * meant — it is exactly what that run was doing. A migrated save therefore replays identically,
+ * which is the property that makes this bump safe to ship mid-journey.
+ *
+ * AND IT WRITES RATHER THAN OMITS, for the reason `migrate_3_to_4` had to learn: `isRunStateShape`
+ * checks only that `route` is PRESENT (`run-state-shape.ts:39`), never its fields. An absent
+ * `legKm` would load clean, read `undefined`, and turn `route.legKm[i]` into a `TypeError` thrown
+ * out of a function that promises never to throw.
+ *
+ * `montageLegs` is `[]` because no v4 route had a montage leg — the concept did not exist. That
+ * is the honest value, not a default.
+ */
+const migrate_4_to_5: Migration = {
+  from: 4,
+  describe: 'v4->v5: a route records its per-leg distance and which legs are montage',
+  migrate(save) {
+    const route = asRecord(save['route']);
+    const totalKm = typeof route['totalKm'] === 'number' ? route['totalKm'] : 0;
+    const legCount = typeof route['legCount'] === 'number' ? route['legCount'] : 0;
+    return {
+      ...save,
+      route: { ...route, legKm: uniformSplit(totalKm, legCount), montageLegs: [] },
+    };
+  },
+};
+
+export const MIGRATIONS: readonly Migration[] = [
+  migrate_1_to_2,
+  migrate_2_to_3,
+  migrate_3_to_4,
+  migrate_4_to_5,
+];

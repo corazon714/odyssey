@@ -38,6 +38,33 @@ export type RouteState = {
    * These are TYPES, never places (CLAUDE.md 11). There is nowhere here to put a nationality.
    */
   readonly legLocations: readonly LocationType[];
+  /**
+   * How far each leg covers, in integer kilometres. One entry per leg, summing to `totalKm`.
+   *
+   * **Uniform at M3.7 and everywhere today.** M3.9 replaces the values with terrain-density
+   * sizing; this milestone ships the FIELD, the save bump and the migration on their own, so
+   * that when the numbers change the golden diff is attributable to the numbers.
+   *
+   * The `legLocations` precedent deliberately does NOT transfer. That field is read only
+   * through `locationAtLeg`, which has a `?? 'roadside'` fallback, so an absent one degrades to
+   * a worse-but-working run. This one has a SUM invariant that a per-element fallback would
+   * violate, and an absent array makes `route.legKm[i]` a `TypeError` thrown out of a function
+   * whose whole contract is that it returns an `EngineError` and never throws — which is why
+   * `migrate_4_to_5` writes it rather than letting it default.
+   */
+  readonly legKm: readonly number[];
+  /**
+   * Leg indices the journal summarises instead of playing, ascending and unique.
+   *
+   * **Empty at M3.7**, and the field exists now because without it montage is *labelled*
+   * rather than implemented: `wilderness` is already used for ordinary legs, so there would be
+   * nothing at run time to key a compressed leg off. Rejected alternatives are in ADR 0026 —
+   * a `'montage'` `LocationType` (it would make every location-filtered event ineligible and
+   * drop each montage leg to rung 5), and deriving montage from `legKm[i] >= THRESHOLD` (a
+   * ferry crossing is one leg of 900 km and is emphatically not a montage — it is where
+   * `ferry_boarding` lives).
+   */
+  readonly montageLegs: readonly number[];
 };
 
 /** The location of the current leg, or `roadside` if the route under-specifies. */

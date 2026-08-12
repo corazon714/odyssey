@@ -37,6 +37,41 @@ export function validateRoute(route: RouteState): EngineError | null {
     });
   }
 
+  if (route.legKm.length !== route.legCount) {
+    return engineError('route/leg-count-mismatch', {
+      legCount: route.legCount,
+      legKm: route.legKm.length,
+    });
+  }
+
+  // THE SUM IS THE POINT. `legKm` exists so distance can stop being uniform, and every consumer
+  // from here on — `progressKm`, M3.8's `legHours`, the journal's total — assumes the parts add
+  // up to the whole. A route whose legs sum to 2,139 of 2,140 km arrives one kilometre short
+  // forever, which surfaces as a run that never completes rather than as a bad number.
+  let sum = 0;
+  for (const km of route.legKm) {
+    if (!Number.isInteger(km) || km < 0) {
+      return engineError('route/leg-distance-mismatch', { legKm: km });
+    }
+    sum += km;
+  }
+  if (sum !== route.totalKm) {
+    return engineError('route/leg-distance-mismatch', { sum, totalKm: route.totalKm });
+  }
+
+  // Ascending and unique, so a consumer can binary-search or merge-walk it against the beat
+  // schedule without sorting a persisted array on every read.
+  let previousMontage = -1;
+  for (const leg of route.montageLegs) {
+    if (!Number.isInteger(leg) || leg < 0 || leg >= route.legCount) {
+      return engineError('route/montage-out-of-range', { leg, legCount: route.legCount });
+    }
+    if (leg <= previousMontage) {
+      return engineError('route/montage-out-of-range', { leg, previous: previousMontage });
+    }
+    previousMontage = leg;
+  }
+
   const seenLegs = new Set<number>();
   for (const slot of route.beatSchedule) {
     if (!Number.isInteger(slot.legIndex) || slot.legIndex < 0 || slot.legIndex >= route.legCount) {
