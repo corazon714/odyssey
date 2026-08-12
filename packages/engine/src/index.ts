@@ -59,7 +59,12 @@ export {
   type CheckLike,
   type LocalModifier,
 } from './modifiers/resolve-modifiers.ts';
-export { collapseChips, type ModifierChip } from './modifiers/collapse-chips.ts';
+export {
+  collapseChips,
+  CHIP_OVERFLOW_LABEL_KEY,
+  MAX_MODIFIER_CHIPS,
+  type ModifierChip,
+} from './modifiers/collapse-chips.ts';
 export {
   EMPTY_RESOLUTION,
   type ModifierResolution,

@@ -54,6 +54,23 @@
   The goldens did not move either, and that is the load-bearing check for this control: the chip
   list is returned from `resolveChoice` and never written into `RunState`, so `stateDigest`
   cannot see it. `pnpm golden:update` rewrote golden-runs.json byte-identically.
+
+  M3.11c DID NOT MOVE THIS BASELINE EITHER, for the same reason the collapse did not: this pack
+  carries `registries.modifiers: []`. The chip list is now BOUNDED at seven — six kind chips plus
+  one overflow chip folding the rest — but no check here ever produces more than a handful of
+  rows, let alone eight distinct `sourceKind`s, so the bound never bites and `collapseChips`
+  returns exactly what it returned before.
+
+  `pnpm sim:diff -- --runs=2000` reports no change, and the file below is unedited apart from
+  this note. The corpus moved 6.9 -> 6.4 chips/check and 30.6% -> 0.0% over band; see
+  docs/sim-baseline-corpus.md and the addendum to docs/adr/0037.
+
+  The goldens did not move, and it is worth restating why that is a CHECK rather than a
+  coincidence: the chip list is returned from `resolveChoice` and never written into `RunState`,
+  so `stateDigest` cannot see it. `pnpm golden:update` rewrote golden-runs.json with identical
+  digests, choice sequences, leg counts and endings — the only textual difference was prettier
+  reflowing nine single-element arrays, so the regenerated file was discarded rather than
+  committed.
 -->
 
 # Sim Report — seed=base contentVersion=aee5a082 runs=2000
@@ -75,8 +92,8 @@ Universal choices offered    0.0%   (share of choices shown)
 Universal choices picked     0.0%   (over ~30% means they are flattening the corpus)
 Unresolved threads              2
 
-Wall clock                 772 ms   (0.39 ms/run)
-Extrapolated to 20,000     7.7 s   (target <30 s)
+Wall clock                 738 ms   (0.37 ms/run)
+Extrapolated to 20,000     7.4 s   (target <30 s)
 
 ## Endings
   ending.failure_gave_up              43.1%

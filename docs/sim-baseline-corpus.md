@@ -96,6 +96,31 @@
   problem, which is what `modifiers.yaml`'s own header says the registry was authored for.
   Two measured follow-ups (suppress zero-delta groups -> 19.1%; an overflow chip -> 0.0%) are
   deferred with their numbers in docs/adr/0037.
+
+  M3.11c BOUNDED THE CHIP LIST AT SEVEN, and again exactly two lines moved. `collapseChips`
+  now keeps the six most explanatory kind chips and folds everything past them into ONE overflow
+  chip carrying the summed delta and the number of rows it stands for. `resolution.modifiers` is
+  still untouched and is still what `runSkillCheck` builds its `RollModifier[]` from — asserted
+  directly now, not only by inference: a twelve-kind check feeds the roll 13 modifiers while the
+  screen shows 7 chips, and the roll's own `modifiers` list is counted to prove which list it
+  read. Every other line below, completion included, is unchanged, and the goldens regenerate
+  semantically identically.
+
+    Modifier chips / check   6.9 -> 6.4
+    Checks over 7 chips      5980 (30.6%, worst 11) -> 0 (0.0%, worst 7)
+
+  ZERO BY CONSTRUCTION, NOT BY TUNING, and that distinction is the whole point of the change.
+  `collapseChips` cannot return more than MAX_MODIFIER_CHIPS for any input, so this line stays 0
+  when `modifiers.yaml` grows past 137 rows. Grouping by `sourceKind` reduced the number but its
+  ceiling was 12, so the line could drift back out of band with the registry; a ceiling of 7
+  cannot.
+
+  WHAT IT COSTS, stated rather than buried. The bound bites on exactly the checks that were over
+  band before — 5,980 of 19,553, 30.6% — so roughly a third of result screens now end in
+  "Everything else". At worst it folds five kind groups into that one chip. Those five are the
+  five SMALLEST contributions by |delta|, which is the argument for the whole thing: the tail
+  that gets hidden is the part that did not explain the roll. The player can still drill down —
+  `memberIds` names every folded row, and `resolution.modifiers` is still the full audit trail.
 -->
 
 # Sim Report — seed=base contentVersion=c10af194 runs=2000
@@ -110,15 +135,15 @@ Long-range payoff rate      18.2%   (target 80%)
 Beat fill rate              24.2%
 Repeat-event rate           64.5%
 Complication rate           59.8%   (target 60%)
-Modifier chips / check        6.9   (target 3-7, over 19553 checks)
+Modifier chips / check        6.4   (target 3-7, over 19553 checks)
 Checks under 2 chips            0   (each one draws nothing the registry exists for)
-Checks over 7 chips          5980   (30.6% of checks; worst pulls 11)
+Checks over 7 chips             0   (0.0% of checks; worst pulls 7)
 Universal choices offered   38.5%   (share of choices shown)
 Universal choices picked    39.7%   (over ~30% means they are flattening the corpus)
 Unresolved threads             93
 
-Wall clock                 2516 ms   (1.26 ms/run)
-Extrapolated to 20,000     25.2 s   (target <30 s)
+Wall clock                 2405 ms   (1.20 ms/run)
+Extrapolated to 20,000     24.0 s   (target <30 s)
 
 ## Endings
   ending.failure_gave_up              39.2%

@@ -42,9 +42,11 @@ export type ModifierResolution = {
    */
   readonly modifiers: readonly ResolvedModifier[];
   /**
-   * THE RENDER LIST: `modifiers` grouped by `sourceKind`, summed. Sums to `total` exactly, by
-   * property test. Never feeds a roll. See `collapse-chips.ts` for why the grouping key is
-   * `sourceKind` and `docs/adr/0037` for what it does and does not fix.
+   * THE RENDER LIST: `modifiers` grouped by `sourceKind`, summed, then bounded at
+   * `MAX_MODIFIER_CHIPS` by folding the tail into one overflow chip. Sums to `total` exactly,
+   * by property test, and PARTITIONS `modifiers` — every row reaches exactly one chip. Never
+   * feeds a roll. See `collapse-chips.ts` for why the grouping key is `sourceKind` and why the
+   * bound is seven, and `docs/adr/0037` for what it does and does not fix.
    */
   readonly chips: readonly ModifierChip[];
   /** Sum of `delta`. Always equals the sum of the chips — asserted, see resolve-modifiers. */

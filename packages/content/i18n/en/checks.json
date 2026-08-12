@@ -16,6 +16,10 @@
   "check.kind.companion": "Your companion",
   "check.kind.momentum": "How the run is going",
 
+  "_comment_overflow": "check.overflow: the ONE chip that stands for everything past the sixth. The chip list is bounded at seven (MAX_MODIFIER_CHIPS), so when a check matches more than seven sourceKinds the tail folds into this, carrying the summed delta and the number of ROWS it covers — \"Everything else x5, -3\". A noun phrase like the check.kind.* keys, because the count and the delta are composed by the renderer rather than interpolated here; that also keeps this key free of a plural form. It renders even when it sums to zero: \"and five things that counted for nothing\" is reconstruction, and hiding it would leave the player unable to reconcile eleven matched rows with seven chips. See docs/adr/0037.",
+
+  "check.overflow": "Everything else",
+
   "check.modifier.skill.negotiation": "Negotiation",
   "check.modifier.skill.stealth": "Stealth",
   "check.modifier.skill.mechanics": "Mechanics",
