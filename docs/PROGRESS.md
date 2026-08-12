@@ -349,8 +349,8 @@ Nothing is left broken. These are absent or partial, with paths:
 - ~~`overlay.json` should be `overlay.yaml`.~~ **Done at M3.6.** Byte-verified: `--check` is
   byte-identical after the move.
 - ~~`packages/content/package.json` has no `"./geo"` export.~~ **Done at M3.6**, as `"./geo/*"`.
-- **M3.9 is one slice of three.** `route/leg-plan.ts` is done and committed; `leg-locations.ts`,
-  `beat-schedule.ts`, `materialise-route.ts`, `route-preview.ts` and `generate-routes.ts` do not
+- **M3.9 is two slices of three.** `leg-plan.ts`, `leg-locations.ts` and `beat-schedule.ts` are
+  done and committed; `materialise-route.ts`, `route-preview.ts` and `generate-routes.ts` do not
   exist. `leg-plan.ts` has **no caller** — it is pure and fully tested, so the tree is green and
   both baselines are unmoved, but nothing generates a route yet. The exact continuation is under
   "Next step" above.
@@ -383,7 +383,21 @@ Nothing is left broken. These are absent or partial, with paths:
 
 ## Next step — ONE task
 
-**M3.9 is IN PROGRESS — one of three slices has landed (`681f621`). Continue with slice 2.**
+**M3.9 is IN PROGRESS — two of three slices have landed (`681f621`, `adb36db`). Continue with
+slice 3.**
+
+`leg-locations.ts` ✅ and `beat-schedule.ts` ✅ are done and tested (18 cases), and they consume
+`LegPlan.arrivalLegOfEdge` rather than recomputing it. Two things settled there that slice 3
+depends on:
+
+- **Invariant (c) is solved in LOCATIONS, not in placement.** The leg before a crossing is typed
+  `checkpoint`, which border content already accepts (`night_crossing.yaml` declares
+  `[border_crossing, checkpoint]`), and the border slot anchors on that checkpoint leg so its
+  slack-1 window is exactly `{checkpoint, border_crossing}`. **This removes the plan's "every
+  crossing edge gets ≥2 legs" requirement** — the preceding leg may belong to the previous
+  segment, and overriding its type is the point.
+- **`LegSegment` gained `arrivalType`**, because a `GeoNode.type` IS a `LocationType` (ADR 0024)
+  and that makes `deriveLegLocations` a direct read rather than a mapping table.
 
 `packages/engine/src/route/leg-plan.ts` ✅ is done, tested (20 cases) and committed: density
 sizing, the compression curve, the ramped clamps, RNG-free montage selection and exact `legKm`.
@@ -401,7 +415,7 @@ It is pure, takes segments, has **no caller**, and both sim baselines report "No
 - ADR 0026's `LEG_DENSITY_KM` lists **`marsh` and `forest`, which are not `TerrainKind`s**. The
   shipped table is keyed off the real eight-kind vocabulary.
 
-### Slice 2 — `leg-locations.ts` and `beat-schedule.ts`
+### Slice 2 — DONE (`adb36db`)
 
 Both consume `LegPlan.arrivalLegOfEdge`, which slice 1 already returns — **one allocator, two
 consumers** (ADR 0027 Decision 1). Do not recompute it.
