@@ -151,6 +151,7 @@ export function formatSlice(
     readonly edges: readonly { readonly distanceKm: number; readonly adminBoundary: boolean }[];
     readonly connectivity: {
       readonly componentCount: number;
+      readonly components: readonly (readonly number[])[];
       readonly orphans: readonly number[];
       readonly bridges: readonly number[];
       readonly leafBranches: readonly { readonly stranded: number }[];
@@ -184,7 +185,27 @@ export function formatSlice(
   const lines: string[] = ['', '# Slice', ''];
   lines.push(`nodes         ${String(slice.nodes.length)}`);
   lines.push(`edges         ${String(slice.edges.length)}`);
-  lines.push(`components    ${String(slice.connectivity.componentCount)}   (must be 1)`);
+  lines.push(`components    ${String(slice.connectivity.componentCount)}   (ADR 0036)`);
+
+  // THE SIZES, not just the count. A bare count cannot tell "one landmass plus forty-eight
+  // islands" from "forty-nine equal pieces", and those call for opposite responses — the first
+  // wants ferries, the second means the edge builder is broken. ADR 0036's fragment rule is
+  // calibrated against this distribution, so the report has to print it.
+  const sizes = [...slice.connectivity.components]
+    .map((component) => component.length)
+    .sort((a, b) => b - a);
+  const largest = sizes[0] ?? 0;
+  lines.push(
+    `  largest ${String(largest)} of ${String(sizes.reduce((a, b) => a + b, 0))} nodes` +
+      `   next ${sizes.slice(1, 6).join(', ') || '—'}`,
+  );
+  for (const floor of [5, 10, 20, 40]) {
+    const above = sizes.filter((size) => size >= floor).length;
+    lines.push(
+      `  components with >=${String(floor).padStart(2)} nodes: ${String(above).padStart(3)}` +
+        `   fragments below: ${String(sizes.length - above).padStart(3)}`,
+    );
+  }
   lines.push(`orphans       ${String(slice.connectivity.orphans.length)}`);
   lines.push(`bridges       ${String(slice.connectivity.bridges.length)}`);
   const bigBranches = slice.connectivity.leafBranches.filter((b) => b.stranded >= 5).length;

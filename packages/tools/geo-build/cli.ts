@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadGeoOverlay } from '@odyssey/content/loader';
+import { MIN_LANDMASS_NODES } from './connectivity.ts';
 import { findWorkspaceRoot } from '../shared/workspace-root.ts';
 import { auditDiversity, formatDiversity, graphFromArtifacts } from './audit-diversity.ts';
 import { benchmark, formatBenchmark, formatVerification } from './report-verify.ts';
@@ -206,10 +207,24 @@ function generate(
 
   // Fail closed. More than one component means a node no route can reach, and a second
   // component is not a curiosity — it is a map the player can be stranded on. ADR 0024.
-  if (slice.connectivity.componentCount !== 1) {
+  // ADR 0036: several components are legal, one per LANDMASS. Fail on FRAGMENTS — an island the
+  // selector reached and the edge builder could not connect ships as a place a player can be
+  // routed into and stranded on, which is the failure ADR 0024 actually named. The component
+  // count was only ever a proxy for it, and it was a proxy that made a world map impossible.
+  const fragments = slice.connectivity.components.filter(
+    (component) => component.length < MIN_LANDMASS_NODES,
+  );
+  if (fragments.length > 0) {
+    const sizes = fragments
+      .map((component) => component.length)
+      .sort((a, b) => b - a)
+      .slice(0, 8)
+      .join(', ');
     process.stderr.write(
-      `\ngeo-build: ${String(slice.connectivity.componentCount)} components. The graph is not ` +
-        'one piece; the overlay must join them before this data is usable.\n',
+      `\ngeo-build: ${String(fragments.length)} fragment(s) below ${String(MIN_LANDMASS_NODES)} ` +
+        `nodes (${sizes}${fragments.length > 8 ? ', …' : ''}). Each is cut off from every ` +
+        'landmass. Join it with a `ferries` row in overlay.yaml, or narrow the bbox so the ' +
+        'selector stops reaching it.\n',
     );
     return 1;
   }

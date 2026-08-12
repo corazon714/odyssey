@@ -13,6 +13,7 @@ import {
   type LocationType,
 } from '@odyssey/engine';
 import { type GeoBundle, type GeoNodeRecord } from '@odyssey/content';
+import { MIN_LANDMASS_NODES } from '../../geo-build/connectivity.ts';
 import { nodesDigest } from '../../geo-build/write-artifacts.ts';
 import { geoGraph, geoNameFieldMisplaced, geoOsmSource, geoPlaceBehaviour } from '../rules-geo.ts';
 import { type ContentBundle } from '../load-content.ts';
@@ -110,11 +111,30 @@ const bundleOf = (geo: GeoBundle | null, root = CONTENT): ContentBundle =>
 const rulesIn = (issues: readonly { readonly rule: string }[]): readonly string[] =>
   issues.map((i) => i.rule);
 
-/** A connected line: a—b—c. Two bridges, each stranding 1, so below the branch threshold. */
-const LINE = geoOf(
-  [node('n.city.a'), node('n.city.b'), node('n.city.c')],
-  [edge('e.ab', 'n.city.a', 'n.city.b'), edge('e.bc', 'n.city.b', 'n.city.c')],
-);
+/**
+ * A connected component of `count` nodes, closed into a RING at 3 or more.
+ *
+ * ADR 0036 made `GEO_DISCONNECTED` a fragment check rather than a component count, so a healthy
+ * fixture now has to clear `MIN_LANDMASS_NODES` — the three-node line this replaced is a
+ * fragment, and correctly reports as one.
+ *
+ * The ring is not decoration: a pure chain makes EVERY edge a Tarjan bridge, so a 45-node chain
+ * trips `GEO_UNDECLARED_BRIDGE` and a "healthy graph" fixture would be anything but. A ring has
+ * no bridges at all, which is what lets these tests assert silence.
+ */
+function chain(count: number, prefix = 'n.city.c'): { nodes: GeoNodeRecord[]; edges: GeoEdge[] } {
+  const nodes = Array.from({ length: count }, (_, i) => node(`${prefix}${String(i)}`));
+  const edges = Array.from({ length: count - 1 }, (_, i) =>
+    edge(`e.${prefix}${String(i)}`, `${prefix}${String(i)}`, `${prefix}${String(i + 1)}`),
+  );
+  if (count >= 3) {
+    edges.push(edge(`e.${prefix}close`, `${prefix}${String(count - 1)}`, `${prefix}0`));
+  }
+  return { nodes, edges };
+}
+
+const LANDMASS = chain(MIN_LANDMASS_NODES + 5);
+const LINE = geoOf(LANDMASS.nodes, LANDMASS.edges);
 
 // ── graph rules ────────────────────────────────────────────────────────────────────────
 
@@ -134,21 +154,41 @@ describe('geoGraph is silent on a healthy graph and on no graph at all', () => {
   });
 });
 
-describe('GEO_DISCONNECTED', () => {
-  it('fires when the graph is in two pieces, and names the smaller one', () => {
-    const geo = geoOf(
-      [node('n.city.a'), node('n.city.b'), node('n.city.c'), node('n.city.d')],
-      [edge('e.ab', 'n.city.a', 'n.city.b'), edge('e.cd', 'n.city.c', 'n.city.d')],
-    );
-    const issues = geoGraph(bundleOf(geo));
-    expect(rulesIn(issues)).toContain('GEO_DISCONNECTED');
+describe('GEO_DISCONNECTED — a FRAGMENT check since ADR 0036, not a component count', () => {
+  it('accepts two landmasses, which the old component-count rule forbade', () => {
+    // The rule change in one assertion. Two separate continents are a legal map; the old rule
+    // made a world map impossible, because no overlay row can land-connect the Americas to
+    // Eurasia.
+    const a = chain(MIN_LANDMASS_NODES + 2, 'n.city.a');
+    const b = chain(MIN_LANDMASS_NODES + 2, 'n.city.b');
+    const geo = geoOf([...a.nodes, ...b.nodes], [...a.edges, ...b.edges]);
+    expect(rulesIn(geoGraph(bundleOf(geo)))).not.toContain('GEO_DISCONNECTED');
+  });
 
-    const found = issues.find((i) => i.rule === 'GEO_DISCONNECTED');
+  it('fires on a fragment cut off from every landmass, and names its nodes', () => {
+    const big = chain(MIN_LANDMASS_NODES + 2, 'n.city.m');
+    const island = chain(3, 'n.city.isle');
+    const geo = geoOf([...big.nodes, ...island.nodes], [...big.edges, ...island.edges]);
+
+    const found = geoGraph(bundleOf(geo)).find((i) => i.rule === 'GEO_DISCONNECTED');
     expect(found?.severity).toBe('error');
-    expect(found?.message).toContain('2 pieces');
-    // The fix is an overlay row, and the message has to say so: the file it points at is
-    // generated and cannot be edited by hand.
+    expect(found?.message).toContain('3 node(s)');
+    expect(found?.message).toContain('n.city.isle0');
+    // The fix is an overlay row or a narrower bbox, and the message has to say so: the file it
+    // points at is generated and cannot be edited by hand.
     expect(found?.message).toContain('overlay.yaml');
+  });
+
+  it('reports every fragment separately, because each is its own decision', () => {
+    // Ferry it in, or drop it from the slice. One aggregated finding cannot be acted on.
+    const big = chain(MIN_LANDMASS_NODES + 2, 'n.city.m');
+    const one = chain(2, 'n.city.x');
+    const two = chain(2, 'n.city.y');
+    const geo = geoOf(
+      [...big.nodes, ...one.nodes, ...two.nodes],
+      [...big.edges, ...one.edges, ...two.edges],
+    );
+    expect(geoGraph(bundleOf(geo)).filter((i) => i.rule === 'GEO_DISCONNECTED')).toHaveLength(2);
   });
 });
 
@@ -181,14 +221,10 @@ describe('GEO_EDGE_ENDPOINT_UNRESOLVED', () => {
     // `resolved` drops unresolvable edges, so its indices are NOT geo.edges indices. If the
     // bridge report were read with the wrong array, this graph would report a lifeline edge id
     // that belongs to a different edge.
-    const geo = geoOf(
-      [node('n.city.a'), node('n.city.b'), node('n.city.c')],
-      [
-        edge('e.zz', 'n.city.a', 'n.city.ghost'),
-        edge('e.ab', 'n.city.a', 'n.city.b'),
-        edge('e.bc', 'n.city.b', 'n.city.c'),
-      ],
-    );
+    // Built on a landmass-sized ring so the only finding is the dangling edge itself — a small
+    // graph would also report as a fragment since ADR 0036 and muddy the assertion.
+    const big = chain(MIN_LANDMASS_NODES + 2, 'n.city.m');
+    const geo = geoOf(big.nodes, [edge('e.zz', 'n.city.m0', 'n.city.ghost'), ...big.edges]);
     const issues = geoGraph(bundleOf(geo));
     expect(rulesIn(issues)).toEqual(['GEO_EDGE_ENDPOINT_UNRESOLVED']);
   });

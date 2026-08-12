@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { analyseConnectivity } from '../geo-build/connectivity.ts';
+import { analyseConnectivity, MIN_LANDMASS_NODES } from '../geo-build/connectivity.ts';
 import { nodesDigest } from '../geo-build/write-artifacts.ts';
 import { readLock } from '../geo-build/fetch-sources.ts';
 import { error, warn, type LintIssue } from './issue.ts';
@@ -254,11 +254,17 @@ export function geoGraph(bundle: ContentBundle): readonly LintIssue[] {
   // ── connectivity ─────────────────────────────────────────────────────────────────────
   const report = analyseConnectivity(geo.nodes.length, resolved);
 
-  if (report.componentCount > 1) {
-    // Name the SMALLEST component: it is the piece somebody has to join, and its members are
-    // the endpoints an overlay row would name.
-    const smallest = [...report.components].sort((x, y) => x.length - y.length)[0] ?? [];
-    const sample = smallest
+  // ADR 0036: several components are legal, one per LANDMASS. What is never legal is a
+  // FRAGMENT — an island the selector reached and the edge builder could not connect, which
+  // ships as a place a player can be routed into and stranded on. That is the failure ADR 0024
+  // named; the component COUNT was only ever a proxy for it, and it was a proxy that made a
+  // world map impossible.
+  //
+  // Reported per fragment rather than once, because each one is a separate decision: ferry it
+  // in, or drop it from the slice.
+  for (const component of report.components) {
+    if (component.length >= MIN_LANDMASS_NODES) continue;
+    const sample = component
       .slice(0, 4)
       .map((i) => String(geo.nodes[i]?.node.id ?? '?'))
       .join(', ');
@@ -266,9 +272,10 @@ export function geoGraph(bundle: ContentBundle): readonly LintIssue[] {
       error(
         'GEO_DISCONNECTED',
         EDGES_FILE,
-        `the graph is in ${String(report.componentCount)} pieces; a player can be stranded on ` +
-          `any but the largest. The smallest holds ${String(smallest.length)} node(s): ${sample}. ` +
-          `Join it with a \`forcedCorridors\` or \`ferries\` row in ${OVERLAY_FILE}.`,
+        `a fragment of ${String(component.length)} node(s) is cut off from every landmass, and a ` +
+          `player routed into it is stranded there: ${sample}. Join it with a \`ferries\` row in ` +
+          `${OVERLAY_FILE}, or narrow the bbox so the selector stops reaching it. A component ` +
+          `needs ${String(MIN_LANDMASS_NODES)} nodes to count as a landmass of its own.`,
       ),
     );
   }
