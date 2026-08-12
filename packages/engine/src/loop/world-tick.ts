@@ -95,26 +95,40 @@ const HARSH_WEATHER_HOURS = 6;
 
 /**
  * Hunger thresholds, and how fast each rung costs health — in HOURS, like every other drain
- * here. Starvation damage was the last per-leg holdout in this file, and being per-leg is why
- * it converged: a short hop hurt exactly as much as a long haul, so once the population was
- * past the threshold it lost health in lockstep no matter how anyone travelled.
+ * here.
+ *
+ * **Halved at M3.10b** (10/5 → 16/9). Every constant in this file was tuned against ~12-leg
+ * routes; generated routes are 22-48, and at that length starvation billed faster than any
+ * recovery the corpus can offer. Measured sweep on 22-48-leg corpus routes: 10/5 → 3.6%
+ * completion, 12/6 → 8.7%, 16/9 → 18.9%, 26/14 → 24.5%. 16/9 is chosen over the
+ * better-scoring 26/14 because the extra 5.6 points cost making health vestigial — collapse
+ * falls to 3% — and a mechanic that never fires is worse than a harsh one (pillar 1).
  */
 const HUNGER_HURTS = 8;
 const HUNGER_STARVING = 10;
-const HOURS_PER_HUNGER_DAMAGE = 10;
-const HOURS_PER_STARVING_DAMAGE = 5;
+export const HOURS_PER_HUNGER_DAMAGE = 16;
+const HOURS_PER_STARVING_DAMAGE = 9;
 
 /**
- * Energy at or below this costs a point of morale each leg.
+ * Energy at or below this costs morale — and it is charged PER HOUR, not per leg (M3.10b).
  *
- * Deliberately NOT graded, unlike hunger, and the asymmetry is the interesting part. Energy
- * FLOORS at 0 and most runs sit there, so a second harsher rung is a penalty the whole
- * population takes on the same leg — it synchronises the collapse instead of spreading it.
- * Measured: adding a `-2 at energy 0` rung drove leg-15 morale from `0/2/6` to `0/0/0`.
- * Hunger has no ceiling, so its rungs are reached at genuinely different times and grading
- * there does spread. Grade a penalty on an unbounded meter; never on a floored one.
+ * **Still deliberately NOT graded**, and that decision is untouched: energy FLOORS at 0 and
+ * most runs sit there, so a second harsher rung lands on the whole population at once and
+ * synchronises the collapse. Measured: a `-2 at energy 0` rung drove leg-15 morale from
+ * `0/2/6` to `0/0/0`. Grade a penalty on an unbounded meter, never on a floored one.
+ *
+ * What changed is the RATE, not the rungs. Morale was the last per-leg drain in this file —
+ * the header's rule 1 says TIME makes you hungry, not legs, and morale was the one meter still
+ * disagreeing. Charging -1 per LEG once energy floors is effectively an unconditional -1/leg
+ * against a 0-10 pool, which is death at ~leg 13 regardless of how far or how long those legs
+ * were. The observed median run was 14 legs on routes of 23-31.
+ *
+ * That is why softening health alone could not work: it converted `failure_collapsed` into
+ * `failure_gave_up` (68.1% → 3.0% against 28.2% → 72.4%) without saving a single run. With
+ * hunger made unreachable entirely — perfect food forever — completion still stalled at 26.3%.
  */
 const ENERGY_TIRED = 1;
+const HOURS_PER_MORALE = 12;
 
 export const WEATHERS = ['clear', 'rain', 'fog', 'wind', 'heat'] as const;
 
@@ -168,7 +182,7 @@ export function worldTick(state: RunState, rng: Rng): RunState {
   const health = healthCost(state.resources.hunger, elapsed, hours);
   if (health > 0) effects.push({ op: 'resource', key: 'health', delta: -health });
 
-  const morale = moraleCost(state.resources.energy);
+  const morale = moraleCost(state.resources.energy, elapsed, hours);
   if (morale > 0) effects.push({ op: 'resource', key: 'morale', delta: -morale });
 
   // Weather changes roughly one leg in four.
@@ -218,7 +232,11 @@ export function healthCost(hunger: number, before: number, hours: number): numbe
   return 0;
 }
 
-/** Morale lost this leg to exhaustion. Single-rung on purpose — see `ENERGY_TIRED`. */
-export function moraleCost(energy: number): number {
-  return energy <= ENERGY_TIRED ? 1 : 0;
+/**
+ * Morale lost to exhaustion over a leg's clock span. Single-rung on purpose — see
+ * `ENERGY_TIRED` — and charged per hour since M3.10b, which is a rate change rather than a
+ * grading. Exported for tests.
+ */
+export function moraleCost(energy: number, before: number, hours: number): number {
+  return energy <= ENERGY_TIRED ? spanPoints(before, hours, HOURS_PER_MORALE) : 0;
 }

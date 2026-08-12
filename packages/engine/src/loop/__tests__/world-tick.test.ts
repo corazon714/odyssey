@@ -7,7 +7,13 @@ import { createTransport } from '../../state/transport-state.ts';
 import { type RunState } from '../../state/run-state.ts';
 import { type TransportMode } from '../../state/transport-state.ts';
 import { loadFixtureRouteEntries } from '../../__tests__/support/load-fixtures.ts';
-import { healthCost, moraleCost, spanPoints, worldTick } from '../world-tick.ts';
+import {
+  healthCost,
+  HOURS_PER_HUNGER_DAMAGE,
+  moraleCost,
+  spanPoints,
+  worldTick,
+} from '../world-tick.ts';
 
 /**
  * The drift curve had no test at all before M2A.0, which is how it stayed structurally wrong
@@ -80,7 +86,13 @@ describe('graded penalties', () => {
   it('makes a long haul on an empty stomach cost more than a short hop', () => {
     // The per-leg version charged these the same, which is why the population lost health in
     // lockstep once it was past the threshold.
-    expect(healthCost(8, 0, 12)).toBeGreaterThan(healthCost(8, 0, 3));
+    //
+    // Derived from the constant rather than hard-coding 12. The literal was a LEG-LENGTH
+    // ASSUMPTION from before routes were generated — it silently capped
+    // `HOURS_PER_HUNGER_DAMAGE` at 12, because above that a single 12-hour leg charges zero and
+    // the assertion inverts. M3.10b needed 16, and a test that forbids a balance constant from
+    // moving without saying so is a test asserting a number, not a property.
+    expect(healthCost(8, 0, HOURS_PER_HUNGER_DAMAGE * 2)).toBeGreaterThan(healthCost(8, 0, 3));
   });
 
   it('does NOT grade morale, because energy floors at 0', () => {
@@ -88,9 +100,22 @@ describe('graded penalties', () => {
     // FLOORED meter is a penalty the whole population takes on the same leg, so it
     // synchronises the collapse rather than spreading it. Measured at leg 15, adding one
     // drove morale from 0/2/6 to 0/0/0.
-    expect(moraleCost(2)).toBe(0);
-    expect(moraleCost(1)).toBe(1);
-    expect(moraleCost(0)).toBe(1);
+    //
+    // M3.10b made the rate per-hour instead of per-leg. That is NOT a grading: there is still
+    // exactly one rung, and energy 0 costs precisely what energy 1 costs. This test pins that,
+    // which is the property the asymmetry is about.
+    const span = 12;
+    expect(moraleCost(2, 0, span)).toBe(0);
+    expect(moraleCost(1, 0, span)).toBe(moraleCost(0, 0, span));
+    expect(moraleCost(1, 0, span)).toBeGreaterThan(0);
+  });
+
+  it('charges morale by TIME, not by leg — the last per-leg drain in the file', () => {
+    // Two short legs cost what one long one does, and a leg that covers no ground costs
+    // nothing. Under the per-leg rule, morale fell -1 per leg once energy floored, which is an
+    // unconditional -1/leg against a 0-10 pool: death at ~leg 13 however far those legs went.
+    expect(moraleCost(0, 0, 0)).toBe(0);
+    expect(moraleCost(0, 0, 24)).toBeGreaterThan(moraleCost(0, 0, 6));
   });
 });
 

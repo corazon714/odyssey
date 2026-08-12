@@ -120,9 +120,10 @@
         "push_on",
         "keep_going",
         "push_on",
-        "let_it_go"
+        "let_it_go",
+        "fix_it_yourself"
       ],
-      "expectedDigest": "58865f4872fcfc0605a115f58dff09a6",
+      "expectedDigest": "9449a3ba99f57cec64f847277bb50b10",
       "expectedHistoryKeys": [
         "events.rest.pickpocket_victim.out.shrug",
         "events.filler.roadside_quiet.out.onward",
@@ -135,9 +136,10 @@
         "events.filler.long_hours.out.tired",
         "events.filler.roadside_quiet.out.onward",
         "events.filler.long_hours.out.tired",
-        "events.rest.pickpocket_victim.out.shrug"
+        "events.rest.pickpocket_victim.out.shrug",
+        "events.crisis.breakdown.out.stuck"
       ],
-      "expectedLegs": 12,
+      "expectedLegs": 13,
       "expectedEndings": ["ending.failure_gave_up"]
     },
     {
@@ -158,9 +160,12 @@
         "rest",
         "keep_going",
         "let_it_go",
-        "fix_it_yourself"
+        "fix_it_yourself",
+        "rest",
+        "keep_going",
+        "rest"
       ],
-      "expectedDigest": "adf28227faed85dc987a6512752fc9da",
+      "expectedDigest": "cb78e30bf95dbf01b798618964c79b45",
       "expectedHistoryKeys": [
         "events.rest.pickpocket_victim.out.shrug",
         "events.filler.roadside_quiet.out.onward",
@@ -174,9 +179,12 @@
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
         "events.rest.pickpocket_victim.out.shrug",
-        "events.crisis.breakdown.out.stuck"
+        "events.crisis.breakdown.out.stuck",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested"
       ],
-      "expectedLegs": 13,
+      "expectedLegs": 16,
       "expectedEndings": ["ending.failure_collapsed"]
     },
     {
@@ -197,9 +205,18 @@
         "rest",
         "keep_going",
         "chase",
-        "fix_it_yourself"
+        "fix_it_yourself",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "hide_the_cash",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest"
       ],
-      "expectedDigest": "92b46575375197d2d7054cd81893276d",
+      "expectedDigest": "346a79d95bee2023cd8837f8674838da",
       "expectedHistoryKeys": [
         "events.rest.pickpocket_victim.out.lost",
         "events.filler.long_hours.out.rested",
@@ -213,9 +230,18 @@
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
         "events.rest.pickpocket_victim.out.lost",
-        "events.crisis.breakdown.out.fixed"
+        "events.crisis.breakdown.out.fixed",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.border.bribe_attempt.out.concealed",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested"
       ],
-      "expectedLegs": 13,
+      "expectedLegs": 22,
       "expectedEndings": ["ending.failure_collapsed"]
     },
     {
@@ -231,9 +257,10 @@
         "keep_going",
         "push_on",
         "keep_going",
-        "rest"
+        "rest",
+        "keep_going"
       ],
-      "expectedDigest": "a7f60db1ea0059a9aa368ad97a2c9c89",
+      "expectedDigest": "1fc4fa6e8d6945eeb39ecdcb057cd340",
       "expectedHistoryKeys": [
         "events.filler.roadside_quiet.out.onward",
         "events.transit.bus_ejection.out.ejected",
@@ -242,10 +269,11 @@
         "events.filler.roadside_quiet.out.onward",
         "events.filler.long_hours.out.tired",
         "events.filler.roadside_quiet.out.onward",
-        "events.filler.long_hours.out.rested"
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward"
       ],
-      "expectedLegs": 8,
-      "expectedEndings": ["ending.failure_collapsed"]
+      "expectedLegs": 9,
+      "expectedEndings": ["ending.failure_gave_up"]
     },
     {
       "seed": "golden:fixture.scenic:greedy-safe",
@@ -261,9 +289,12 @@
         "rest",
         "keep_going",
         "rest",
-        "keep_going"
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest"
       ],
-      "expectedDigest": "e450ae0ba9bd8c489b9e45a4618ba3d1",
+      "expectedDigest": "e3696ffff201c7d303b0de15a1e18428",
       "expectedHistoryKeys": [
         "events.rest.pickpocket_victim.out.shrug",
         "events.transit.bus_ejection.out.walked",
@@ -273,9 +304,12 @@
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
         "events.filler.long_hours.out.rested",
-        "events.filler.roadside_quiet.out.onward"
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested"
       ],
-      "expectedLegs": 9,
+      "expectedLegs": 12,
       "expectedEndings": ["ending.failure_collapsed"]
     },
     {
@@ -292,9 +326,13 @@
         "keep_going",
         "rest",
         "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "keep_going",
         "rest"
       ],
-      "expectedDigest": "879be473972fb5b949b238e218ff5eb2",
+      "expectedDigest": "b11b04da90a26f60d9dc709596c5a8e0",
       "expectedHistoryKeys": [
         "events.filler.roadside_quiet.out.onward",
         "events.transit.bus_ejection.out.walked",
@@ -304,9 +342,13 @@
         "events.filler.roadside_quiet.out.onward",
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
         "events.filler.long_hours.out.rested"
       ],
-      "expectedLegs": 9,
+      "expectedLegs": 13,
       "expectedEndings": ["ending.failure_collapsed"]
     }
   ]
