@@ -1,7 +1,9 @@
 # 0026 — A leg is a session: `legKm`, montage, and the cost in hours
 
-- **Status:** Accepted; Decisions 2–3 **implemented at M3.7, 2026-08-12** (see the addendum at
-  the end). The hours table and montage selection remain design-only until M3.8/M3.9.
+- **Status:** Accepted; Decisions 2–3 implemented at **M3.7** and Decision 6's hours table at
+  **M3.8a**, both 2026-08-12 — see the two addenda at the end. Montage SELECTION and leg SIZING
+  (Decision 4) remain design-only until M3.9. **Decision 6's incoherence is live and open**: it
+  moved the fixture baseline at M3.8a and still has no owner.
 - **Date:** 2026-08-09
 - **Relates to:** ADR 0006 (run-state shape), ADR 0014 (world-tick drift), ADR 0016/0017 (the two prior save bumps)
 - **Bumps:** `SAVE_VERSION` 4 → 5
@@ -320,3 +322,67 @@ accumulated `progressKm` was built at a rate summing to `legCount × round(total
 rather than `totalKm` — 24 × 89 = 2136 against 2140 on the illicit fixture. M3.7 did not change
 `world-tick.ts` at all, so this is unchanged and still true. **M3.8a is where it goes away**, when
 the hours model replaces that line; until then, do not write the test this ADR warned about.
+
+---
+
+## Addendum — implemented at M3.8a (2026-08-12), and Decision 6 is no longer hypothetical
+
+Decision 6's hours table shipped as `loop/leg-hours.ts`; `HOURS_PER_LEG` is gone from
+`world-tick.ts`, and `world-tick.ts:126`'s `Math.round(totalKm/legCount)` is gone with it — a leg
+now advances `progressKm` by its own `legKm`, so a completed run lands on `totalKm` to the
+kilometre.
+
+**The structural claim held.** `worldTick` needed no new code to make drain proportional: it was
+already denominated in hours, so clock, hunger, energy, health and `progressKm` all scaled by
+themselves the moment hours became a function of distance.
+
+`MIN_LEG_HOURS` was specified as a per-mode table and **collapses to the constant 1**. Every mode
+except `foot` already carries an overhead of 2 or more, so the floor can only ever bite on a very
+short walk (`mulDivRound(1, 1, 4)` is 0). A second table that must agree with the first was not
+worth shipping to say that.
+
+### ⚠ The fixture baseline moved, and this ADR predicted it would not
+
+The Consequences section above, and the phase plan, both said `docs/sim-baseline.md` must not move
+at this milestone — with the plan adding that if it did, "the hours calibration is wrong and that
+is a spec bug rather than a finding."
+
+**The calibration is not wrong. The prediction was.** It was derived by checking the three fixture
+routes' STARTING modes — car 62 km → 4+1 = 5, truck 89/90 → 4+2 = 6, bus 86/87 → 3+2 = 5, all
+exactly reproducing the flat table they replaced. What it did not consider is that transport mode
+**changes mid-run**: `__fixtures__/events/transit/bus_ejection.yaml:49,64` sets `mode: foot` on
+two outcomes. A leg planned at 86 km by bus, once walked, costs `0 + mulDivRound(86, 1, 4)` = 22
+hours, capped at 12 — against the old flat `foot: 9`. Every walked leg became 33% more expensive.
+
+That is **exactly the incoherence Decision 6 describes**, which was written as a future concern and
+given no owner. It has one now.
+
+**The three fixtures isolate the three cases perfectly**, which is the most useful thing about the
+result:
+
+| fixture   | mode       | what moved                                                      |
+| --------- | ---------- | --------------------------------------------------------------- |
+| `short`   | car        | **nothing** — 62 km is exactly `round(620/10)`, hours identical |
+| `illicit` | truck      | **digest only** — `progressKm` 89/90 vs a flat 89; no behaviour |
+| `scenic`  | bus → foot | legs 11→8/9, one ending `gave_up`→`collapsed`, choices diverged |
+
+And the corpus baseline reports **"No change"**, because no corpus event sets `field: 'mode'` —
+every `op: transport` there is `condition`. Same routes, same engine, different event sets: the
+mode change is the entire cause, demonstrated rather than argued.
+
+### What was decided, and by whom
+
+Accepting the movement and rebaselining, rather than tuning a constant to protect the control.
+The alternatives were weighed and rejected: capping `foot` at 9 hours would have preserved the
+baseline by choosing a number to fit a fixture rather than because it is right, and would have left
+the same divergence latent for every other mode change; recomputing `legKm` on a mode change is the
+proper fix and moves `legCount` mid-run, which rebases the beat schedule — the exact problem
+leg-as-time-slice was rejected for in Decision 1.
+
+Completion is **unchanged at 31.2%** and median legs and in-game days are unmoved; what moved is
+the failure MIX — `failure_collapsed` 35.8% → 39.0%, `failure_gave_up` 33.0% → 29.8%, health leg-5
+p10 9 → 8. Making walking expensive should move exactly those and nothing else, and it did.
+
+**Decision 6 still needs a phase.** What this milestone adds is evidence: the incoherence is not a
+tail case, it is reachable by one shipped event on one of three fixture routes, and it is worth
+3.2pp of the failure distribution when it fires.

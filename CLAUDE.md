@@ -23,7 +23,7 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.7 (2026-08-12).** Steps **5-7 RUN**
+> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.8a (2026-08-12).** Steps **5-7 RUN**
 > against a real corpus — 13 events, 137 modifiers, 25 complications, 15 universal choices, a
 > complete `en` locale, `content:lint` clean. **Step 2 now routes on real geography**, loaded and
 > linted (ADR 0033), and its diversity gate PASSES (median 59% vs a 70% ceiling) — but it has NO

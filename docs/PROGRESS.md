@@ -5,10 +5,64 @@
 
 ---
 
-## Shipped this session (2026-08-12, session 8) — **M3.6 and M3.7**
+## Shipped this session (2026-08-12, session 8) — **M3.6, M3.7 and M3.8a**
 
-Two milestones. M3.6 made the geo data loadable and linted; M3.7 put `legKm` and `montageLegs`
-on `RouteState` at uniform values and bumped `SAVE_VERSION` to 5.
+Three milestones. M3.6 made the geo data loadable and linted; M3.7 put `legKm` and `montageLegs`
+on `RouteState` at uniform values and bumped `SAVE_VERSION` to 5; M3.8a replaced flat
+`HOURS_PER_LEG` with a distance-derived hours model — **and moved the fixture baseline, which is
+the finding of the session.**
+
+---
+
+## M3.8a — the hours model, and the incoherence that stopped being hypothetical
+
+`loop/leg-hours.ts` is new: `legHours(km, mode, montage)` = a per-mode overhead plus
+`mulDivRound(km, 1, KMH[mode])`, floored at 1 hour and capped at 12 (30 for a montage leg).
+`HOURS_PER_LEG` is gone from `world-tick.ts`, and so is `Math.round(totalKm/legCount)` — a leg now
+advances `progressKm` by its own `legKm`, so a completed run lands on `totalKm` to the kilometre.
+
+**The structural claim held.** `worldTick` needed no new code to make drain proportional: ADR 0014
+had already denominated it in hours, so clock, hunger, energy, health and `progressKm` all scaled
+by themselves the moment hours became a function of distance.
+
+### ⚠ The fixture baseline moved. `docs/sim-baseline.md` was regenerated, by decision
+
+The plan said it must not move, and that if it did the calibration was wrong. **The calibration is
+not wrong — the prediction was.** It was derived from the three routes' STARTING modes (car 62 km →
+4+1 = 5, truck 89/90 → 4+2 = 6, bus 86/87 → 3+2 = 5, all exactly reproducing the flat table). It did
+not consider that transport mode **changes mid-run**:
+`__fixtures__/events/transit/bus_ejection.yaml:49,64` sets `mode: foot`. A leg planned at 86 km by
+bus, once walked, costs `0 + mulDivRound(86,1,4)` = 22 hours capped at 12, against the old flat
+`foot: 9` — every walked leg 33% more expensive.
+
+That is **ADR 0026 Decision 6's recorded incoherence**, written as a future concern with no owner.
+It has evidence now.
+
+**The three fixtures isolate the three cases, which is the useful part:**
+
+| fixture   | mode       | what moved                                                      |
+| --------- | ---------- | --------------------------------------------------------------- |
+| `short`   | car        | **nothing** — 62 km is exactly `round(620/10)`; a clean control |
+| `illicit` | truck      | **digest only** — `progressKm` 89/90 vs a flat 89; no behaviour |
+| `scenic`  | bus → foot | legs 11→8/9, one ending `gave_up`→`collapsed`, choices diverged |
+
+**The corpus baseline says "No change"** — no corpus event sets `field: 'mode'`; every
+`op: transport` there is `condition`. Same routes, same engine, different event sets: the mode
+change is the entire cause, demonstrated rather than argued.
+
+**What moved in the fixture baseline** — completion **unchanged at 31.2%**, median legs 10 and
+median in-game days 5 both unmoved. The FAILURE MIX shifted: `failure_collapsed` 35.8% → 39.0%,
+`failure_gave_up` 33.0% → 29.8%, health leg-5 p10 9 → 8, beat fill 51.8% → 53.2%. Making walking
+expensive should move exactly those and nothing else.
+
+**Rejected, and why:** capping `foot` at 9 hours would have preserved the control by choosing a
+number to fit a fixture rather than because it is right, and left the same divergence latent for
+every other mode change. Recomputing `legKm` on a mode change is the proper fix — and it moves
+`legCount` mid-run, rebasing the beat schedule, which is the exact problem leg-as-time-slice was
+rejected for.
+
+**Decision 6 still needs a phase.** It is not a tail case: one shipped event on one of three
+fixture routes reaches it, and it is worth 3.2pp of the failure distribution when it fires.
 
 ---
 
@@ -233,6 +287,12 @@ Nothing is left broken. These are absent or partial, with paths:
 - ~~`overlay.json` should be `overlay.yaml`.~~ **Done at M3.6.** Byte-verified: `--check` is
   byte-identical after the move.
 - ~~`packages/content/package.json` has no `"./geo"` export.~~ **Done at M3.6**, as `"./geo/*"`.
+- **ADR 0026 Decision 6's incoherence is LIVE and has no owner.** `legKm` is baked at generation,
+  so a leg planned by bus and walked after `bus_ejection` costs `legHours(86,'foot')` = 22 hours
+  capped at 12. It is reachable by one shipped event on one of three fixture routes and is worth
+  3.2pp of the failure distribution when it fires. The proper fix recomputes `legKm` on a mode
+  change, which moves `legCount` and rebases the beat schedule — no milestone in this phase
+  contains it.
 - **`GEO_UNDECLARED_BRIDGE`'s budget is 13 and belongs to THIS slice.** 35 bridges, 13 stranding
   10+ nodes, measured at 263 nodes. M3.11 quadruples the node count and the budget must be
   re-measured, not extrapolated. If it grows faster than the node count the selector is producing
@@ -256,8 +316,38 @@ Nothing is left broken. These are absent or partial, with paths:
 
 ## Next step — ONE task
 
+**M3.8b: graded hygiene — its own commit, with the prediction written BEFORE the run.**
+
+`world-tick.ts` reads `if (hours >= HOURS_PER_HYGIENE) … delta: -1` — a single 6-hour rung. Today
+that fires for truck (6) and not for car (5), bus (5) or train (4), so hygiene is very nearly
+static. Grading it makes it drain on most legs, and `modifiers.yaml:61,69` make hygiene
+mechanically live across five check tags — so it **will** move `Modifier chips / check` off 6.7 and
+every DC it touches. A fresh agent can start here:
+
+1. **Write the predicted diff first, in the commit message, then run the sim.** This is the one
+   milestone in the phase whose whole point is a balance change, so an unpredicted number is the
+   finding. ADR 0032's lesson applies: a report must read its diagnosis off its own measurement.
+2. **Morale stays ungraded, and this is not an oversight.** `world-tick.ts:91-101` measured that a
+   second rung on a FLOORED meter synchronises the collapse (`0/2/6` → `0/0/0` at leg 15). Hunger
+   is graded because it has no ceiling. Grade a penalty on an unbounded meter, never on a floored
+   one. Montage gets no exception.
+3. **Both baselines will move and that is expected** — unlike M3.8a, where only one did and the
+   asymmetry was the diagnosis. Regenerate both in the same commit and explain each line.
+4. Watch `Checks under 2 chips` and the corpus `Complication rate`: hygiene modifiers entering more
+   checks can push chips/check ABOVE the 3–7 band, which ADR 0023 already says is the risk
+   direction (measured min 3 · median 7 · max 9).
+
+**Then M3.9** — `leg-plan`, `leg-locations`, `beat-schedule`, `materialise-route`,
+`route-preview`, `generate-routes`. That is where `legKm` stops being uniform and montage legs
+first exist, and it is the milestone the last three have been clearing the way for.
+
+---
+
+### Superseded: the M3.8a brief
+
 **M3.8a: the hours model. `legHours(km, mode, montage)` replaces `HOURS_PER_LEG`, lifted out of
-`world-tick.ts` into `loop/leg-hours.ts`.**
+`world-tick.ts` into `loop/leg-hours.ts`.** Shipped — see above. Its step 2 below asserted the
+fixture baseline must not move, and that was wrong for the reason recorded in the M3.8a section.
 
 The plan is `~/.claude/plans/plan-mode-build-the-synthetic-bird.md` §"The leg model"; ADR 0026
 Decision 6 is the table. A fresh agent can start here:
