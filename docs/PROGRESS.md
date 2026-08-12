@@ -80,9 +80,9 @@ Nothing is left broken. These are absent or partial, with paths:
   data immediately — the plan warns about exactly this.
 - **`place-borders` and `mark-unavoidable` are global over-approximations.** Both compute one
   spanning set for the whole graph rather than per origin–destination pair (ADR 0030).
-- **`docs/geo-data-licensing.md` §6 contradicts the code.** It describes a _per-terrain_
-  circuity factor with a "not yet measured" table; `bf1164e` measured ONE global 1.39 and
-  rejected per-terrain. It also references `overlay.yaml`, which does not exist yet.
+- ~~`docs/geo-data-licensing.md` §6 contradicts the code.~~ **Fixed 2026-08-12.** It now records
+  the measured one-global-1.39 factor, the 13-pair sample, and a p90 residual of 21.6% — and says
+  plainly that sea legs are not calibrated at all.
 - **`world.simplified.json` does not exist.** Deferred to M3.11 with the scale-up.
 - **The 22–48 leg band is unsurvivable** — 0% completion at 24+ legs, measured (ADR 0026
   addendum). Still open, and it gates M3.10b.
@@ -101,19 +101,26 @@ A fresh agent can start here:
 2. Move `overlay.json` → `overlay.yaml`. `yaml` is already declared in
    `packages/content/package.json`; `packages/tools/geo-build/cli.ts` currently `JSON.parse`s it
    in `generate()`, and that call site moves behind the new loader.
-3. Write `load-geo.ts` beside `load-content.ts`, following the `readLocale` precedent
+3. **The three geo files carry metadata keys, and every schema in this repo is `strictObject`.**
+   `nodes.gen.json` and `edges.gen.json` each carry `_format` (an array of doc lines) plus
+   `digest`/`nodesDigest` and `count`; `overlay.json` carries `_comment` and `_tolledComment`.
+   A `strictObject` file schema rejects all of them. **Do not delete the comments to make the
+   schema pass** — they are the only record of why each overlay row exists. The overlay's become
+   real `#` comments when it moves to YAML (step 2); the two `.gen.json` headers must be declared
+   in the schema instead. Decide this before writing the schema, not after it fails.
+4. Write `load-geo.ts` beside `load-content.ts`, following the `readLocale` precedent
    (`load-content.ts:84-87`): return `{ geo: null, issues: [] }` when no geo files exist. Do NOT
    return a missing-file `ContentIssue` — that becomes an `error('SCHEMA', …)` and turns
    `lint.test.ts:25-28` red for the milestones before the data lands.
-4. Add `"./geo"` to `packages/content/package.json` exports. Full-monorepo DoD.
-5. Write `packages/tools/content-lint/rules-geo.ts`, each rule with a synthetic-bundle test:
+5. Add `"./geo"` to `packages/content/package.json` exports. Full-monorepo DoD.
+6. Write `packages/tools/content-lint/rules-geo.ts`, each rule with a synthetic-bundle test:
    `GEO_DISCONNECTED`, `GEO_ORPHAN_NODE`, `GEO_EDGE_ENDPOINT_UNRESOLVED`, `GEO_OVERLAY_STALE`,
    `GEO_NAMED_BORDER`, `GEO_PLACE_BEHAVIOUR`, `GEO_NAME_FIELD_MISPLACED`, `GEO_OSM_SOURCE`,
    `GEO_NODES_DIGEST_STALE`.
-6. **Do NOT add `GEO_EDGE_TOO_LONG` or a node-count band rule.** Both fail on the current slice
+7. **Do NOT add `GEO_EDGE_TOO_LONG` or a node-count band rule.** Both fail on the current slice
    by construction, and the deferral to M3.11 is DECIDED — see Decisions taken below. Say so in
    the commit so the next reader knows it was a choice.
-7. DoD: `pnpm content:lint` clean, and `lint.test.ts` must still pin `MISSING_IMAGE_MANIFEST` as
+8. DoD: `pnpm content:lint` clean, and `lint.test.ts` must still pin `MISSING_IMAGE_MANIFEST` as
    the only gap.
 
 ---

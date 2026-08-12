@@ -27,7 +27,7 @@ rendering, shipped inside a **closed-source commercial** mobile game.
 
 **That last row is the load-bearing one.** No road, rail or ferry network is extracted from any
 licensed database. Corridor topology is generated from node geometry and hand-curated in
-`packages/content/geo/overlay.yaml`; distances are great-circle × a per-terrain circuity factor
+`packages/content/geo/overlay.json` (YAML from M3.6); distances are great-circle × one global circuity factor
 calibrated against a checked-in sample (§6). This is what keeps the whole dataset out of ODbL's
 reach, and it is the sentence to read first.
 
@@ -233,29 +233,40 @@ dataset could ship.
 
 ## 6. Calibration, and how wrong it is
 
-Edges are great-circle distance × a circuity factor **per terrain class**. A single global constant
-is roughly right on plains and badly wrong in mountains, so the factor is calibrated, not chosen.
+**Measured at M3.5, and the answer contradicted the plan.** Edges are great-circle distance × **one
+global circuity factor of 1.39** (`CIRCUITY_FACTOR_NUM/DEN` in `build-edges.ts`). This section
+previously specified a factor _per terrain class_ and predicted that a single constant would be
+"roughly right on plains and badly wrong in mountains". The data does not support that.
 
-- **Fixture:** `packages/tools/geo-build/__fixtures__/road-distances.json` — 35 hand-looked-up real
-  city-pair road distances spanning plain / hill / mountain / desert / coast. Checked in, with the
-  source and date of each lookup.
-- **Sea legs** calibrate separately against NGA Pub 151.
-- `--stage=audit` prints the residual distribution (mean, p50, p90) per terrain class.
+- **Fixture:** `packages/tools/geo-build/__fixtures__/road-distances.json` — **13** real city-pair
+  road distances, each with its source and lookup date, spanning hill, mountain, plain, coast and
+  urban corridors. The plan called for 35; 13 is what could be sourced from public-domain and
+  CC BY material without touching a routing API whose terms would contaminate the licence position.
+  **The sample is small and that is a stated limitation, not a hidden one.**
+- **Sea legs are NOT calibrated.** Ferry edges are authored in the overlay with distances derived
+  the same way. NGA Pub 151 was named as the sea-leg source and has not been used.
 
-| Terrain class | Factor | Residual mean | Residual p90 | Measured             |
-| ------------- | ------ | ------------- | ------------ | -------------------- |
-| plain         | —      | —             | —            | **not yet measured** |
-| hill          | —      | —             | —            | **not yet measured** |
-| mountain      | —      | —             | —            | **not yet measured** |
-| desert        | —      | —             | —            | **not yet measured** |
-| coast         | —      | —             | —            | **not yet measured** |
-| sea (Pub 151) | —      | —             | —            | **not yet measured** |
+| Measure                              | Value                  |
+| ------------------------------------ | ---------------------- |
+| Factor shipped                       | **1.39** (one, global) |
+| Observed road / great-circle, min    | 1.11                   |
+| Observed road / great-circle, median | 1.39                   |
+| Observed road / great-circle, max    | 1.77                   |
+| Residual against 1.39, mean          | 12.4%                  |
+| Residual against 1.39, p50           | 11.9%                  |
+| Residual against 1.39, p90           | 21.6%                  |
+| Residual against 1.39, max           | 25.2%                  |
 
-> **This table is filled at M3.5 from a real run and not before.** It is the largest single
-> unverifiable in the phase, and leg-count scaling is downstream of these distances, so the achieved
-> accuracy is recorded as a number rather than assumed. The widely-cited 1.2–1.3 intercity circuity
-> figure is a transport-geography rule of thumb and is **[UNVERIFIED]** here — it is a starting point
-> for the bisection, not a result.
+**Why one factor and not five.** Splitting by terrain class over 13 pairs gives two or three
+samples per class, and the spread _within_ a class was as large as the spread between classes. The
+residual is dominated by corridor topology — a bay to drive around, a range to cross at a pass —
+which the overlay expresses far better than a coefficient can. A per-terrain table fitted to two
+samples would be fitting noise and would read as more precision than exists.
+
+> **A p90 residual of 21.6% is the honest accuracy of every distance in this repo**, and leg counts,
+> travel time and cash cost are all downstream of it. The widely-cited 1.2–1.3 intercity circuity
+> figure is a transport-geography rule of thumb; the measured median here is 1.39, which is higher,
+> and long Mediterranean coastal corridors are why.
 
 ---
 
@@ -270,7 +281,7 @@ is roughly right on plains and badly wrong in mountains, so the factor is calibr
   first draft's hole: a `geofabrik.de` URL under a `url` key with `license: public-domain` passed.)
 - `license` ∈ `{public-domain, cc-by-4.0, us-gov-public-domain}`.
 - any object key matching `/^osm/i` or `/_osm(_|$)/i`, or any string value matching
-  `/(^|[^a-z])osm[:_-]/i`, in `nodes.*`, `edges.*` or `overlay.yaml`.
+  `/(^|[^a-z])osm[:_-]/i`, in `nodes.*`, `edges.*` or the overlay.
 
 **No regex can detect an OSM-derived _value_.** A latitude copied out of an OSM node looks like any
 other latitude. The real controls are the fetch allowlist, the SHA-256 pin, and review. The rule
