@@ -2,8 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { loadGeoOverlay } from '@odyssey/content/loader';
 import { findWorkspaceRoot } from '../shared/workspace-root.ts';
-import { type Overlay } from './apply-overlay.ts';
 import { auditDiversity, formatDiversity, graphFromArtifacts } from './audit-diversity.ts';
 import { benchmark, formatBenchmark, formatVerification } from './report-verify.ts';
 import { readNames } from './verify-routes.ts';
@@ -32,7 +32,8 @@ import { scoreCandidates } from './score-candidates.ts';
 
 const ROOT = findWorkspaceRoot(dirname(fileURLToPath(import.meta.url)));
 const CACHE_DIR = join(ROOT, '.geo-cache');
-const GEO_DIR = join(ROOT, 'packages', 'content', 'geo');
+const CONTENT_DIR = join(ROOT, 'packages', 'content');
+const GEO_DIR = join(CONTENT_DIR, 'geo');
 const LOCK_PATH = join(GEO_DIR, 'sources.lock.json');
 const FIXTURE = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -157,6 +158,22 @@ function generate(
 ): number {
   const read = (name: string): string => readFileSync(join(CACHE_DIR, name), 'utf8');
 
+  // The overlay goes through `packages/content`'s loader rather than a local `JSON.parse` +
+  // `as Overlay`. The cast was the whole risk: a hand-edited file with a misspelled key or a
+  // dropped `reason` typechecked perfectly and silently did nothing. `loadGeoOverlay` validates
+  // it against `geoOverlaySchema` and reports file:line:col — and `loadGeo` is deliberately NOT
+  // used here, because this function WRITES the two artifacts it would insist on parsing.
+  const overlay = loadGeoOverlay(CONTENT_DIR);
+  if (overlay.data === null) {
+    for (const found of overlay.issues) {
+      process.stderr.write(
+        `${found.file}:${String(found.line)}:${String(found.column)}  ${found.message}\n`,
+      );
+    }
+    process.stderr.write('\ngeo-build: overlay.yaml did not parse. Nothing was written.\n');
+    return 1;
+  }
+
   const slice = buildSlice({
     candidates,
     regions: readRegions(read('ne_10m_admin_0_countries.geojson')),
@@ -164,7 +181,7 @@ function generate(
     terrainGeoJson: read('ne_10m_geography_regions_polys.geojson'),
     railLines: readLines(read('ne_10m_railroads.geojson')),
     quota: SETTLEMENT_QUOTA,
-    overlay: JSON.parse(readFileSync(join(GEO_DIR, 'overlay.json'), 'utf8')) as Overlay,
+    overlay: overlay.data,
     ledger,
   });
 

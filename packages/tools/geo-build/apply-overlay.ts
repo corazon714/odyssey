@@ -20,11 +20,23 @@ import { distanceKm, type LatLng } from './geodesy.ts';
  *   redundant or the endpoints are wrong.
  */
 
+/**
+ * The STRUCTURAL SUBSET `applyOverlay` needs — deliberately looser than the parsed shape.
+ *
+ * `geoOverlaySchema` (packages/content/schema/geo.ts) is the authority on what `overlay.yaml`
+ * may contain; this is what this function reads. The two cannot silently diverge on a field
+ * NAME, because the schema is a `strictObject` parsed against the real file: rename a key there
+ * and the committed overlay stops parsing, loudly. Keeping this looser buys partial literals in
+ * tests and plain `string` endpoints, which is what `applyOverlay` resolves against.
+ *
+ * `seasonality` is `string | null` rather than `string | undefined` because an omitted key
+ * parses to `null` (ADR 0009 §2); `?? 'all_year'` below covers both spellings.
+ */
 export type OverlayLink = {
   readonly from: string;
   readonly to: string;
   readonly reason: string;
-  readonly seasonality?: string;
+  readonly seasonality?: string | null;
 };
 
 export type Overlay = {

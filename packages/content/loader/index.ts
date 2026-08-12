@@ -16,4 +16,5 @@ export {
 } from './load-declarations.ts';
 export { loadComplications } from './load-complications.ts';
 export { loadUniversalChoices } from './load-universal-choices.ts';
+export { loadGeo, loadGeoOverlay, type LoadGeoResult } from './load-geo.ts';
 export { formatIssue, issueAt, locate, offsetToLineCol, type ContentIssue } from './locate.ts';

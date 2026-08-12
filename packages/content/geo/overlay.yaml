@@ -1,0 +1,188 @@
+# THE ONLY FILE IN packages/content/geo/ A HUMAN EDITS. Everything else is generated.
+#
+# DECLARED INTENT, NOT A PATCH. Every entry names NODE IDS and is applied against a freshly
+# generated candidate graph on every build. It is never a diff against a previous output, so
+# retuning the generator cannot rot it — a stale entry fails loudly instead of silently doing
+# nothing. Node ids derive from geonameid, so they survive a re-selection.
+#
+# WHY forcedCorridors EXIST, measured. The water test samples the straight line between two
+# nodes and refuses the edge when too much of it is at sea. That is correct for a strait and
+# WRONG wherever a coast is concave: Athens to Patra is 177 km of Greek mainland, but the
+# great-circle between them crosses the Gulf of Corinth. The real road goes around, and the
+# circuity factor already prices that in. Concave coasts are the Mediterranean's whole
+# character, so this list is expected to be long around it.
+#
+# WHY ferries ARE AUTHORED AND NEVER GENERATED. Nothing in the geometry knows which straits
+# carry a service. Inventing one would be indistinguishable from a fact, and a player would
+# have no way to tell. Each row is a crossing that really operates.
+#
+# YAML, AND WHY THAT MATTERS (M3.6). This file is read by `loadGeo` in packages/content, which
+# is where `yaml` is a declared dependency and where `locate.ts` resolves a schema failure to a
+# real file:line:col. `packages/tools` reaches it through `@odyssey/content/loader` rather than
+# parsing it itself — the same route content-lint, content-stats and the sim already take. The
+# comments above and below are the record of WHY each row exists; they are the most valuable
+# thing in this file, and a JSON `_comment` array was the only way to keep them before the move.
+
+forcedCorridors:
+  - from: n.city.g264371
+    to: n.city.g255683
+    reason: Athens-Patra. 177 km of mainland; the straight line crosses the Gulf of Corinth.
+  - from: n.city.g745044
+    to: n.city.g749780
+    reason: Istanbul-Canakkale. Mainland Thrace; the straight line crosses the Sea of Marmara.
+  - from: n.city.g2618425
+    to: n.city.g2620583
+    reason: Copenhagen-Hedensted. Fixed links across the Danish belts carry road traffic.
+  - from: n.city.g2620583
+    to: n.city.g2891122
+    reason: Jutland-Kiel. Denmark's land border with Germany; the straight line clips the Baltic.
+  - from: n.city.g2525059
+    to: n.city.g3182351
+    reason: Calabria-Puglia. Mainland Italy throughout; the straight line crosses the Gulf of Taranto.
+  - from: n.city.g750269
+    to: n.city.g745044
+    reason: Bursa-Istanbul. Road runs around the head of the gulf; the straight line crosses the Marmara.
+
+ferries:
+  - from: n.city.g2523920
+    to: n.city.g2525059
+    reason: Palermo-Calabria across the Strait of Messina. Sicily's road link to the mainland.
+    seasonality: all_year
+  - from: n.city.g3167096
+    to: n.city.g3128760
+    reason: Sardinia-Barcelona. Sardinia has no land link at any price.
+    seasonality: all_year
+  - from: n.city.g2512989
+    to: n.city.g3128760
+    reason: Mallorca-Barcelona. The Balearics are reachable only by sea. Replaces an earlier Menorca row the overlay flagged as naming a node the selector had dropped.
+    seasonality: all_year
+  - from: n.city.g2507480
+    to: n.city.g3128760
+    reason: Algiers-Barcelona. The western Mediterranean crossing.
+    seasonality: all_year
+  - from: n.city.g2464470
+    to: n.city.g2523920
+    reason: Tunis-Palermo. Joins the Maghreb to Sicily and so to Europe.
+    seasonality: all_year
+
+forbiddenCorridors: []
+
+# WHY THESE ARE AUTHORED. Nothing in the licensed stack carries road pricing, so a toll is
+# declared or it does not exist. ADR 0025 names the toll flag as one of four structural
+# breakers between `fastest` and `cheapest`: without it the two are an affine transform of
+# each other on a single-mode corridor and return the identical path. The field was declared
+# in the Overlay type from the start and NEVER READ — build-slice hardcoded `tolled: false` —
+# so this list is the first that does anything.
+#
+# WHAT COUNTS. A per-use ticket or barrier charge on the motorway that IS the through route.
+# A time-based vignette is deliberately excluded: Austria, Switzerland, Czechia, Hungary,
+# Slovakia, Slovenia, Bulgaria and Romania sell one, but it is a flat purchase rather than a
+# cost that scales with the corridor, and `TOLL_FEE` is a per-edge charge. Germany, the Low
+# Countries and Scandinavia charge cars nothing on these roads.
+#
+# WHAT IS DELIBERATELY ABSENT. Spain, whose AP network was progressively de-tolled between
+# 2018 and 2021, and Poland, where the state-managed A2 and A4 stopped charging cars in 2023.
+# Both are now mixed enough that a row would be a guess, and a wrong row here is a silent
+# pricing error rather than a loud failure. Fewer rows that are right.
+#
+# THIS IS NOT A PLACE JUDGEMENT. CLAUDE.md 11 forbids attaching danger, corruption or
+# behaviour to a real place, and forbids a per-country risk field. A toll is infrastructure —
+# the same kind of fact as a ferry operating or a strait being wide. It is declared per
+# CORRIDOR, never per country, and it says nothing about anybody who lives there.
+
+tolled:
+  - from: n.city.g2988507
+    to: n.city.g2989317
+    reason: Paris-Orleans. The A10 is a ticket autoroute for its whole length.
+  - from: n.city.g2972191
+    to: n.city.g2989317
+    reason: Tours-Orleans. A10 again, the same concession.
+  - from: n.city.g2988507
+    to: n.city.g3029241
+    reason: Paris-Caen. The A13 charges at Mantes and Dozule.
+  - from: n.city.g2972191
+    to: n.city.g2990969
+    reason: Tours-Nantes. The A85 is tolled across its length.
+  - from: n.city.g2972191
+    to: n.city.g3029241
+    reason: Tours-Caen. The A28 charges on the Tours-Le Mans section.
+  - from: n.city.g2972315
+    to: n.city.g3031582
+    reason: Toulouse-Bordeaux. The A62 is a ticket autoroute.
+  - from: n.city.g2972315
+    to: n.city.g2992166
+    reason: Toulouse-Montpellier. A61 then A9, both tolled.
+  - from: n.city.g2992166
+    to: n.city.g2995469
+    reason: Montpellier-Marseille. The A9 and A7 both charge.
+  - from: n.city.g2980291
+    to: n.city.g2996882
+    reason: Saint-Etienne-Macon. The A6 north of Lyon is tolled.
+  - from: n.city.g2925177
+    to: n.city.g2996882
+    reason: Freiburg-Macon. Free in Germany, then the A36 charges from Mulhouse.
+  - from: n.city.g2993458
+    to: n.city.g3165524
+    reason: Monaco-Turin. The A8 and the Italian A10 both charge.
+  - from: n.city.g3173435
+    to: n.city.g3176219
+    reason: Milan-Genoa. The A7 is a barrier autostrada.
+  - from: n.city.g3165524
+    to: n.city.g3173435
+    reason: Turin-Milan. The A4 charges by ticket.
+  - from: n.city.g3165524
+    to: n.city.g3176219
+    reason: Turin-Genoa. A6 then A26, both tolled.
+  - from: n.city.g3169070
+    to: n.city.g3172394
+    reason: Rome-Naples. The A1 is tolled throughout.
+  - from: n.city.g3172394
+    to: n.city.g3182351
+    reason: Naples-Bari. The A16 crosses the Apennines on a ticket.
+  - from: n.city.g3164419
+    to: n.city.g3173435
+    reason: Vicenza-Milan. The A4 across the Po plain.
+  - from: n.city.g3165803
+    to: n.city.g3169070
+    reason: Teramo-Rome. The A24 through the Gran Sasso tunnel.
+  - from: n.city.g2775220
+    to: n.city.g3164419
+    reason: Innsbruck-Vicenza. The Brenner charges on both the Austrian and Italian sides.
+  - from: n.city.g2267057
+    to: n.city.g2267095
+    reason: Lisbon-Leiria. The A1 and A8 both charge.
+  - from: n.city.g2267095
+    to: n.city.g2735943
+    reason: Leiria-Porto. The A1 is tolled for its whole length.
+  - from: n.city.g2735943
+    to: n.city.g2738785
+    reason: Porto-Guarda. The A25 charges electronically.
+  - from: n.city.g255683
+    to: n.city.g264371
+    reason: Patra-Athens. Olympia Odos is a barrier motorway.
+  - from: n.city.g252601
+    to: n.city.g255683
+    reason: Tripoli-Patra. The Moreas motorway charges by barrier.
+  - from: n.city.g255683
+    to: n.city.g735563
+    reason: Patra-Kozani. Ionia Odos then Egnatia, both tolled.
+  - from: n.city.g734077
+    to: n.city.g735563
+    reason: Thessaloniki-Kozani. Egnatia charges at its western stations.
+  - from: n.city.g745044
+    to: n.city.g750269
+    reason: Istanbul-Bursa. The Osmangazi bridge crossing is tolled.
+  - from: n.city.g745044
+    to: n.city.g748893
+    reason: Istanbul-Corlu. The O-3 charges electronically.
+  - from: n.city.g311046
+    to: n.city.g750269
+    reason: Izmir-Bursa. The O-5 is tolled for its whole run.
+  - from: n.city.g745044
+    to: n.city.g749780
+    reason: Istanbul-Canakkale. The O-6 and its Dardanelles bridge both charge.
+  - from: n.city.g2964180
+    to: n.city.g2964574
+    reason: Galway-Dublin. The M6 has a barrier plaza at Ballinasloe.
+
+criticalEdges: []
