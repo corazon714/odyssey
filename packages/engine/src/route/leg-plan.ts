@@ -1,3 +1,4 @@
+import { type LocationType } from '../content/location-type.ts';
 import { mulDivRound } from '../modifiers/modifier-tunables.ts';
 import { hasMode } from './geo-edge.ts';
 import { edgeAt, nodeAt, type GeoGraph } from './geo-graph.ts';
@@ -89,6 +90,13 @@ export type LegSegment = {
   /** Services at the node this segment arrives at. */
   readonly servicesCount: number;
   readonly viaCrossingNode: boolean;
+  /**
+   * The type of the node this segment ARRIVES at, which is where the leg ends up.
+   *
+   * A `GeoNode.type` IS a `LocationType` — not a parallel vocabulary (ADR 0024). That is what
+   * makes `deriveLegLocations` a direct read rather than a mapping table nobody maintains.
+   */
+  readonly arrivalType: LocationType;
 };
 
 export type LegPlan = {
@@ -137,6 +145,7 @@ export function segmentsOf(graph: GeoGraph, path: GeoPath): readonly LegSegment[
       scenic: edge.scenic,
       servicesCount: serviceCount(to.services),
       viaCrossingNode: from.type === 'border_crossing' || to.type === 'border_crossing',
+      arrivalType: to.type,
     });
   }
   return out;

@@ -29,6 +29,7 @@ function segment(overrides: Partial<LegSegment> = {}): LegSegment {
     scenic: 0,
     servicesCount: 3,
     viaCrossingNode: false,
+    arrivalType: 'town',
     ...overrides,
   };
 }
