@@ -181,8 +181,8 @@ export function loadFixtureScenarios(): readonly FixtureScenario[] {
  * survivability wall.
  */
 const CORPUS_ROUTE_SEED = 'corpus:m3.10a';
-const SHORT_BAND_MIN = 10;
-const SHORT_BAND_MAX = 16;
+const LEG_BAND_MIN = 22;
+const LEG_BAND_MAX = 48;
 
 /**
  * Endpoint pairs, by node id. Stable, so the sim is reproducible.
@@ -201,12 +201,10 @@ const SHORT_BAND_MAX = 16;
  * 10-16-leg route that passes a crossing; these are six of them.
  */
 const CORPUS_PAIRS: readonly (readonly [string, string])[] = [
-  ['n.city.g2267095', 'n.city.g2510911'],
-  ['n.city.g2464470', 'n.city.g2525068'],
-  ['n.city.g2618425', 'n.city.g2891122'],
-  ['n.city.g2512989', 'n.city.g2972315'],
-  ['n.city.g3169070', 'n.city.g3172394'],
-  ['n.city.g2988507', 'n.city.g2989317'],
+  ['n.city.g2267057', 'n.city.g792680'],
+  ['n.city.g2464960', 'n.city.g792680'],
+  ['n.city.g2510911', 'n.city.g792680'],
+  ['n.city.g2523630', 'n.city.g792680'],
 ];
 
 export function loadCorpusScenarios(): {
@@ -243,7 +241,7 @@ export function loadCorpusScenarios(): {
 
     for (const plan of generateRoutes(graph, a, b, CORPUS_ROUTE_SEED).plans) {
       const legs = plan.route.legCount;
-      if (legs < SHORT_BAND_MIN || legs > SHORT_BAND_MAX) continue;
+      if (legs < LEG_BAND_MIN || legs > LEG_BAND_MAX) continue;
       scenarios.push({
         route: plan.route,
         transport: {
@@ -261,7 +259,7 @@ export function loadCorpusScenarios(): {
   // An empty scenario set would make every sim number meaningless while the report still looked
   // healthy, so it is a loud failure rather than a quiet zero.
   if (scenarios.length === 0) {
-    issues.push('no corpus route landed in the 10-16 leg band — the sim would measure nothing');
+    issues.push('no corpus route landed in the 22-48 leg band — the sim would measure nothing');
   }
   return { scenarios, issues };
 }
