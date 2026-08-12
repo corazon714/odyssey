@@ -349,9 +349,9 @@ Nothing is left broken. These are absent or partial, with paths:
 - ~~`overlay.json` should be `overlay.yaml`.~~ **Done at M3.6.** Byte-verified: `--check` is
   byte-identical after the move.
 - ~~`packages/content/package.json` has no `"./geo"` export.~~ **Done at M3.6**, as `"./geo/*"`.
-- **M3.9 is two slices of three.** `leg-plan.ts`, `leg-locations.ts` and `beat-schedule.ts` are
-  done and committed; `materialise-route.ts`, `route-preview.ts` and `generate-routes.ts` do not
-  exist. `leg-plan.ts` has **no caller** — it is pure and fully tested, so the tree is green and
+- **M3.9 is complete, but `generateRoutes` has NO CALLER.** All six modules exist and are
+  tested; the run path still takes `RunInit.route` from a caller and no corpus routes file
+  exists. That is M3.10a, and it is why both baselines read unmoved through four milestones. `leg-plan.ts` has **no caller** — it is pure and fully tested, so the tree is green and
   both baselines are unmoved, but nothing generates a route yet. The exact continuation is under
   "Next step" above.
 - **ADR 0026 Decision 6's incoherence is LIVE and has no owner.** `legKm` is baked at generation,
@@ -383,8 +383,40 @@ Nothing is left broken. These are absent or partial, with paths:
 
 ## Next step — ONE task
 
-**M3.9 is IN PROGRESS — two of three slices have landed (`681f621`, `adb36db`). Continue with
-slice 3.**
+**M3.10a: wire `generateRoutes` into the sim and ship a corpus routes file in the SHORT-TRIP
+BAND (10–16 legs).**
+
+**M3.9 is COMPLETE** — `681f621`, `adb36db`, `05dfb93`. `packages/engine/src/route/` now has
+`leg-plan`, `leg-locations`, `beat-schedule`, `materialise-route`, `route-preview` and
+`generate-routes`; `legKm` is terrain-derived and montage legs exist. **Nothing calls it**, which
+is why both baselines are still unmoved — and closing that is exactly what M3.10a is.
+
+A fresh agent can start here:
+
+1. **`generateRoutes` is not barrel-exported yet.** That is deliberate: an export nothing imports
+   is a conformance-L2 risk for no benefit. M3.10a is the milestone that needs it, so export it
+   and its result types (`RoutePlan`, `RouteStart`, `RoutePreview`) in the same commit as the
+   first caller.
+2. **Short band FIRST, deliberately.** M3.10a isolates route SHAPE from leg COUNT by generating
+   only 10–16-leg routes; M3.10b raises to the full 22–48 band. Do not merge them — ADR 0026's
+   addendum measured 0.1% completion at 24 legs and 0.0% beyond, so a combined milestone cannot
+   tell a shape regression from the known survivability wall.
+3. Touches `sim/cli.ts:62`, a baseline path keyed on `(pack, routes)`, and **a corpus `sim-smoke`
+   CI step, which does not exist today**.
+4. **Prove the control held**: after `--pack=corpus --runs=5000 --diff`, run
+   `pnpm sim -- --runs=5000 --diff` and confirm "No change". That second command is what says the
+   fixture pack was untouched by a corpus-only change.
+5. `corpus-routes.json` is a committed generated file and CLAUDE.md §6 says never commit generated
+   output. **That contradiction is unresolved** — plan open question 4. Sanction it in an ADR with
+   a staleness digest, or build it at sim time and accept that route changes become invisible to
+   `sim:diff`. Decide before writing the file, not after.
+
+**DoD:** the five checks, `--pack=corpus --runs=5000 --diff` explained, the fixture control
+reporting "No change", and an ADR for the committed-generated-file question.
+
+---
+
+### How M3.9 landed, in three slices
 
 `leg-locations.ts` ✅ and `beat-schedule.ts` ✅ are done and tested (18 cases), and they consume
 `LegPlan.arrivalLegOfEdge` rather than recomputing it. Two things settled there that slice 3
@@ -443,7 +475,7 @@ barrel-exported** (`index.ts:247`exports`deriveKey`/`streamKey` only).
    no border event is location-eligible, and `locationTypes` relaxes last (rung 5) while
    `beatGate` goes at rung 1.
 
-### Slice 3 — `materialise-route`, `route-preview`, `generate-routes`
+### Slice 3 — DONE (`05dfb93`)
 
 `RoutePlan = { route, start, preview }` mirroring `FixtureScenario`, because
 `load-pack.ts:63-69` is explicit that route and start block are inseparable — the walking skeleton

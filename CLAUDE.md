@@ -23,12 +23,12 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.8b (2026-08-12).** Steps **5-7 RUN**
+> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.9 (2026-08-12).** Steps **5-7 RUN**
 > against a real corpus — 13 events, 137 modifiers, 25 complications, 15 universal choices, a
-> complete `en` locale, `content:lint` clean. **Step 2 now routes on real geography**, loaded and
-> linted (ADR 0033), and its diversity gate PASSES (median 59% vs a 70% ceiling) — but it has NO
-> CALLER: the route is still caller-supplied via `RunInit.route`, and legs, days, cost and risk
-> do not exist until M3.7-M3.9. Steps 1, 3 and 4 do not exist. Three of §9's registries are live.
+> complete `en` locale, `content:lint` clean. **Step 2 routes on real geography** (ADR 0033) and
+> its diversity gate PASSES at median 59%. Generation is COMPLETE through M3.9 — terrain-derived
+> legs, montage, beats — but has **NO CALLER**: the route still comes from `RunInit.route`, and
+> M3.10a wires it in. Steps 1, 3 and 4 do not exist. Three of §9's registries are live.
 >
 > **`docs/PROGRESS.md` is the authority on current state and this paragraph is not.**
 > `docs/engine-spec.md` Part II is the authority on what the engine does, written from the code.
@@ -131,7 +131,7 @@ packages/engine/            Pure TS game engine                      ✅
   src/director/             filters, scoring, ladder, beats, tension ✅
   src/{queue,loop,migrate}/ consequence queue · advanceLeg/resolveChoice/replayRun · saves  ✅
   src/modifiers/            check tags, registry, resolution pipeline ✅ ADR 0015
-  src/route/                geo graph · Dijkstra · Yen · diversity   ✅ ADR 0025/0030/0031
+  src/route/                graph · Dijkstra · Yen · legs · beats · gen ✅ 0025/0026/0027
 packages/content/                                                    ✅
   events/                   13 seed events, grouped by category      ✅
   __fixtures__/events/      the 9 Phase 1 fixtures, frozen, UNLINTED ✅ ADR 0022
