@@ -206,22 +206,26 @@ const LEG_BAND_MAX = 48;
  * endpoint already chosen. 873 pairs on the shipped slice yield a 22-48 leg route; these four are
  * the spread-out ones.
  *
- * Four rather than six is what the spread constraint allows on a 263-node slice — tightening it
- * further finds nothing, and loosening it re-clusters. Prefer four honest pairs to six that are
- * secretly one.
+ * ONE PAIR PER LEG BUCKET (22-27, 28-33, 34-39, 40-45, 46-48), which is the third constraint
+ * and was added at the Afro-Eurasia switch. Ranking candidates by longest-first returned five
+ * pairs ALL AT EXACTLY 48 LEGS — on a continental graph everything long saturates the cap, so
+ * "take the best" concentrates rather than spreads. Same class of error as the shared-destination
+ * set: the ranking, not the measurement, decides the shape.
  *
- * All four cross borders. That is not a second constraint, it is what long routes on this slice
+ * All five cross borders, and all five yield the full five candidate routes. That is not a second constraint, it is what long routes on this slice
  * do; the intra-country pairs the previous list kept for contrast were all short.
  */
 const CORPUS_PAIRS: readonly (readonly [string, string])[] = [
-  // Bejaia–Bursa: 36 legs, 5,878 km, 3 routes
-  ['n.city.g2505329', 'n.city.g750269'],
-  // Sevilla–Riga: 33 legs, 5,335 km, 4 routes
-  ['n.city.g2510911', 'n.city.g456172'],
-  // Kristiansand–Sarajevo: 31 legs, 4,315 km, 3 routes
-  ['n.city.g3149318', 'n.city.g3191281'],
-  // Saint-Etienne–Vinnytsya: 23 legs, 3,585 km, 4 routes
-  ['n.city.g2980291', 'n.city.g689558'],
+  // Riyadh-Beersheba: 22 legs, 1,957 km, 5 routes
+  ['n.city.g108410', 'n.city.g295530'],
+  // Bengaluru-Bangkok: 30 legs, 4,881 km, 5 routes
+  ['n.city.g1277333', 'n.city.g1609350'],
+  // Jijel-Shakhty: 36 legs, 6,090 km, 5 routes
+  ['n.city.g2492913', 'n.city.g496015'],
+  // Copenhagen-Brest: 42 legs, 8,353 km, 5 routes
+  ['n.city.g2618425', 'n.city.g3030300'],
+  // Beira-Aktobe: 48 legs, 15,296 km, 5 routes
+  ['n.city.g1052373', 'n.city.g610611'],
 ];
 
 export function loadCorpusScenarios(): {
