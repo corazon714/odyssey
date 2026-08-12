@@ -23,11 +23,12 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status: Phases 1, 2A and 2B complete; Phase 3 in progress (2026-08-09).** Steps **5-7 RUN**
+> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.5 (2026-08-12).** Steps **5-7 RUN**
 > against a real corpus — 13 events, 137 modifiers, 25 complications, 15 universal choices, a
-> complete `en` locale, `content:lint` clean. **Step 2** has a router now
-> (`packages/engine/src/route/`) with no caller yet; the route is still caller-supplied via
-> `RunInit.route`. Steps 1, 3 and 4 do not exist. Three of §9's four registries are live.
+> complete `en` locale, `content:lint` clean. **Step 2 now routes on real geography** and its
+> diversity gate PASSES (median 59% against a 70% ceiling) — but it has NO CALLER: the route is
+> still caller-supplied via `RunInit.route`, and legs, days, cost and risk do not exist until
+> M3.7-M3.9. Steps 1, 3 and 4 do not exist. Three of §9's four registries are live.
 >
 > **`docs/PROGRESS.md` is the authority on current state and this paragraph is not.**
 > `docs/engine-spec.md` Part II is the authority on what the engine does, written from the code.
@@ -72,10 +73,10 @@ These have caused real damage in similar projects when broken. Do not "improve" 
    `title: "You lost your passport"` is a bug. `titleKey: "events.passport_lost.title"` is correct.
    _Enforcement: **live, by construction** — an event file has no text fields at all; keys are
    derived from ids. `content:lint` errors on a key missing from `en/`._
-   **Exactly two exemptions exist, both enumerated so neither spreads:** the `name` field on a geo
-   node, which holds a real place's proper noun (`adr/0028`), and the data-attribution block, which
-   ships in English in every locale because a translated licence notice is a modified one
-   (`adr/0024`). Anything else user-visible is a key. `GEO_NAME_FIELD_MISPLACED` enforces the first.
+   **Exactly two exemptions, enumerated so neither spreads:** `name` on a geo node, a real place's
+   proper noun (`adr/0028`), and the attribution block, which ships in English in every locale
+   because a translated licence is a modified one (`adr/0024`). `GEO_NAME_FIELD_MISPLACED` enforces
+   the first.
 
 5. **No text rendered inside generated images.** Ever. The game ships in 4 languages.
    _Enforcement: **(planned)** — `imagegen/` is empty and no images exist._
@@ -113,7 +114,7 @@ These have caused real damage in similar projects when broken. Do not "improve" 
 ## 3. Repository layout
 
 **Target** layout. `(planned)` = does not exist on disk; `(empty)` = only a `.gitkeep`. Do not
-assume a `(planned)` path exists — create it in the phase that needs it. Verified 2026-08-09.
+assume a `(planned)` path exists — create it in the phase that needs it. Verified 2026-08-12.
 
 ```
 apps/mobile/                Expo app (UI only — no game rules here)
@@ -130,7 +131,7 @@ packages/engine/            Pure TS game engine                      ✅
   src/director/             filters, scoring, ladder, beats, tension ✅
   src/{queue,loop,migrate}/ consequence queue · advanceLeg/resolveChoice/replayRun · saves  ✅
   src/modifiers/            check tags, registry, resolution pipeline ✅ ADR 0015
-  src/route/                geo graph · Dijkstra · Yen · diversity   ✅ ADR 0025
+  src/route/                geo graph · Dijkstra · Yen · diversity   ✅ ADR 0025/0030/0031
 packages/content/                                                    ✅
   events/                   13 seed events, grouped by category      ✅
   __fixtures__/events/      the 9 Phase 1 fixtures, frozen, UNLINTED ✅ ADR 0022
@@ -138,15 +139,18 @@ packages/content/                                                    ✅
   flags/items/npcs/traits/endings.yaml   declaration registries      ✅
   schema/ · loader/         Zod + terse->canonical · YAML w/ file:line:col   ✅ ADR 0009
   i18n/en/                  complete — 157 event keys + 146 chip keys ✅
+  geo/{nodes,edges}.gen.json   263 nodes · 404 edges · 1 component   ✅ `pnpm geo:build`
+  geo/overlay.json          the ONE hand-edited geo file — 42 rows   ✅ moves to .yaml in M3.6
   geo/sources.lock.json     source URLs · licences · hash pin        ✅ ADR 0024
   i18n/{tr,ru,de}/ · images/                                            (empty)
   images/manifest.json      image spec -> asset mapping                 (planned)
 packages/tools/                                                      ✅
-  shared/ · sim/ · geo-build/  helpers · headless sim · geodesy + candidate audit  ✅
+  shared/ · sim/            helpers · headless sim                  ✅
+  geo-build/                derive · borders · rail · verify · audit ✅ ADR 0024/0030/0031
   content-lint/             15 rules, file:line:col, --fix           ✅ CI job
   content-stats/            counts + 4-axis coverage report          ✅
   imagegen/ · i18n-check/                                              (empty)
-docs/                       adr/0001-0023 · engine-spec · PROGRESS   ✅
+docs/                       adr/0001-0032 · engine-spec · PROGRESS   ✅
   enforcement.md            what enforces each §2 rule               ✅
   stack-notes.md            the dependency traps, in full            ✅
   content-style-guide.md    how to author; registry-vs-event         ✅
@@ -193,18 +197,16 @@ re-verified against Expo SDK 57.0.11 on 2026-08-07; SDK 57.0.11 is still npm `la
 > work. Prefer the Expo SDK pin over npm-latest. **`docs/stack-notes.md` has the detail, plus
 > the open Hermes `Intl.PluralRules` risk that will bite the first translated plural key.**
 
-> **Version rule:** My training data has a cutoff. Before adding or upgrading any dependency,
-> check the actual current version (`npm view <pkg> version`, `npx expo install --check`,
-> or the Expo SDK docs) rather than writing a version number from memory. If a version I
-> suggest conflicts with the installed Expo SDK, the SDK wins — use `npx expo install`.
+> **Version rule:** my training data has a cutoff, so check the real current version
+> (`npm view <pkg> version`, `npx expo install --check`) before adding or upgrading anything
+> rather than writing one from memory. Where it conflicts with the installed SDK, the SDK wins.
 
 ---
 
 ## 5. Commands
 
-Commands marked ✅ exist today and are verified working. Everything marked `(planned)` does
-**not** exist — running it fails with "command not found". Do not stub these to make them
-pass. See `docs/PROGRESS.md`.
+✅ exists and is verified working. `(planned)` does **not** exist — running it fails with
+"command not found", and stubbing one to make it pass is not allowed. See `docs/PROGRESS.md`.
 
 ```bash
 pnpm i                        # install                                            ✅
@@ -262,15 +264,12 @@ A change is not done until all of these pass:
 4. `pnpm content:lint` clean (if content or schema touched) ✅ **exists since Phase 2A M2A.6**.
    Exits 1 on an error, 0 with warnings — the warnings are real findings, so read them.
 5. New behavior has a test. Bug fixes have a **regression test that fails before the fix**.
-6. If engine behavior changed: `pnpm sim:diff -- --runs=2000` run and the delta explained.
-   ✅ **the harness exists** — it has since Phase 1 M10, and this item said otherwise for four
-   sessions. Two packs, two baselines: `--pack=fixture` (default) against `docs/sim-baseline.md`
-   is the stable control the golden runs are built on; `--pack=corpus` against
-   `docs/sim-baseline-corpus.md` is the real content. **Diff both** — a change can move one and
-   not the other, and which one it moves is the finding.
-   **`--runs=2000`, and the count is not a suggestion** — this item said 5,000 for four sessions,
-   and diffing a 2,000-run baseline at 5,000 moves endings ~0.7pp and checks 2,923 → 7,325, which
-   reads as a regression. `sim:diff` now refuses a mismatched count instead.
+6. If engine behavior changed: `pnpm sim:diff -- --runs=2000`, and the delta explained.
+   **Diff BOTH packs** — `--pack=fixture` (default, the empty-registry control the golden runs
+   are built on) and `--pack=corpus` (the real content). A change can move one and not the other,
+   and which one it moves is the finding. **The count is not a suggestion**: both baselines were
+   generated at 2,000, and `sim:diff` refuses a mismatched count rather than print sampling noise
+   as a regression. ADR 0032.
 7. If a decision was non-obvious: an ADR added to `docs/adr/NNNN-title.md`.
 8. `CLAUDE.md` updated if a command, rule, or layout changed.
 
