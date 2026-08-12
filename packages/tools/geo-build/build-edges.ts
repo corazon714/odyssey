@@ -18,8 +18,8 @@ import { isOnLand, landFractionPercent, type BoxedRing } from './read-natural-ea
  *    cross-links; Gabriel alone misses the long hop across an empty stretch where the midpoint
  *    disk is never empty. Together they give a connected graph with local structure.
  * 2. **The 2-hop prune** removes an edge whose endpoints are already joined by a barely-longer
- *    two-step path. Without it every triangle keeps its long side and the graph is a mesh, which
- *    makes every route look the same and defeats the diversity filter downstream.
+ *    two-step path — where "barely" is `TWO_HOP_RATIO`, and that constant turned out to decide
+ *    whether the whole route-generation feature works.
  * 3. **Water rejection** drops a land corridor whose middle is at sea. A ferry is NEVER produced
  *    here — sea crossings are authored in the overlay, because the generator cannot know which
  *    straits have a service and inventing one is exactly the kind of plausible fiction that
@@ -45,8 +45,35 @@ export const CIRCUITY_FACTOR_NUM = 139;
 export const CIRCUITY_FACTOR_DEN = 100;
 
 export const NEAREST_K = 6;
-/** An edge survives only if any two-hop alternative is at least this much longer. */
-export const TWO_HOP_RATIO_NUM = 16;
+
+/**
+ * An edge survives only if every two-hop alternative is at least this much longer.
+ *
+ * **1.2, and the number was measured against the diversity gate rather than chosen.** It sat at
+ * 1.6, which pruned 363 of 628 proposed edges — more than it kept — and that single constant was
+ * what stopped route generation working at all:
+ *
+ * ```
+ *   ratio   edges   fastest = cheapest   median overlap
+ *    1.2      404        102 of 200        59%   PASS
+ *    1.3      360         98               63%   PASS
+ *    1.4      319        101               65%   PASS
+ *    1.6      265        167               72%   FAIL
+ * ```
+ *
+ * The rationale written here was that keeping the long side of every triangle makes "every route
+ * look the same and defeats the diversity filter downstream". **It is exactly backwards.** A
+ * pruned graph has nowhere to route: at 1.6 the slice held 45 independent cycles against 89
+ * bridges, and a distance-only second-best route still overlapped the best by 83% at the median,
+ * so no cost function could express a difference the graph did not contain.
+ *
+ * 1.2 is also the more defensible rule on its own terms. It drops an edge only when going via an
+ * intermediate node costs under a fifth extra — at which point the direct road really is the
+ * two-hop road. At 1.6 an edge was dropped even when the detour ran 59% longer, and a corridor
+ * that much shorter than the alternative is plainly its own road. Mean degree goes 2.4 to 3.7,
+ * which is what a city-to-city road abstraction should look like.
+ */
+export const TWO_HOP_RATIO_NUM = 12;
 export const TWO_HOP_RATIO_DEN = 10;
 /** Points sampled along a candidate to decide whether it is a land corridor. */
 export const WATER_SAMPLES = 9;

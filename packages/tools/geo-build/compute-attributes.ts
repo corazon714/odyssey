@@ -122,11 +122,33 @@ export function scenicOf(a: TerrainKind, b: TerrainKind): number {
  * a display-scale rail layer honestly supports. **`ferry` is never added here**: sea crossings
  * are authored in the overlay, because nothing in the geometry knows whether a service exists.
  */
-export const ROAD_MODES: readonly TransportMode[] = ['foot', 'bus', 'car', 'truck', 'rideshare'];
+export const ROAD_MODES: readonly TransportMode[] = ['bus', 'car', 'truck', 'rideshare'];
 export const RAIL_PROXIMITY_DEGREES = 0.25;
 
-export function modesFor(hasRailAtBothEnds: boolean): readonly TransportMode[] {
-  return hasRailAtBothEnds ? [...ROAD_MODES, 'train'] : ROAD_MODES;
+/**
+ * How long a corridor can be and still be one you could WALK — about three days at forty
+ * kilometres a day, which is a real thing on a long overland journey.
+ *
+ * **`foot` used to be offered on every corridor, and it broke `cheapest` completely.**
+ * `FARE_PER_100KM.foot` is 0, so `cheapest` chose to walk all 257 land edges of the slice — a
+ * 2,478 km one included. Its cost then reduced to `0.23 x distance` against `fastest`'s
+ * `0.86 x distance`: the same ordering in different units, which is the affine collapse ADR 0025
+ * Decision 2 names, and it returned `fastest`'s identical path on 170 of 200 pairs.
+ *
+ * The comment on `FARE_PER_100KM` claimed the opposite — that a free fare plus "a fortnight of
+ * subsistence" was one of the four things keeping the two apart. It could not be: subsistence is
+ * charged against elapsed time, time is distance over speed, so the whole term is proportional to
+ * distance and cannot reorder anything. That claim has been corrected at source.
+ *
+ * Choosing to walk 350 km is not a route plan a road-trip game should offer, so the fix is also
+ * the honest model. A player who loses their vehicle still walks — that is the run loop's
+ * business, and `TRANSPORT_MODES` keeps `foot` for it.
+ */
+export const FOOT_MAX_KM = 120;
+
+export function modesFor(hasRailAtBothEnds: boolean, distanceKm: number): readonly TransportMode[] {
+  const modes = distanceKm <= FOOT_MAX_KM ? (['foot', ...ROAD_MODES] as const) : ROAD_MODES;
+  return hasRailAtBothEnds ? [...modes, 'train'] : modes;
 }
 
 /**

@@ -62,8 +62,10 @@ describe('kShortestPaths', () => {
     const result = kShortestPaths(GRAPH, START, END, costFor('fastest'), { k: 6 });
     const keys = result.paths.map(pathKey);
     expect(new Set(keys).size).toBe(keys.length);
-    // The first is the plain Dijkstra answer.
-    expect(result.paths[0]?.cost).toBe(285);
+    // The first is the plain Dijkstra answer. 212, and it was 285: the a-route is tolled, and a
+    // tolled corridor is a motorway — 110 km/h rather than 70 — so `fastest` now goes that way.
+    // 120 km + 140 km + 130 km at 110 is 65 + 76 + 71.
+    expect(result.paths[0]?.cost).toBe(212);
   });
 
   it('returns paths SORTED by (cost, pathKey)', () => {

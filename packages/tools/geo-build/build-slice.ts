@@ -195,7 +195,7 @@ export function buildSlice(input: SliceInput): SliceResult {
     const a = edgeNodes[candidate.a];
     const b = edgeNodes[candidate.b];
     const rail = a !== undefined && b !== undefined && railFollowsCorridor(railIndex, a, b);
-    return modeMask(modesFor(rail));
+    return modeMask(modesFor(rail, candidate.distanceKm));
   });
 
   // ── controlled crossings, then the surgery ───────────────────────────────────────────────

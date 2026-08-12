@@ -8,6 +8,7 @@ import {
   FERRY_WAIT_MINUTES,
   KMH,
   MINUTES_PER_DAY,
+  MOTORWAY_SPEED_PERCENT,
   MODE_ATTENTION,
   MODE_EXPOSURE,
   POP_ATTENTION,
@@ -85,6 +86,11 @@ function allowedModes(profile: RouteProfile, relax: CostRelaxation): readonly Tr
  *
  * Ties resolve by `TRANSPORT_MODES` index order, which is fixed — so two modes that score
  * identically never leave the choice to iteration order.
+ *
+ * **Every score has to be the quantity the profile's cost function then minimises**, or the mode
+ * chosen is not the one the profile wanted. `cheapest` scored the FARE alone while its cost is
+ * fare plus subsistence, and the two disagree wherever a slow mode is cheap per kilometre —
+ * which is the entire reason `foot` was chosen everywhere it was offered.
  */
 function pickMode(
   profile: RouteProfile,
@@ -98,7 +104,7 @@ function pickMode(
     // Every score is "higher is better", so one comparison serves all five profiles.
     const score =
       profile === 'cheapest'
-        ? -FARE_PER_100KM[mode]
+        ? -cashFor(edge, mode)
         : profile === 'safest'
           ? -MODE_EXPOSURE[mode]
           : profile === 'illicit'
@@ -112,10 +118,34 @@ function pickMode(
   return best;
 }
 
+/**
+ * The mode-dependent cash `cheapest` pays for this edge — fare plus the subsistence its speed
+ * costs you. The crossing and toll terms are mode-independent and so cannot affect the choice.
+ */
+function cashFor(edge: GeoEdge, mode: TransportMode): number {
+  return (
+    mulDivRound(edge.distanceKm, FARE_PER_100KM[mode], 100) +
+    (mode === 'ferry' ? FERRY_CROSSING_FEE : 0) +
+    mulDivRound(minutesFor(edge, mode, false), SUBSISTENCE_PER_DAY, MINUTES_PER_DAY)
+  );
+}
+
+/**
+ * Effective speed on this corridor. A tolled edge is a motorway, so road modes go faster on it —
+ * see `MOTORWAY_SPEED_PERCENT` for why a toll has to buy something rather than only cost.
+ *
+ * `train` and `ferry` are excluded: a road toll does not move a timetable.
+ */
+function speedFor(edge: GeoEdge, mode: TransportMode): number {
+  const base = KMH[mode];
+  if (!edge.tolled || mode === 'train' || mode === 'ferry') return base;
+  return Math.max(1, mulDivRound(base, MOTORWAY_SPEED_PERCENT, 100));
+}
+
 /** Minutes for this edge under this mode. Shared by `fastest` and `cheapest`'s subsistence term. */
 function minutesFor(edge: GeoEdge, mode: TransportMode, crossing: boolean): number {
   return (
-    mulDivRound(edge.distanceKm, 60, KMH[mode]) +
+    mulDivRound(edge.distanceKm, 60, speedFor(edge, mode)) +
     (crossing ? CROSSING_MINUTES : 0) +
     (mode === 'ferry' ? FERRY_WAIT_MINUTES : 0)
   );

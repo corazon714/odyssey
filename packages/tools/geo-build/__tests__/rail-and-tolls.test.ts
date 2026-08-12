@@ -9,6 +9,7 @@ import {
   RAIL_SAMPLES_REQUIRED,
   RAIL_STATION_KM,
 } from '../classify-rail.ts';
+import { modesFor, FOOT_MAX_KM, ROAD_MODES } from '../compute-attributes.ts';
 import { type LatLng } from '../geodesy.ts';
 import { type BoxedRing } from '../read-natural-earth.ts';
 import { buildVertexIndex } from '../vertex-index.ts';
@@ -152,5 +153,32 @@ describe('applyOverlay — tolled corridors', () => {
 
   it('marks nothing when no tolls are declared', () => {
     expect(run({}).tolled.size).toBe(0);
+  });
+});
+
+describe('modesFor — a corridor offers foot only where walking it is a plan', () => {
+  it('offers foot on a short corridor', () => {
+    expect(modesFor(false, FOOT_MAX_KM)).toContain('foot');
+  });
+
+  it('does NOT offer foot on a long one', () => {
+    // The bug: `FARE_PER_100KM.foot` is 0, so `cheapest` chose to walk all 257 land edges of the
+    // slice, a 2,478 km one included. Its cost then reduced to 0.23 x distance against
+    // `fastest`'s 0.86 x distance — the same ordering in different units, which returned the
+    // identical path on 170 of 200 pairs.
+    expect(modesFor(false, FOOT_MAX_KM + 1)).not.toContain('foot');
+    expect(modesFor(true, 2478)).not.toContain('foot');
+  });
+
+  it('always offers the road modes, and train only where a line follows', () => {
+    expect(modesFor(false, 900)).toEqual(ROAD_MODES);
+    expect(modesFor(true, 900)).toContain('train');
+    expect(modesFor(false, 900)).not.toContain('train');
+  });
+
+  it('never offers ferry — sea crossings are authored, never derived', () => {
+    for (const km of [10, FOOT_MAX_KM, 900]) {
+      for (const rail of [true, false]) expect(modesFor(rail, km)).not.toContain('ferry');
+    }
   });
 });

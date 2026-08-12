@@ -217,16 +217,22 @@ describe('shortestPath', () => {
     });
   });
 
-  it('gives 3 distinct paths across the 5 profiles on this graph', () => {
-    // Recorded rather than aspired to. `fastest` and `safest` agree here, and so do `scenic`
-    // and `illicit` — which is exactly the collapse ADR 0025 Decision 2 names, appearing on a
-    // 22-edge toy graph. It is what the diversity filter and Yen backfill exist to handle, and
-    // it makes this fixture a better test for M3.3 than five distinct paths would be.
+  it('gives 4 distinct paths across the 5 profiles on this graph', () => {
+    // Recorded rather than aspired to, and it was 3.
+    //
+    // `fastest` and `cheapest` used to return the same path, which is the collapse ADR 0025
+    // Decision 2 names. They now split: `fastest` takes the tolled a-route at motorway speed
+    // (212) and `cheapest` routes around it through the crossing (194). `safest` split off too,
+    // once it stopped being cut off from n.end by its own terrain mask.
+    //
+    // `scenic` and `illicit` still coincide — both want the b-route over the pass, for opposite
+    // reasons — so the fixture keeps one genuine collision for the diversity filter and Yen
+    // backfill to handle, which is what makes it a useful M3.3 test.
     const keys = new Set<string>();
     for (const profile of ROUTE_PROFILES) {
       const path = route(GRAPH, 'n.start', 'n.end', profile);
       if (path !== null) keys.add(pathKey(path));
     }
-    expect(keys.size).toBe(3);
+    expect(keys.size).toBe(4);
   });
 });

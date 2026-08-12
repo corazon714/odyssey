@@ -69,12 +69,15 @@ describe('selectPaths', () => {
   });
 
   it('REPORTS a profile whose path duplicated an earlier one, rather than dropping it', () => {
-    // On this graph `safest` agrees with `fastest` and `illicit` agrees with `scenic`. Silently
-    // omitting them would make five profiles yield three routes with no explanation — the
-    // caller could not tell "redundant" from "failed". Design pillar 2.
+    // On this graph `illicit` agrees with `scenic` — both want the b-route over the pass, for
+    // opposite reasons. Silently omitting it would make five profiles yield four routes with no
+    // explanation, and the caller could not tell "redundant" from "failed". Design pillar 2.
+    //
+    // `safest` used to be here too, agreeing with `fastest`. It stopped once its terrain mask
+    // stopped cutting it off from the destination — see `GeoEdge.unavoidable`.
     const result = selectPaths(GRAPH, idx(GRAPH, 'n.start'), idx(GRAPH, 'n.end'));
     const duplicates = result.rejected.filter((r) => r.reasonKey === 'route.rejected.duplicate');
-    expect(duplicates.map((r) => r.profile).sort()).toEqual(['illicit', 'safest']);
+    expect(duplicates.map((r) => r.profile).sort()).toEqual(['illicit']);
     for (const entry of duplicates) expect(entry.overlapPercent).toBe(100);
   });
 

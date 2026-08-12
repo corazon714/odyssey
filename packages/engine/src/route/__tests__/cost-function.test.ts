@@ -168,3 +168,36 @@ describe('the five cost functions', () => {
     expect(masked.get('illicit')).toEqual(['e.m1_end', 'e.p1_p2']);
   });
 });
+
+describe('a toll buys speed, so `fastest` and `cheapest` want opposite corridors', () => {
+  // A toll used to be PURE DOWNSIDE: it cost `cheapest` 25 and gave `fastest` nothing, so nobody
+  // had a reason to want the tolled corridor and avoiding it cost nothing to weigh. A trade-off
+  // needs both sides — this is the divergence every satnav has, and it was missing.
+  it('`fastest` pays motorway speed on a tolled corridor', () => {
+    // e.start_a1 is 120 km and tolled. Car is 70 km/h; a motorway is 157% of that, so 110.
+    // 120 km at 110 km/h is 65 minutes. Without the factor it would be 103 — the arithmetic is
+    // spelled out because a silently-reverted constant would otherwise just look like tuning.
+    expect(costOf('fastest', 'e.start_a1')).toBe(65);
+  });
+
+  it('`fastest` prefers the tolled corridor per kilometre while `cheapest` refuses it', () => {
+    // e.start_c1 is 100 km, untolled, otherwise comparable. Both are unmasked for both profiles.
+    const perKm = (profile: RouteProfile, id: string, km: number): number =>
+      (costOf(profile, id) ?? 0) / km;
+
+    expect(perKm('fastest', 'e.start_a1', 120)).toBeLessThan(perKm('fastest', 'e.start_c1', 100));
+    expect(perKm('cheapest', 'e.start_a1', 120)).toBeGreaterThan(
+      perKm('cheapest', 'e.start_c1', 100),
+    );
+  });
+
+  it('the two profiles disagree about which of the two corridors is better', () => {
+    // The property that matters, stated directly: whatever the units, the ORDERING flips. Two
+    // profiles that rank every pair of edges the same way can only ever return the same path.
+    const fastestPrefersTolled =
+      (costOf('fastest', 'e.start_a1') ?? 0) / 120 < (costOf('fastest', 'e.start_c1') ?? 0) / 100;
+    const cheapestPrefersTolled =
+      (costOf('cheapest', 'e.start_a1') ?? 0) / 120 < (costOf('cheapest', 'e.start_c1') ?? 0) / 100;
+    expect(fastestPrefersTolled).not.toBe(cheapestPrefersTolled);
+  });
+});

@@ -27,9 +27,24 @@ export const KMH: Readonly<Record<TransportMode, number>> = Object.freeze({
 });
 
 /**
- * Cash per 100 km. `foot` is free, which is deliberate and is one of the four things that stop
- * `cheapest` collapsing into `fastest`: walking has no fare but accrues a fortnight of
- * subsistence, so the cheapest path is not the shortest one.
+ * Cash per 100 km.
+ *
+ * **`foot` being free was claimed here as one of the four things stopping `cheapest` collapsing
+ * into `fastest`. It was the thing CAUSING the collapse.** Subsistence is charged against elapsed
+ * time, time is distance over speed, so "no fare but a fortnight of subsistence" is still a term
+ * proportional to distance and cannot reorder two paths. What it did instead was win the mode
+ * comparison on every corridor at any length, which reduced `cheapest` to `0.23 x distance`
+ * against `fastest`'s `0.86 x distance` — the same ordering in different units. Measured: the
+ * identical path on 170 of 200 sampled pairs.
+ *
+ * Two things fixed it, and neither was a number in this table. `foot` is now offered only on
+ * corridors short enough to walk (`FOOT_MAX_KM`), and `pickMode` scores the cash `cheapest`
+ * actually pays rather than the fare alone.
+ *
+ * The breaker that then does the work is already here and had never been reachable: **`train` is
+ * the fastest land mode and the dearest one.** `fastest` takes it and pays 0.75 per km where a
+ * road costs 0.86; `cheapest` refuses it and pays 0.46 either way. So `fastest` detours onto rail
+ * corridors and `cheapest` does not, which is a difference in the PATH rather than in the price.
  */
 export const FARE_PER_100KM: Readonly<Record<TransportMode, number>> = Object.freeze({
   foot: 0,
@@ -86,6 +101,26 @@ export const FERRY_CROSSING_FEE = 90;
 
 /** Authored per-edge in the overlay. The second structural breaker. */
 export const TOLL_FEE = 25;
+
+/**
+ * A tolled corridor is a MOTORWAY, and a motorway is faster. Road modes only, as a percentage of
+ * the mode's base speed — 110 km/h against a trunk road's 70.
+ *
+ * **This is the fastest-versus-cheapest divergence every satnav has, and it was missing.** A toll
+ * cost `cheapest` 25 and gave `fastest` nothing, so it was pure downside: nobody had a reason to
+ * want the tolled edge, and avoiding it cost `cheapest` nothing it had to weigh. A trade-off
+ * needs both sides. With this, `fastest` routes onto the motorway and `cheapest` routes around
+ * it, and that is a difference in the PATH rather than in the price.
+ *
+ * The rail inversion alone could not do this. `train` is 80 km/h against a car's 70 — a 12%
+ * saving, worth a detour only if the rail corridor is under 12% longer, which it almost never
+ * is. Measured: enabling it moved the identical-path count from 170 of 200 to 168.
+ *
+ * **`leg-hours.ts` must apply the same factor when it lands (ADR 0026 Decision 5).** `KMH` is
+ * shared with the run loop and the two must not drift — a preview that promises five hours for a
+ * motorway leg the tick then charges eight is a lie the player can measure.
+ */
+export const MOTORWAY_SPEED_PERCENT = 157;
 
 /** Minutes lost at a controlled crossing. Worth ~150 km of motorway to `fastest`. */
 export const CROSSING_MINUTES = 150;
