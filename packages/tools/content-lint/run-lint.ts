@@ -9,6 +9,7 @@ import {
   tagCoverage,
 } from './rules-registry.ts';
 import { universalChoices } from './rules-universal.ts';
+import { GEO_RULES } from './rules-geo.ts';
 import {
   contradictoryRequires,
   duplicateIds,
@@ -44,6 +45,7 @@ export const RULES: readonly {
   { name: 'word-counts', run: wordCounts },
   { name: 'images', run: imageRefs },
   { name: 'safety', run: contentSafety },
+  ...GEO_RULES,
 ];
 
 export type LintRun = {
