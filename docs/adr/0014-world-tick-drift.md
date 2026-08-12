@@ -149,3 +149,57 @@ when the seed corpus lands.
   accumulator property, mode-dependence, the graded/ungraded asymmetry — not the constants,
   which are balance and are expected to move.
 - `RunState`, `SAVE_VERSION` and the RNG stream set are all unchanged. No migration.
+
+---
+
+## Addendum — M3.8b (2026-08-12): rule 3 is now true about hygiene too
+
+This ADR's third rule is "penalties are GRADED, not cliffs". **Hygiene was the one meter it was
+false about.** `world-tick.ts` read `hours >= 6 ? -1 : 0` — one point, once, for any leg over six
+hours — and under a flat `HOURS_PER_LEG` that fired for truck and for nobody else, so hygiene was
+very nearly static. M3.8a made hours a function of distance, which made the cliff worse rather than
+better: a leg's hygiene cost became a step function of a continuous quantity, so 5.9 hours cost
+nothing and 6.0 cost a point.
+
+It now accrues via `spanPoints` against the clock span, exactly like hunger and energy, so the
+remainder carries and two short legs cost what one long one does.
+
+**Grading a DRAIN is not what `ENERGY_TIRED` warns against.** That rule concerns a THRESHOLD
+penalty keyed on a floored meter: energy sits at 0 for most of a run, so a second rung there lands
+on the whole population at once. Hygiene is the meter being drained, not the trigger. Morale stays
+ungraded for the original reason and got no exception here.
+
+### The finding: grading moved WHEN hygiene floors, not WHETHER
+
+A prediction was written before the run — completion down 3–7pp, `Modifier chips / check` up from
+6.7 to ~7.0–7.3. **It was wrong.** Completion moved 44.1% → 44.0% and chips/check did not move at
+all.
+
+The reason is only visible in a line the report did not have, which is why `hygiene` was added to
+the resource trajectory table in the same commit:
+
+| corpus hygiene p10/p50/p90 | leg 5 | leg 15 |
+| -------------------------- | ----- | ------ |
+| old (6-hour cliff)         | 3/5/6 | 0/0/3  |
+| graded                     | 1/2/4 | 0/0/0  |
+
+Hygiene was **already floored by mid-run under the cliff** — p90 of 3 at leg 15 means `dishevelled`
+(hygiene ≤ 3, −2, five check tags) was already firing for 90%+ of runs. Grading brings that forward
+from roughly leg 12 to roughly leg 6. The behavioural window is legs ~3–12 only, and it intersects
+5 of 18 check tags, so the aggregate barely moves.
+
+**`presentable` (+1 at hygiene ≥ 8) was already near-dead** and is now dead: hygiene starts at 8, so
+one point of drain ends it. That is worth knowing before anyone tunes it — the row is reachable for
+about one leg.
+
+The one number that looks like a real move is not: `Long-range payoff rate` 73.9% → 78.3% is
+**17/23 → 18/23**, a single thread out of twenty-three, which `Unresolved threads 6 → 5` confirms.
+A four-point swing on a two-dozen denominator is one event, and reading it as a behavioural result
+would be exactly the mistake ADR 0032 was written about.
+
+### Consequence for whoever tunes hygiene next
+
+The lever is not the drain rate. Both models floor the meter; the drain rate only sets how fast.
+What decides whether hygiene matters is the RESTORE economy — `rest.the_shared_room` is the only
+event that gives any back (+1 and +2) — and the `dishevelled` threshold, which at ≤3 on a meter
+that reaches 0 by mid-run is effectively "always, eventually".

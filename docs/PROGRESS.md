@@ -5,12 +5,74 @@
 
 ---
 
-## Shipped this session (2026-08-12, session 8) — **M3.6, M3.7 and M3.8a**
+## Shipped this session (2026-08-12, session 8) — **M3.6, M3.7, M3.8a and M3.8b**
 
-Three milestones. M3.6 made the geo data loadable and linted; M3.7 put `legKm` and `montageLegs`
+Four milestones. M3.6 made the geo data loadable and linted; M3.7 put `legKm` and `montageLegs`
 on `RouteState` at uniform values and bumped `SAVE_VERSION` to 5; M3.8a replaced flat
-`HOURS_PER_LEG` with a distance-derived hours model — **and moved the fixture baseline, which is
-the finding of the session.**
+`HOURS_PER_LEG` with a distance-derived hours model — **and moved the fixture baseline**; M3.8b
+graded hygiene, **and the prediction written before the run was wrong.**
+
+---
+
+## M3.8b — graded hygiene, and a prediction that missed
+
+Hygiene was the last cliff in `world-tick.ts`: `hours >= 6 ? -1 : 0`, one point once for any leg
+over six hours. It now accrues via `spanPoints` against the clock span like hunger and energy, so
+the remainder carries and two short legs cost what one long one does. ADR 0014's third rule
+("penalties are GRADED, not cliffs") is finally true about every meter it covers.
+
+Grading a DRAIN is not what `ENERGY_TIRED` warns against — that rule is about a THRESHOLD penalty
+keyed on a floored meter. **Morale stays ungraded** and got no exception.
+
+### The prediction, and what actually happened
+
+Written before the run, as the milestone requires:
+
+|                          | predicted           | actual                              |
+| ------------------------ | ------------------- | ----------------------------------- |
+| fixture behaviour        | none — digests only | ✅ **5 digests, nothing else**      |
+| `docs/sim-baseline.md`   | No change           | ✅ No change                        |
+| corpus completion        | down to 37–41%      | ❌ **44.1% → 44.0%**                |
+| `Modifier chips / check` | up to 7.0–7.3       | ❌ **6.7 → 6.7**                    |
+| `Checks under 2 chips`   | 0                   | ✅ 0                                |
+| endings toward failure   | yes                 | ~ `failure_collapsed` 45.1% → 45.3% |
+
+The fixture half was exactly right, and for a checkable reason: `mini-pack.json` contains **zero**
+occurrences of `hygiene`, and `check-run-end.ts` tests only health and morale. Nothing in that
+pack can read the meter, so grading it cannot change behaviour there. Only 5 of 9 digests moved —
+the other 4 runs bottom out at hygiene 0 under both models, so their final states are identical.
+
+### Why the corpus half missed — and the line that was missing
+
+**Hygiene was already floored by mid-run under the cliff.** The report could not show that,
+because it had no hygiene line; `hygiene` joins the resource trajectory table in the same commit,
+which is a report-format change and is why BOTH baselines were regenerated together.
+
+| corpus hygiene p10/p50/p90 | leg 5 | leg 15 |
+| -------------------------- | ----- | ------ |
+| old (6-hour cliff)         | 3/5/6 | 0/0/3  |
+| graded                     | 1/2/4 | 0/0/0  |
+
+A p90 of 3 at leg 15 means `dishevelled` (hygiene ≤ 3, −2, five check tags) was **already firing
+for 90%+ of runs**. Grading brings that forward from ~leg 12 to ~leg 6. The behavioural window is
+legs ~3–12 only, and it intersects 5 of 18 check tags — so the aggregate barely moves. **Grading
+changed WHEN hygiene floors, not WHETHER.**
+
+`presentable` (+1 at hygiene ≥ 8) was already near-dead and is now dead: hygiene starts at 8, so
+one point of drain ends it. The row is reachable for about one leg.
+
+### The one number that looks like a real move, and is not
+
+`Long-range payoff rate` 73.9% → 78.3% is **17/23 → 18/23** — a single thread out of twenty-three,
+which `Unresolved threads 6 → 5` confirms. A four-point swing on a two-dozen denominator is one
+event. Reading it as a behavioural result would be exactly the mistake ADR 0032 exists to prevent.
+
+### The lever, for whoever tunes hygiene next
+
+Not the drain rate — both models floor the meter and the rate only sets how fast. It is the
+RESTORE economy (`rest.the_shared_room` is the only event that gives any back, +1 and +2) and the
+`dishevelled` threshold, which at ≤3 on a meter that reaches 0 by mid-run is effectively
+"always, eventually".
 
 ---
 
@@ -316,7 +378,51 @@ Nothing is left broken. These are absent or partial, with paths:
 
 ## Next step — ONE task
 
-**M3.8b: graded hygiene — its own commit, with the prediction written BEFORE the run.**
+**M3.9: `leg-plan`, `leg-locations`, `beat-schedule`, `materialise-route`, `route-preview`,
+`generate-routes` — where `legKm` stops being uniform and montage legs first exist. No run-path
+caller yet.**
+
+The plan is `~/.claude/plans/plan-mode-build-the-synthetic-bird.md` §"The leg model" and
+§"BeatSchedule derivation"; ADR 0026 Decision 4 is leg sizing and ADR 0027 the beat schedule. The
+last three milestones existed to clear the way for this one. A fresh agent can start here:
+
+1. **Leg sizing is Decision 4 and its constants are the curve.** Raw legs accumulate in scaled
+   units (`LEG_SCALE = 1000`) because `Σ floor(km/d)` truncates every segment. Compression is
+   piecewise-linear because `Math.log` is banned, and the breakpoints ARE the curve: first 18 legs
+   at 100%, next 14 at 75%, next 28 at 50%, beyond at 25%. **Keep `COMPRESSION_BANDS`
+   module-private** — an array reaching the barrel turns conformance L2 red for a change made
+   entirely inside the engine.
+2. **There is no `isShortTrip` boolean anywhere.** The floor ramps
+   (`minLegs`/`maxLegs` both interpolate) because a boolean is a cliff waiting to be
+   reintroduced. Property tests: more kilometres must never produce fewer legs, and
+   `|legCount(500) − legCount(501)| ≤ 1`.
+3. **Montage selection is RNG-free**, integer, and reads only a segment's own fields — so adding a
+   node elsewhere cannot reshuffle an unrelated montage. Crossings and ferries sort last by
+   construction (`−1000×crossing`), not by a special case someone can forget.
+4. **Four beat-schedule invariants the generator must self-enforce, because `validateRoute` checks
+   none of them** — and invariant (b) is **already violated by the shipped `fixture.illicit`**:
+   `border_crossing@17 slack 3` overlaps `approach@20`, so the border slot masks `approach`, which
+   then slides and expires. Every such collision currently reports as content starvation for what
+   is a scheduling bug. **Do not add (b) to `validateRoute`** — it would invalidate that fixture,
+   break 13 test files and move the control baseline. Enforce it generator-side with a named test.
+5. **Jitter is cursor-free on `routeGen`.** Mandatory, not stylistic: the NUMBER of jitter draws
+   depends on how many beats a route has, which depends on the graph — a cursored draw would make
+   `routeGen`'s cursor a function of geography, so a geography edit would move every save fixture.
+6. **Success is a seeded property loop, not a golden**: `validateRoute(generated) === null` over
+   hundreds of routes, `Σ legKm === totalKm`, monotone in km, ascending beat emission,
+   non-overlapping windows, no window on a montage leg, all slots `pending`, and **`routeGen`'s
+   cursor still 0**.
+
+**DoD:** the five checks, both `sim:diff`s reporting "No change" (nothing calls the generator
+yet), and an ADR only if a decision departs from 0026/0027.
+
+---
+
+### Superseded: the M3.8b brief
+
+**M3.8b: graded hygiene — its own commit, with the prediction written BEFORE the run.** Shipped —
+see above. The prediction was written and was wrong; the discipline worked exactly as intended,
+because being wrong in writing is what forced the measurement that explained it.
 
 `world-tick.ts` reads `if (hours >= HOURS_PER_HYGIENE) … delta: -1` — a single 6-hour rung. Today
 that fires for truck (6) and not for car (5), bus (5) or train (4), so hygiene is very nearly
