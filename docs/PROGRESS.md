@@ -383,8 +383,61 @@ Nothing is left broken. These are absent or partial, with paths:
 
 ## Next step — ONE task
 
-**M3.11: scale the geo slice from 263 nodes to ~1,200 — widen the bbox, re-audit, re-check,
-regenerate. A DATA commit, and only because node ids are source-derived.**
+**M3.11: scale the geo slice. SCOUTED, NOT STARTED — and the plan's framing of it is wrong.**
+
+**"A data commit only, and only because ids are source-derived" is false**, measured 2026-08-12
+with `--stage=all --real --bbox=-18,-35,180,72 --check` (Afro-Eurasia, the largest connected
+landmass — a world bbox cannot work at all, because the Americas and Oceania are not
+land-connected and the build fails closed on >1 component).
+
+What that bbox actually produces:
+
+|                                    | 263-node slice | Afro-Eurasia       |
+| ---------------------------------- | -------------- | ------------------ |
+| nodes / edges                      | 263 / 404      | **805 / 1307**     |
+| components                         | 1              | **49** (must be 1) |
+| orphans                            | 0              | **37**             |
+| overlay rows naming a dropped node | 0              | **11+**            |
+
+**Stable ids were necessary and not sufficient.** The ids do survive — that part of ADR 0024
+holds. What breaks is WHICH NODES GET SELECTED: `SETTLEMENT_QUOTA` is a global budget
+(europe 150, asia 195, africa 120, …), so once Asia and Africa compete for it, Europe's 150 slots
+go to different cities. Patra, Hedensted, Calabria, Bursa, Mallorca, Orléans and Tours all drop
+out, and every overlay row naming them goes stale. `GEO_OVERLAY_STALE` fires exactly as designed
+— the M3.6 rule doing its job — but the work it exposes is **re-authoring the overlay**, which the
+plan already priced at ~181 rows and then described as a data commit anyway.
+
+Supply is NOT the problem: at a world bbox every continent supplies its quota 12×–60× over, and
+**epsilon resolutions are 0**, so `--check` determinism holds at scale.
+
+A fresh agent starts here:
+
+1. **Decide the landmass question first, because everything else depends on it.** One connected
+   component over Afro-Eurasia is ~805 nodes, not 1,200 — the 1,200 target implicitly assumed
+   multiple continents, which the one-component rule forbids. Either raise the Afro-Eurasia
+   quotas to reach 1,200 on one landmass, or change the one-component rule to "one component per
+   landmass" and accept that a route can never span them. **The second is a real design change
+   and needs an ADR**; ADR 0024 calls one component "a map the player can be stranded on", which
+   was written when the slice was one continent.
+2. **Budget for closing 49 components and 37 orphans.** M3.5 spent most of a milestone taking 13
+   components to 1 on a 263-node slice. Four of the leaf branches strand ≥5 nodes.
+3. **The overlay is re-authored, not migrated.** Do it AFTER the node set is final, or it rots
+   twice.
+4. `GEO_UNDECLARED_BRIDGE`'s budget of 13 belongs to the 263-node slice — re-measure, do not
+   extrapolate (ADR 0033). `GEO_EDGE_TOO_LONG` and the node-count band rule were deferred to this
+   milestone and `densify-corridors.ts` is still unbuilt (16 edges >450 km, max 573).
+5. `world.simplified.json` is also deferred here.
+6. **Both sim baselines will move**, because corpus routes are generated from the slice (ADR
+   0034), and `CORPUS_PAIRS` in `sim/load-pack.ts` names six city ids that may not survive
+   re-selection either — check them before regenerating.
+
+**DoD:** the five checks, `geo:build --check` byte-identical, one component, diversity under the
+70% ceiling, `geo:verify` re-measured (the <150 ms budget was taken on 263 nodes and Dijkstra is
+O(E log V)), both `sim:diff`s explained, and an ADR for the landmass decision.
+
+---
+
+### The original M3.11 brief, for reference
 
 **M3.10b is DONE.** Corpus completion is **47.3%** on 22–48 leg routes at median 24 (routes are
 23–31, so runs mostly finish); fixture 48.5%. Both packs in band. ADR 0035 and its addendum.
