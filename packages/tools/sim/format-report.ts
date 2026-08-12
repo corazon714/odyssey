@@ -16,7 +16,7 @@ import { type SimRun } from './run-one.ts';
  * The flag analysis finds gates that can never open.
  */
 const CHECKPOINT_LEGS = [5, 15, 25] as const;
-const RESOURCE_KEYS = ['cash', 'health', 'morale', 'energy'] as const;
+const RESOURCE_KEYS = ['cash', 'health', 'morale', 'energy', 'hygiene'] as const;
 
 function pct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;

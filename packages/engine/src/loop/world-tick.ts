@@ -48,7 +48,22 @@ import { legHours } from './leg-hours.ts';
  */
 const HOURS_PER_HUNGER = 6;
 
-/** A leg at least this long costs hygiene. Short hops do not. */
+/**
+ * Travel hours per point of hygiene. **Graded at M3.8b; it was the last cliff in this file.**
+ *
+ * It used to read `hours >= 6 ? -1 : 0` — one point, once, for any leg over six hours. Under a
+ * flat `HOURS_PER_LEG` that fired for truck (6) and for nobody else, so hygiene was very nearly
+ * static and rule 3 above was false about this one meter. Once M3.8a made hours a function of
+ * distance the cliff got worse, not better: a leg's hygiene cost was a step function of a
+ * continuous quantity, so 5.9 hours cost nothing and 6.0 cost a point.
+ *
+ * Now it accrues per hour against the CLOCK SPAN like hunger and energy, so the remainder
+ * carries and two short legs cost what one long one does.
+ *
+ * Grading a DRAIN is not what `ENERGY_TIRED` warns against. That rule is about a THRESHOLD
+ * penalty keyed on a floored meter — energy sits at 0 for most of a run, so a second rung there
+ * lands on the whole population at once. Hygiene is the meter being drained, not the trigger.
+ */
 const HOURS_PER_HYGIENE = 6;
 
 /**
@@ -131,6 +146,7 @@ export function worldTick(state: RunState, rng: Rng): RunState {
   const elapsed = elapsedHours(state);
   const harsh = HARSH_WEATHER.includes(state.weather) && hours >= HARSH_WEATHER_HOURS;
   const hunger = spanPoints(elapsed, hours, HOURS_PER_HUNGER);
+  const hygiene = spanPoints(elapsed, hours, HOURS_PER_HYGIENE);
   const energy =
     spanPoints(elapsed, hours, HOURS_PER_ENERGY[state.transport.mode]) + (harsh ? 1 : 0);
 
@@ -145,7 +161,7 @@ export function worldTick(state: RunState, rng: Rng): RunState {
   ];
 
   if (hunger > 0) effects.push({ op: 'resource', key: 'hunger', delta: hunger });
-  if (hours >= HOURS_PER_HYGIENE) effects.push({ op: 'resource', key: 'hygiene', delta: -1 });
+  if (hygiene > 0) effects.push({ op: 'resource', key: 'hygiene', delta: -hygiene });
 
   // Graded, not a cliff. A flat penalty at one threshold makes the whole population cross
   // together and collapse together, which is what made the old curve's p10/p50/p90 identical.

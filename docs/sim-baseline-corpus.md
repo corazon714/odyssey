@@ -38,32 +38,43 @@
   REPORT FORMAT CHANGED at the Phase 2B verification pass: four lines added — modifier chips
   per check, checks under 2 chips, and universal-choice offer/pick rates. The numbers they
   report are new instrumentation, not new behaviour; every pre-existing line is unmoved.
+
+  REPORT FORMAT CHANGED AGAIN at M3.8b: `hygiene` joins the resource trajectory table. It was
+  added because it was needed — hygiene became a graded meter at that milestone and the report
+  could not diagnose a meter it did not print, which is how a wrong prediction went unexplained
+  for an hour. Both baselines were regenerated in the same commit as the format change, because
+  diff-report.ts compares by line index and an inserted line otherwise flags everything below it.
+
+  WHAT THE HYGIENE LINE SHOWS, and it is the M3.8b finding: under the old 6-hour cliff the
+  corpus read 3/5/6 at leg 5 and 0/0/3 at leg 15 — already floored for 90%+ of runs by mid-run.
+  Graded, it reads 1/2/4 and 0/0/0. Grading moved WHEN hygiene floors, not WHETHER, which is
+  why completion moved 0.1pp against a predicted 3-7pp.
 -->
 
 # Sim Report — seed=base contentVersion=c10af194 runs=2000
 
-Completion rate             44.1%   (target band 30-50%)
+Completion rate             44.0%   (target band 30-50%)
 Median legs                    12
 Median in-game days             4
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
-Long-range payoff rate      73.9%   (target 80%)
+Long-range payoff rate      78.3%   (target 80%)
 Beat fill rate              30.1%
-Repeat-event rate           35.4%
+Repeat-event rate           35.5%
 Complication rate           59.5%   (target 60%)
-Modifier chips / check        6.7   (target 3-7, over 10950 checks)
+Modifier chips / check        6.7   (target 3-7, over 10947 checks)
 Checks under 2 chips            0   (each one draws nothing the registry exists for)
 Universal choices offered   38.5%   (share of choices shown)
 Universal choices picked    36.2%   (over ~30% means they are flattening the corpus)
-Unresolved threads              6
+Unresolved threads              5
 
-Wall clock                 1518 ms   (0.76 ms/run)
-Extrapolated to 20,000     15.2 s   (target <30 s)
+Wall clock                 1000 ms   (0.50 ms/run)
+Extrapolated to 20,000     10.0 s   (target <30 s)
 
 ## Endings
-  ending.failure_collapsed            45.1%
-  ending.arrival_quiet                44.1%
+  ending.failure_collapsed            45.3%
+  ending.arrival_quiet                44.0%
   ending.failure_gave_up              10.8%
 
 ## Never-fired events
@@ -101,8 +112,8 @@ Extrapolated to 20,000     15.2 s   (target <30 s)
   border.night_crossing/keep_it_out_of_sight           0.1%
   breakdown.the_roadside_repair/u:threaten             0.1%
   transit.the_wrong_carriage/pay_the_difference        0.2%
-  transit.the_wrong_carriage/u:offer_to_work_for_it    0.2%
   border.night_crossing/u:bluff_with_documents         0.2%
+  transit.the_wrong_carriage/u:offer_to_work_for_it    0.2%
   breakdown.the_roadside_repair/u:pay_the_asking_price   0.2%
   transit.the_wrong_carriage/talk_your_way_through     0.2%
   weather.the_storm_you_cannot_drive_through/u:ask_for_help   0.2%
@@ -140,10 +151,11 @@ Extrapolated to 20,000     15.2 s   (target <30 s)
   read but NEVER WRITTEN:   (none)   <- gate can never open
 
 ## Resource trajectories (p10/p50/p90 by leg)
-  cash     leg5: 28/318/570   leg15: 0/184/440   leg25: —
+  cash     leg5: 28/318/570   leg15: 0/181/440   leg25: —
   health   leg5: 9/10/10   leg15: 0/1/3   leg25: —
-  morale   leg5: 6/8/10   leg15: 1/5/9   leg25: —
+  morale   leg5: 6/8/10   leg15: 1/5/8   leg25: —
   energy   leg5: 1/5/8   leg15: 0/0/1   leg25: —
+  hygiene  leg5: 1/2/4   leg15: 0/0/0   leg25: —
 
 ## Beat types no event can fill
   A slot for one of these can only expire, so the fill rate above is bounded below 100%.

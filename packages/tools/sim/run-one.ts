@@ -73,6 +73,7 @@ export type SimRun = {
     readonly health: number;
     readonly morale: number;
     readonly energy: number;
+    readonly hygiene: number;
   }[];
   readonly turnCapHit: boolean;
   readonly error: string | null;
@@ -128,6 +129,7 @@ export function runOne(
     health: number;
     morale: number;
     energy: number;
+    hygiene: number;
   }[] = [];
   const CHECKPOINT_LEGS = new Set([5, 15, 25]);
   let turns = 0;
@@ -149,6 +151,7 @@ export function runOne(
         health: state.resources.health,
         morale: state.resources.morale,
         energy: state.resources.energy,
+        hygiene: state.resources.hygiene,
       });
     }
 

@@ -21,6 +21,12 @@
   REPORT FORMAT CHANGED at the Phase 2B verification pass: four lines added — modifier chips
   per check, checks under 2 chips, and universal-choice offer/pick rates. The numbers they
   report are new instrumentation, not new behaviour; every pre-existing line is unmoved.
+
+  REPORT FORMAT CHANGED AGAIN at M3.8b: `hygiene` joins the resource trajectory table. It was
+  added because it was needed — hygiene became a graded meter at that milestone and the report
+  could not diagnose a meter it did not print, which is how a wrong prediction went unexplained
+  for an hour. Both baselines were regenerated in the same commit as the format change, because
+  diff-report.ts compares by line index and an inserted line otherwise flags everything below it.
 -->
 
 # Sim Report — seed=base contentVersion=aee5a082 runs=2000
@@ -41,8 +47,8 @@ Universal choices offered    0.0%   (share of choices shown)
 Universal choices picked     0.0%   (over ~30% means they are flattening the corpus)
 Unresolved threads              0
 
-Wall clock                 454 ms   (0.23 ms/run)
-Extrapolated to 20,000     4.5 s   (target <30 s)
+Wall clock                 465 ms   (0.23 ms/run)
+Extrapolated to 20,000     4.7 s   (target <30 s)
 
 ## Endings
   ending.failure_collapsed            39.0%
@@ -73,6 +79,7 @@ Extrapolated to 20,000     4.5 s   (target <30 s)
   health   leg5: 8/10/10   leg15: 0/0/2   leg25: —
   morale   leg5: 4/6/7   leg15: 0/3/6   leg25: —
   energy   leg5: 0/2/8   leg15: 0/0/7   leg25: —
+  hygiene  leg5: 0/2/3   leg15: 0/0/0   leg25: —
 
 ## Beat types no event can fill
   A slot for one of these can only expire, so the fill rate above is bounded below 100%.

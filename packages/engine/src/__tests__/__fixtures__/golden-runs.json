@@ -21,7 +21,7 @@
         "rest",
         "walk_in"
       ],
-      "expectedDigest": "8524a26c463b627f2858c91d7d4259ff",
+      "expectedDigest": "279c68891020a2f060a5a03b75f67bb5",
       "expectedHistoryKeys": [
         "events.filler.roadside_quiet.out.onward",
         "events.filler.long_hours.out.rested",
@@ -54,7 +54,7 @@
         "keep_going",
         "walk_in"
       ],
-      "expectedDigest": "8097786086e48ccd17831411a21d0208",
+      "expectedDigest": "fa92380618e97cfe9564d7a75657c723",
       "expectedHistoryKeys": [
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
@@ -87,7 +87,7 @@
         "keep_going",
         "walk_in"
       ],
-      "expectedDigest": "c2e5fcd2fd04302f6c4ac796bad519b7",
+      "expectedDigest": "5076275faadaaca19da5a6a3578c24c0",
       "expectedHistoryKeys": [
         "events.filler.long_hours.out.rested",
         "events.filler.roadside_quiet.out.onward",
@@ -122,7 +122,7 @@
         "push_on",
         "let_it_go"
       ],
-      "expectedDigest": "d0b0bdf2bd74c65b42fb44bf644f6381",
+      "expectedDigest": "58865f4872fcfc0605a115f58dff09a6",
       "expectedHistoryKeys": [
         "events.rest.pickpocket_victim.out.shrug",
         "events.filler.roadside_quiet.out.onward",
@@ -233,7 +233,7 @@
         "keep_going",
         "rest"
       ],
-      "expectedDigest": "6bcefc68734eeadb357e06f58d0f5acc",
+      "expectedDigest": "a7f60db1ea0059a9aa368ad97a2c9c89",
       "expectedHistoryKeys": [
         "events.filler.roadside_quiet.out.onward",
         "events.transit.bus_ejection.out.ejected",

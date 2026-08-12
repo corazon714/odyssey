@@ -147,3 +147,45 @@ describe('worldTick', () => {
     expect(JSON.stringify(before)).toBe(snapshot);
   });
 });
+
+describe('hygiene is graded, and was the last cliff in the file (M3.8b)', () => {
+  it('accrues against the clock span rather than a per-leg threshold', () => {
+    // The old rule was `hours >= 6 ? -1 : 0`. Under it a 5-hour leg cost nothing and a 6-hour
+    // leg cost a point, so hygiene was a step function of a continuous quantity — and under a
+    // flat HOURS_PER_LEG it fired for truck and for nobody else, which made rule 3 of this
+    // file's header ("penalties are GRADED, not cliffs") false about this one meter.
+    const before = stateWith('car');
+    const after = worldTick(before, rng());
+    expect(after.resources.hygiene).toBeLessThan(before.resources.hygiene);
+  });
+
+  it('loses nothing to rounding across a contiguous sequence, like hunger', () => {
+    // The property that distinguishes a graded drain from a cliff: two short legs cost what one
+    // long one does. A per-leg `floor(hours / 6)` would discard the remainder every leg.
+    const spans = [5, 5, 4, 6, 5, 4, 5, 6];
+    let elapsed = 0;
+    let total = 0;
+    for (const hours of spans) {
+      total += spanPoints(elapsed, hours, 6);
+      elapsed += hours;
+    }
+    expect(total).toBe(Math.floor(spans.reduce((a, b) => a + b, 0) / 6));
+  });
+
+  it('charges a long leg more than a short one, which the cliff could not', () => {
+    // Charged from the same starting phase so the comparison is about duration alone.
+    expect(spanPoints(0, 12, 6)).toBeGreaterThan(spanPoints(0, 5, 6));
+    expect(spanPoints(0, 12, 6)).toBe(2);
+    expect(spanPoints(0, 5, 6)).toBe(0);
+  });
+
+  it('floors at zero rather than going negative', () => {
+    // Hygiene is 0..10 and is NOT a run-end condition (`check-run-end.ts` tests health and
+    // morale only). A run that bottoms out keeps travelling, which is why the corpus sat at 0
+    // for most of every run under the cliff model too — grading moved WHEN it floors, not
+    // whether. That is the measured reason M3.8b barely moved completion.
+    let state = stateWith('foot', { resources: { ...stateWith('foot').resources, hygiene: 1 } });
+    for (let leg = 0; leg < 5; leg += 1) state = worldTick(state, rng());
+    expect(state.resources.hygiene).toBe(0);
+  });
+});
