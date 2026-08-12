@@ -110,33 +110,43 @@ A fresh agent can start here:
    `GEO_DISCONNECTED`, `GEO_ORPHAN_NODE`, `GEO_EDGE_ENDPOINT_UNRESOLVED`, `GEO_OVERLAY_STALE`,
    `GEO_NAMED_BORDER`, `GEO_PLACE_BEHAVIOUR`, `GEO_NAME_FIELD_MISPLACED`, `GEO_OSM_SOURCE`,
    `GEO_NODES_DIGEST_STALE`.
-6. **Do NOT add `GEO_EDGE_TOO_LONG` or a node-count band rule** unless open question 1 below is
-   answered otherwise. Both fail on the current slice by construction. Deferring them is a
-   decision — record it in the commit.
+6. **Do NOT add `GEO_EDGE_TOO_LONG` or a node-count band rule.** Both fail on the current slice
+   by construction, and the deferral to M3.11 is DECIDED — see Decisions taken below. Say so in
+   the commit so the next reader knows it was a choice.
 7. DoD: `pnpm content:lint` clean, and `lint.test.ts` must still pin `MISSING_IMAGE_MANIFEST` as
    the only gap.
 
 ---
 
+## Decisions taken (2026-08-12, by the human)
+
+- **`GEO_EDGE_TOO_LONG` and the node-count band rule are DEFERRED to M3.11.**
+  `densify-corridors.ts` is not built now. Waypoint density is a function of the final node set,
+  so calibrating it against 263 nodes would mean redoing it at 1,200. M3.6 ships the rules that
+  can hold against the current slice and no more.
+- **Open questions 1–3 below were reviewed and deliberately left open.** They are findings, not
+  oversights: nobody needs to re-raise them, and nothing in M3.6 depends on them. Revisit when
+  the milestone that cares arrives — 1 and 2 at M3.9 when routes reach a player, 3 whenever
+  `illicit` is next tuned.
+
+---
+
 ## Open questions for the human
 
-1. **`GEO_EDGE_TOO_LONG`: defer to M3.11, or build `densify-corridors.ts` now?** Recommendation
-   is defer — waypoint density is a function of the final node set, so calibrating it against 263
-   nodes means redoing it at 1,200. This is the one M3.6 decision that changes what gets built.
-2. **The 70% diversity guarantee is directional, and nobody decided that.**
+1. **The 70% diversity guarantee is directional, and nobody decided that.**
    `acceptByDiversity` tests each new candidate against what is already accepted, normalised by
    the candidate's length, and never re-tests an earlier route against a later one. On
    Barcelona–Palermo, `fastest` is 79% inside `safest` while `safest` was accepted at 69%. Is a
    symmetric check wanted, or is the one-way guarantee the intended contract? (ADR 0031.)
-3. **Yen has no length ceiling.** Vienna–Budapest is 297 km direct and the pool also holds 866,
+2. **Yen has no length ceiling.** Vienna–Budapest is 297 km direct and the pool also holds 866,
    1,186 and 1,352 km routes. Sample-wide the longest/shortest ratio is p50 1.36×, tail 10.32×.
    Should `kShortestPaths` reject a backfill beyond some multiple of the shortest?
-4. **`illicit` strictly dominates on 9 of 168 sampled pairs** — shorter than every other route,
+3. **`illicit` strictly dominates on 9 of 168 sampled pairs** — shorter than every other route,
    no more borders, no harder ground. The illegal route is meant to be a trade. Accept, or price
    it?
-5. **The 22–48 leg band is unsurvivable and M3.10b depends on it.** Health is a one-way ratchet
+4. **The 22–48 leg band is unsurvivable and M3.10b depends on it.** Health is a one-way ratchet
    with two `+2` restores in the whole corpus. Content problem or tuning problem?
-6. **Is ~40% the accepted beat-fill number for Phase 3**, or do the four missing beat events
+5. **Is ~40% the accepted beat-fill number for Phase 3**, or do the four missing beat events
    (`departure`, `ferry_boarding`, `approach`, `finale`) come into scope? Unchanged from session
    6, and it gates M3.10b's acceptance criteria.
 
