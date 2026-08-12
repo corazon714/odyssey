@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { findWorkspaceRoot } from '../shared/workspace-root.ts';
 import { type Overlay } from './apply-overlay.ts';
 import { auditDiversity, formatDiversity, graphFromArtifacts } from './audit-diversity.ts';
+import { benchmark, formatBenchmark, formatVerification } from './report-verify.ts';
+import { readNames } from './verify-routes.ts';
 import { buildSlice } from './build-slice.ts';
 import { SETTLEMENT_QUOTA } from './continent.ts';
 import { readLock, verifyLock } from './fetch-sources.ts';
@@ -75,6 +77,19 @@ function main(argv: readonly string[]): number {
   const candidates =
     options.bbox === null ? read.candidates : withinBox(read.candidates, options.bbox);
   const ledger = createEpsilonLedger();
+
+  if (options.stage === 'verify') {
+    const nodesJson = readFileSync(join(GEO_DIR, 'nodes.gen.json'), 'utf8');
+    const graph = graphFromArtifacts(
+      nodesJson,
+      readFileSync(join(GEO_DIR, 'edges.gen.json'), 'utf8'),
+    );
+    const { byName, nameOf } = readNames(nodesJson, graph);
+    process.stdout.write(formatVerification(graph, byName, nameOf));
+    const timings = benchmark(graph, 200);
+    process.stdout.write(`${formatBenchmark(graph, timings.length, timings)}\n`);
+    return 0;
+  }
 
   if (options.stage === 'diversity') {
     // Reads the COMMITTED artifacts, not an in-memory graph: the question is whether the bytes

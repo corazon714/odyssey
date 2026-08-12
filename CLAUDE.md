@@ -224,6 +224,9 @@ pnpm sim -- --json            # per-run TRACE (fired events + picks in order) no
 pnpm sim:diff -- --runs=2000  # vs the pack's baseline. REFUSES another count — see DoD 6  ✅
 pnpm golden:update            # regenerate golden-runs.json from the engine — REVIEW the diff ✅
 pnpm geo:audit [-- --real]    # candidate pool vs the ADR 0024 budget; writes nothing        ✅
+pnpm geo:build                # derive the slice at the PINNED bbox and write the artifacts  ✅
+pnpm geo:diversity            # the M3.5 go/no-go: median route overlap vs a 70% ceiling     ✅
+pnpm geo:verify               # named pairs, diversity, pathologies, benchmark               ✅
 
 pnpm images:{plan,gen,sheet}  # build-time AI image pipeline                           (planned)
 pnpm i18n:{check,pseudo}      # key coverage, length audit, pseudo-localization        (planned)
