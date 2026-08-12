@@ -108,6 +108,7 @@ export function buildGeoEdge(raw: {
   readonly seasonality: GeoEdge['seasonality'];
   readonly tolled: boolean;
   readonly adminBoundary: boolean;
+  readonly unavoidable: boolean;
 }): GeoEdge {
   return {
     id: raw.id,
@@ -120,6 +121,7 @@ export function buildGeoEdge(raw: {
     seasonality: raw.seasonality,
     tolled: raw.tolled,
     adminBoundary: raw.adminBoundary,
+    unavoidable: raw.unavoidable,
   };
 }
 
@@ -148,5 +150,6 @@ export const geoEdgeSchema = z
     seasonality: seasonalitySchema,
     tolled: z.boolean(),
     adminBoundary: z.boolean(),
+    unavoidable: z.boolean(),
   })
   .transform((raw): GeoEdge => buildGeoEdge(raw));

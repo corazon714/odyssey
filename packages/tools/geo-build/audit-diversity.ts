@@ -68,6 +68,7 @@ type EdgeRecord = {
   readonly sz: Seasonality;
   readonly tl: boolean;
   readonly ab: boolean;
+  readonly uv: boolean;
 };
 
 /** Rebuild the engine's graph from the committed artifacts — the same bytes the game will load. */
@@ -96,6 +97,7 @@ export function graphFromArtifacts(nodesJson: string, edgesJson: string): GeoGra
     seasonality: r.sz,
     tolled: r.tl,
     adminBoundary: r.ab,
+    unavoidable: r.uv,
   }));
 
   const built = createGeoGraph(nodes, edges);
@@ -135,6 +137,16 @@ export type DiversityReport = {
    * property of the cost functions.
    */
   readonly feasibleUnrelaxed: readonly number[];
+  /**
+   * Pairs on which row and column returned the BYTE-IDENTICAL path, in `ROUTE_PROFILES` order.
+   *
+   * The median tells you the pool is too similar; this tells you WHICH profile is not earning
+   * its place, and those are different questions with different fixes. It was a throwaway script
+   * the first time and it immediately found the thing the median could not: `fastest` and
+   * `cheapest` return the same path on 186 of 220 pairs, which dwarfs anything the `safest` mask
+   * was doing.
+   */
+  readonly identicalPairs: readonly (readonly number[])[];
   /** Distribution of how many distinct routes each pair yielded, indexed by count. */
   readonly distinctCounts: readonly number[];
   /** Pairwise overlap percentages between accepted routes, across every pair. */
@@ -154,6 +166,7 @@ export function auditDiversity(graph: GeoGraph, samples: number): DiversityRepor
       pairs: 0,
       routable: 0,
       feasibleUnrelaxed: [],
+      identicalPairs: [],
       distinctCounts: [],
       overlaps: [],
       medianOverlap: 0,
@@ -169,6 +182,7 @@ export function auditDiversity(graph: GeoGraph, samples: number): DiversityRepor
   const distinctCounts: number[] = [];
   const rungsUsed = new Array<number>(6).fill(0);
   const feasibleUnrelaxed = new Array<number>(ROUTE_PROFILES.length).fill(0);
+  const identicalPairs = ROUTE_PROFILES.map(() => new Array<number>(ROUTE_PROFILES.length).fill(0));
   let routable = 0;
   let shortfalls = 0;
   let pairs = 0;
@@ -180,11 +194,23 @@ export function auditDiversity(graph: GeoGraph, samples: number): DiversityRepor
     if (start === end) continue;
     pairs += 1;
 
+    const perProfile = ROUTE_PROFILES.map((profile) =>
+      shortestPath(graph, start, end, costFor(profile)),
+    );
     for (let p = 0; p < ROUTE_PROFILES.length; p += 1) {
-      const profile = ROUTE_PROFILES[p];
-      if (profile === undefined) continue;
-      if (shortestPath(graph, start, end, costFor(profile)) !== null) {
-        feasibleUnrelaxed[p] = (feasibleUnrelaxed[p] ?? 0) + 1;
+      if (perProfile[p] != null) feasibleUnrelaxed[p] = (feasibleUnrelaxed[p] ?? 0) + 1;
+    }
+    for (let x = 0; x < ROUTE_PROFILES.length; x += 1) {
+      for (let y = x + 1; y < ROUTE_PROFILES.length; y += 1) {
+        const px = perProfile[x];
+        const py = perProfile[y];
+        if (px == null || py == null) continue;
+        if (px.edges.length !== py.edges.length) continue;
+        if (!px.edges.every((e, k) => e === py.edges[k])) continue;
+        const rowX = identicalPairs[x];
+        const rowY = identicalPairs[y];
+        if (rowX !== undefined) rowX[y] = (rowX[y] ?? 0) + 1;
+        if (rowY !== undefined) rowY[x] = (rowY[x] ?? 0) + 1;
       }
     }
 
@@ -215,6 +241,7 @@ export function auditDiversity(graph: GeoGraph, samples: number): DiversityRepor
     pairs,
     routable,
     feasibleUnrelaxed,
+    identicalPairs,
     distinctCounts,
     overlaps: sorted,
     medianOverlap,
@@ -248,6 +275,19 @@ export function formatDiversity(report: DiversityReport): string {
     const n = report.feasibleUnrelaxed[p] ?? 0;
     lines.push(`  ${profile.padEnd(9)} ${String(n)} / ${String(report.pairs)}`);
   }
+  lines.push('');
+  lines.push('## Pairs on which two profiles returned the IDENTICAL path');
+  lines.push('');
+  lines.push(`  ${''.padEnd(10)}${ROUTE_PROFILES.map((p) => p.slice(0, 8).padStart(9)).join('')}`);
+  for (let x = 0; x < ROUTE_PROFILES.length; x += 1) {
+    const cells = ROUTE_PROFILES.map((_, y) =>
+      x === y ? '—'.padStart(9) : String(report.identicalPairs[x]?.[y] ?? 0).padStart(9),
+    );
+    lines.push(`  ${(ROUTE_PROFILES[x] ?? '').padEnd(10)}${cells.join('')}`);
+  }
+  lines.push('');
+  lines.push('  A high cell is a profile not earning its place. The median above says the pool is');
+  lines.push('  too similar; this says WHICH pair to fix, and they are different questions.');
   lines.push('');
   lines.push('## Ladder rung reached');
   lines.push('');

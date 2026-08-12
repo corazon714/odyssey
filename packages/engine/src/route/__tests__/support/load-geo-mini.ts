@@ -43,6 +43,7 @@ type RawEdge = {
   readonly seasonality: Seasonality;
   readonly tolled: boolean;
   readonly adminBoundary: boolean;
+  readonly unavoidable: boolean;
 };
 
 type RawGraph = { readonly nodes: readonly RawNode[]; readonly edges: readonly RawEdge[] };
@@ -78,6 +79,7 @@ export function readMiniGraph(): { readonly nodes: GeoNode[]; readonly edges: Ge
     seasonality: e.seasonality,
     tolled: e.tolled,
     adminBoundary: e.adminBoundary,
+    unavoidable: e.unavoidable,
   }));
 
   return { nodes, edges };

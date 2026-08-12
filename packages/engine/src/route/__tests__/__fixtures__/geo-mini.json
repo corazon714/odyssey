@@ -180,7 +180,8 @@
       "scenic": 1,
       "seasonality": "all_year",
       "tolled": true,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
     {
       "id": "e.a1_a2",
@@ -192,7 +193,8 @@
       "scenic": 1,
       "seasonality": "all_year",
       "tolled": true,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
     {
       "id": "e.a2_end",
@@ -204,9 +206,9 @@
       "scenic": 0,
       "seasonality": "all_year",
       "tolled": true,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
-
     {
       "id": "e.start_b1",
       "from": "n.start",
@@ -217,7 +219,8 @@
       "scenic": 2,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
     {
       "id": "e.b1_b2",
@@ -229,7 +232,8 @@
       "scenic": 3,
       "seasonality": "summer_only",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
     {
       "id": "e.b2_end",
@@ -241,9 +245,9 @@
       "scenic": 3,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": true
     },
-
     {
       "id": "e.start_c1",
       "from": "n.start",
@@ -254,7 +258,8 @@
       "scenic": 1,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
     {
       "id": "e.c1_cross",
@@ -266,7 +271,8 @@
       "scenic": 0,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": true
+      "adminBoundary": true,
+      "unavoidable": false
     },
     {
       "id": "e.cross_c2",
@@ -278,7 +284,8 @@
       "scenic": 0,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": true
+      "adminBoundary": true,
+      "unavoidable": false
     },
     {
       "id": "e.c2_end",
@@ -290,7 +297,8 @@
       "scenic": 1,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
     {
       "id": "e.c1_c2",
@@ -302,9 +310,9 @@
       "scenic": 1,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": true
+      "adminBoundary": true,
+      "unavoidable": false
     },
-
     {
       "id": "e.start_p1",
       "from": "n.start",
@@ -315,7 +323,8 @@
       "scenic": 2,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
     {
       "id": "e.p1_p2",
@@ -327,7 +336,8 @@
       "scenic": 3,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
     {
       "id": "e.p2_end",
@@ -339,9 +349,9 @@
       "scenic": 2,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
-
     {
       "id": "e.start_m1",
       "from": "n.start",
@@ -352,7 +362,8 @@
       "scenic": 0,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
     {
       "id": "e.m1_end",
@@ -364,9 +375,9 @@
       "scenic": 1,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
-
     {
       "id": "e.start_d1",
       "from": "n.start",
@@ -377,7 +388,8 @@
       "scenic": 0,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
     {
       "id": "e.d1_d2",
@@ -389,7 +401,8 @@
       "scenic": 0,
       "seasonality": "winter_closed",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
     {
       "id": "e.d2_end",
@@ -401,9 +414,9 @@
       "scenic": 0,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
-
     {
       "id": "e.b1_r1",
       "from": "n.b1",
@@ -414,7 +427,8 @@
       "scenic": 1,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
     {
       "id": "e.r1_c1",
@@ -426,9 +440,9 @@
       "scenic": 1,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     },
-
     {
       "id": "e.end_z1",
       "from": "n.end",
@@ -439,7 +453,8 @@
       "scenic": 2,
       "seasonality": "all_year",
       "tolled": false,
-      "adminBoundary": false
+      "adminBoundary": false,
+      "unavoidable": false
     }
   ]
 }

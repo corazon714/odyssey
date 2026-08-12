@@ -31,6 +31,7 @@ function edge(id: string, from: string, to: string, distanceKm = 10): GeoEdge {
     seasonality: 'all_year',
     tolled: false,
     adminBoundary: false,
+    unavoidable: false,
   };
 }
 

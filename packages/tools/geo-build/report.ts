@@ -162,6 +162,7 @@ export function formatSlice(
     readonly boundaryEdges: number;
     readonly tolledEdges: number;
     readonly railEdges: number;
+    readonly unavoidableEdges: number;
     readonly borders: {
       readonly crossings: readonly unknown[];
       readonly requiredForConnectivity: number;
@@ -199,6 +200,7 @@ export function formatSlice(
     slice.edges.length === 0 ? '0%' : `${((n * 100) / slice.edges.length).toFixed(0)}%`;
   lines.push(`tolled edges  ${String(slice.tolledEdges)}   ${share(slice.tolledEdges)}, authored`);
   lines.push(`rail corridors ${String(slice.railEdges)}   ${share(slice.railEdges)}, derived`);
+  lines.push(`unavoidable   ${String(slice.unavoidableEdges)}   hard edges safest may still use`);
   lines.push('');
 
   lines.push('## Controlled crossings');

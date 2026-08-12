@@ -88,8 +88,20 @@ describe('the five cost functions', () => {
       // e.b1_b2 is terrainDifficulty 3 AND summer_only.
       expect(costOf('safest', 'e.b1_b2')).toBeNull();
       expect(costOf('scenic', 'e.b1_b2')).not.toBeNull();
-      // e.b2_end is terrainDifficulty 3 but all_year — still refused, on terrain alone.
-      expect(costOf('safest', 'e.b2_end')).toBeNull();
+    });
+
+    it('`safest` takes hard ground when it is the only way through', () => {
+      // e.b2_end is terrainDifficulty 3 and all_year, so it isolates the terrain mask from the
+      // season one — and it is the only usable link to n.b2, so it carries `unavoidable`.
+      //
+      // This used to be null. A mask that disconnects the graph is not a divergence mechanism,
+      // it is a disconnection mechanism: on the real slice this one left 52 components and
+      // `safest` could reach its destination on 74 of 220 sampled pairs, after which the ladder
+      // filled its slot with a deviation of somebody else's path. See `GeoEdge.unavoidable`.
+      expect(costOf('safest', 'e.b2_end')).not.toBeNull();
+      // The exemption is narrow: hard ground with a real alternative is still refused, which is
+      // what keeps `safest` a different route rather than a differently-priced one.
+      expect(costOf('safest', 'e.c1_c2')).toBeNull();
     });
 
     it('a seasonally closed corridor is refused by `fastest` and `cheapest`', () => {
@@ -146,11 +158,12 @@ describe('the five cost functions', () => {
       masked.set(profile, edgeIdsOf(GRAPH, indices));
     }
     // `e.b1_b2` is summer_only as well as terrainDifficulty 3, so it is refused by the season
-    // mask before `safest`'s terrain mask ever sees it. `e.b2_end` is all_year, which is why
-    // only `safest` refuses that one — the two edges separate the two masks.
+    // mask before `safest`'s terrain mask ever sees it. `e.b2_end` is all_year and hard, so it
+    // isolates the terrain mask — and it carries `unavoidable`, so `safest` takes it. `e.c1_c2`
+    // is the hard edge with an alternative, and it is the one still refused.
     expect(masked.get('fastest')).toEqual(['e.b1_b2', 'e.c1_c2', 'e.d1_d2']);
     expect(masked.get('cheapest')).toEqual(['e.b1_b2', 'e.c1_c2', 'e.d1_d2']);
-    expect(masked.get('safest')).toEqual(['e.b1_b2', 'e.b2_end', 'e.c1_c2', 'e.d1_d2']);
+    expect(masked.get('safest')).toEqual(['e.b1_b2', 'e.c1_c2', 'e.d1_d2']);
     expect(masked.get('scenic')).toEqual(['e.c1_c2']);
     expect(masked.get('illicit')).toEqual(['e.m1_end', 'e.p1_p2']);
   });

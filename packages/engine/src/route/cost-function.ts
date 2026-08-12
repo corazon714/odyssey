@@ -160,7 +160,16 @@ export function costFor(profile: RouteProfile, relax: CostRelaxation = NO_RELAXA
     if (!relax.season && profile !== 'illicit' && profile !== 'scenic') {
       if (seasonBlocked(edge, profile === 'safest')) return null;
     }
-    if (!relax.terrain && profile === 'safest' && edge.terrainDifficulty >= 3) return null;
+    // ... EXCEPT where there is no way round: see GeoEdge.unavoidable. A mask that disconnects
+    // the graph forces relaxation, and relaxation is what makes five profiles into one.
+    if (
+      !relax.terrain &&
+      profile === 'safest' &&
+      edge.terrainDifficulty >= 3 &&
+      !edge.unavoidable
+    ) {
+      return null;
+    }
 
     const maxPop = Math.max(populationRank(from.population), populationRank(to.population));
     const minPop = Math.min(populationRank(from.population), populationRank(to.population));

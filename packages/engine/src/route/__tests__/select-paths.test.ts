@@ -35,6 +35,7 @@ function chainEdge(id: string, from: string, to: string): GeoEdge {
     seasonality: 'all_year',
     tolled: false,
     adminBoundary: false,
+    unavoidable: false,
   };
 }
 

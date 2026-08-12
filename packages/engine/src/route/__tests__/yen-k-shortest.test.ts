@@ -39,6 +39,7 @@ function lateBranchChain(): GeoGraph {
     seasonality: 'all_year' as const,
     tolled: false,
     adminBoundary: false,
+    unavoidable: false,
   });
   const built = createGeoGraph(['n.p0', 'n.p1', 'n.p2', 'n.p3', 'n.p4'].map(node), [
     edge('e.p01', 'n.p0', 'n.p1', 100),

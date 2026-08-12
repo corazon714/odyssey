@@ -22,6 +22,7 @@ import {
 import { analyseConnectivity, degreeHistogram } from './connectivity.ts';
 import { haversineKm, type EpsilonLedger } from './geodesy.ts';
 import { cellNeighbourhood } from './grid.ts';
+import { markUnavoidable, type ConnectivityEdge } from './mark-unavoidable.ts';
 import { placeBorders, type BorderResult } from './place-borders.ts';
 import { type BoxedRing, type Region, regionIndexAt } from './read-natural-earth.ts';
 import { type Candidate } from './read-geonames.ts';
@@ -73,6 +74,7 @@ export type SliceResult = {
   readonly boundaryEdges: number;
   readonly tolledEdges: number;
   readonly railEdges: number;
+  readonly unavoidableEdges: number;
   readonly borders: BorderResult;
   readonly overlayIssues: readonly string[];
   readonly overlayAdded: number;
@@ -244,8 +246,8 @@ export function buildSlice(input: SliceInput): SliceResult {
   let boundaryEdges = 0;
   let tolledEdges = 0;
   let railEdges = 0;
-  const linked: { readonly a: number; readonly b: number; readonly distanceKm: number }[] = [];
-  const edges: GeoEdge[] = [];
+  const linked: ConnectivityEdge[] = [];
+  const raw: GeoEdge[] = [];
 
   const pairKey = (a: number, b: number): string =>
     a < b ? `${String(a)}:${String(b)}` : `${String(b)}:${String(a)}`;
@@ -264,18 +266,26 @@ export function buildSlice(input: SliceInput): SliceResult {
     if (crosses) boundaryEdges += 1;
     if (tolled) tolledEdges += 1;
     if (hasMode(modes, 'train')) railEdges += 1;
-    linked.push({ a, b, distanceKm });
-    edges.push({
+    const terrainDifficulty = terrainDifficultyOf(from.terrain, to.terrain);
+    const seasonality = seasonalityOf(Math.max(from.elevationM, to.elevationM));
+    // `safest`'s OTHER two masks, mirrored from `cost-function.ts`. The terrain exemption has to
+    // be computed against the graph safest can actually reach across, not against the whole one.
+    const viaCrossing = from.type === 'border_crossing' || to.type === 'border_crossing';
+    const usable = seasonality === 'all_year' && (!crosses || viaCrossing);
+    linked.push({ a, b, distanceKm, terrainDifficulty, usable });
+    raw.push({
       id: edgeId(`e.${tokenOf[a] ?? '?'}__${tokenOf[b] ?? '?'}`),
       from: from.id,
       to: to.id,
       distanceKm,
       modes,
-      terrainDifficulty: terrainDifficultyOf(from.terrain, to.terrain),
+      terrainDifficulty,
       scenic: scenicOf(from.terrain, to.terrain),
       seasonality: seasonalityOf(Math.max(from.elevationM, to.elevationM)),
       tolled,
       adminBoundary: crosses,
+      // Patched below: the flag is a property of the WHOLE graph, so it cannot be known here.
+      unavoidable: false,
     });
   };
 
@@ -306,6 +316,13 @@ export function buildSlice(input: SliceInput): SliceResult {
     emit(via, candidate.b, candidate.distanceKm - near, modes, true, tolled);
   }
 
+  // A mask must not disconnect the graph.  refuses hard ground, and on this slice that
+  // alone leaves 52 components — so the hard edges that hold it together are flagged and exempt.
+  const unavoidable = markUnavoidable(allNodes.length, linked);
+  const edges: GeoEdge[] = raw.map((edge, i) =>
+    unavoidable.has(i) ? { ...edge, unavoidable: true } : edge,
+  );
+
   const connectivity = analyseConnectivity(allNodes.length, linked);
 
   return {
@@ -325,6 +342,7 @@ export function buildSlice(input: SliceInput): SliceResult {
     boundaryEdges,
     tolledEdges,
     railEdges,
+    unavoidableEdges: unavoidable.size,
     borders,
     overlayIssues: overlaid.issues,
     overlayAdded: overlaid.added.length,

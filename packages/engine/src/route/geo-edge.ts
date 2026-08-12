@@ -50,6 +50,20 @@ export type GeoEdge = {
   readonly tolled: boolean;
   /** GEOMETRIC: the segment crosses an admin polygon boundary. Says nothing about what is there. */
   readonly adminBoundary: boolean;
+  /**
+   * Hard ground with no way round it — `safest` refuses `terrainDifficulty >= 3` EXCEPT here.
+   *
+   * Without it that mask cut the European slice into 52 components, the largest holding 146 of
+   * 221 nodes, and `safest` could reach its destination on 74 of 220 sampled pairs. A profile
+   * that cannot arrive is not a safer route, it is an absent one, and the ladder then filled its
+   * slot with a deviation of somebody else's path. A mask is a divergence mechanism only while
+   * the masked graph stays connected — the same lesson `adminBoundary` learned above.
+   *
+   * Derived, never authored: a spanning forest over the hard edges seeded with the easy ones, so
+   * everything NOT flagged is hard ground with a real alternative that `safest` still refuses.
+   * `packages/tools/geo-build/mark-unavoidable.ts` computes it and says why at length.
+   */
+  readonly unavoidable: boolean;
 };
 
 export function modeMask(modes: readonly TransportMode[]): number {
