@@ -187,24 +187,41 @@ const LEG_BAND_MAX = 48;
 /**
  * Endpoint pairs, by node id. Stable, so the sim is reproducible.
  *
- * **Four of the six cross a border, and that is the whole point of the selection.** The first
- * attempt at this list took pairs off the overlay's tolled corridors — which are deliberately
- * INTRA-country roads — so not one generated route passed a crossing, and
- * `border.night_crossing` never fired in 2,000 runs. A route set that cannot reach a category
- * of content reports a beat-fill ceiling nobody can see, which is precisely the misleading
- * number M3.10a exists to remove.
+ * **Every endpoint is at least 900 km from every other, and that constraint is the point.**
  *
- * Two intra-country pairs are kept on purpose: a corpus where every route crosses a border
- * would be the same distortion in the other direction.
+ * This list has been wrong twice, in opposite directions, and both mistakes were invisible in
+ * the sim report:
  *
- * Chosen by measurement rather than by guess — 40 city pairs on the shipped slice yield a
- * 10-16-leg route that passes a crossing; these are six of them.
+ * 1. The first version took pairs off the overlay's tolled corridors — which are deliberately
+ *    INTRA-country roads — so no generated route passed a crossing and `border.night_crossing`
+ *    never fired in 2,000 runs. A route set that cannot reach a category of content reports a
+ *    beat-fill ceiling nobody can see.
+ * 2. The second version was picked by a search that scanned candidate endpoints downward from
+ *    the end of the city list, so **all four pairs converged on the same destination** and every
+ *    corpus route finished in the same city. Leg counts and completion looked healthy throughout;
+ *    what was actually being measured was one destination four times.
+ *
+ * So the selection is now constrained rather than merely measured: candidates are sampled across
+ * the whole sorted city list, and a pair is only taken if BOTH endpoints are ≥900 km from every
+ * endpoint already chosen. 873 pairs on the shipped slice yield a 22-48 leg route; these four are
+ * the spread-out ones.
+ *
+ * Four rather than six is what the spread constraint allows on a 263-node slice — tightening it
+ * further finds nothing, and loosening it re-clusters. Prefer four honest pairs to six that are
+ * secretly one.
+ *
+ * All four cross borders. That is not a second constraint, it is what long routes on this slice
+ * do; the intra-country pairs the previous list kept for contrast were all short.
  */
 const CORPUS_PAIRS: readonly (readonly [string, string])[] = [
-  ['n.city.g2267057', 'n.city.g792680'],
-  ['n.city.g2464960', 'n.city.g792680'],
-  ['n.city.g2510911', 'n.city.g792680'],
-  ['n.city.g2523630', 'n.city.g792680'],
+  // Bejaia–Bursa: 36 legs, 5,878 km, 3 routes
+  ['n.city.g2505329', 'n.city.g750269'],
+  // Sevilla–Riga: 33 legs, 5,335 km, 4 routes
+  ['n.city.g2510911', 'n.city.g456172'],
+  // Kristiansand–Sarajevo: 31 legs, 4,315 km, 3 routes
+  ['n.city.g3149318', 'n.city.g3191281'],
+  // Saint-Etienne–Vinnytsya: 23 legs, 3,585 km, 4 routes
+  ['n.city.g2980291', 'n.city.g689558'],
 ];
 
 export function loadCorpusScenarios(): {
