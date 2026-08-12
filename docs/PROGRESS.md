@@ -5,7 +5,88 @@
 
 ---
 
-## Shipped this session (2026-08-12, session 7) — **PHASE 3 THROUGH M3.5**
+## Shipped this session (2026-08-12, session 8) — **M3.6: the geo data is loaded and linted**
+
+`packages/content/geo/` held 263 nodes, 404 edges and a 42-row overlay that **nothing in
+`packages/content` could read**. It shipped validated by nothing except the tool that generated
+it. That is closed: the geo files now go through a Zod schema and a loader like every other
+content file, and `content:lint` carries ten `GEO_*` rules.
+
+### Prove it
+
+```bash
+pnpm typecheck && pnpm lint && pnpm test && pnpm content:lint && pnpm format:check
+```
+
+```bash
+pnpm content:lint     # 19 rules, 0 errors, 1 warning (MISSING_IMAGE_MANIFEST, structural)
+pnpm geo:diversity    # VERDICT: PASS — median 59% against a 70% ceiling, unmoved
+pnpm geo:verify       # PASS at the measured maximum
+node packages/tools/geo-build/cli.ts --stage=all --real --bbox=-12,36,30,60 --check   # byte-identical
+pnpm sim:diff -- --runs=2000                      # "No change vs docs/sim-baseline.md."
+pnpm sim -- --pack=corpus --runs=2000 --diff      # "No change vs docs/sim-baseline-corpus.md."
+```
+
+Tests moved **1440 → 1480 across 72 files** (+14 `content/__tests__/geo.test.ts`,
++26 `content-lint/__tests__/rules-geo.test.ts`).
+
+| commit    | what                                                                         |
+| --------- | ---------------------------------------------------------------------------- |
+| `b80f5d5` | `overlay.yaml`, the file/record schemas, `load-geo.ts`, the `./geo/*` export |
+| `28441f2` | `rules-geo.ts` — ten rules, each fired against a deliberate violation        |
+
+### ⚠ The finding: the record schemas could never have parsed a committed artifact
+
+The M3.6 brief warned that a `strictObject` FILE schema would reject the metadata headers. True,
+and **incomplete**. `geoNodeSchema` was a `strictObject` over canonical keys (`name`, `type`,
+`terrain`, `elevationM`) while `write-artifacts.ts` emits terse ones (`n`, `t`, `tr`, `e`) — and
+the files carry `y`/`x` coordinates that had **no field in the schema at all**. Edges were the
+same (`a`/`b`/`d`/`m`/`td`/`sc`/`sz`/`tl`/`ab`/`uv`).
+
+It survived from M3.2 because `conformance.test.ts` pins the schema's OUTPUT against the engine's
+`GeoNode`/`GeoEdge` — a real check, and a completely different one. **Nothing pinned the input,
+because nothing had ever tried to parse the file.**
+
+The schema's input is now the terse form, transformed to canonical — the shape `predicate.ts`
+already uses. `geo.test.ts` parses the COMMITTED artifacts and is the only thing in the repo
+linking the writer to the schema; they are in different packages and the writer builds strings.
+**Do not replace it with a synthetic fixture** — a hand-built record passes whatever shape the
+schema happens to have, which is exactly how this shipped.
+
+### The four decisions worth knowing without reading ADR 0033
+
+1. **The headers are DECLARED, not deleted.** `_format` is optional (documentation; a file
+   without one should still load), `digest`/`nodesDigest`/`count` are required (integrity claims;
+   an absent claim is not a satisfied one). The overlay's comments became real `#` comments in the
+   YAML move. `count` is checked in the loader, not as a Zod refinement, so the message can name
+   both numbers.
+2. **`lat`/`lng` ride on `GeoNodeRecord`, never on `GeoNode`.** `conformance.test.ts:99` asserts
+   `z.infer<…>['node']` equals `engine.GeoNode`, so the split is compiler-enforced.
+3. **The three §11 text rules scan raw bytes on purpose.** A file carrying `cc` FAILS TO LOAD
+   under a `strictObject`, so `bundle.geo` is null and a parsed-data check would be silent exactly
+   when it matters. They scan KEYS, never values — the overlay's justifications name real
+   countries ("Free in Germany, then the A36 charges from Mulhouse") and must keep doing so.
+4. **`GEO_UNDECLARED_BRIDGE` is a warning with a budget of 13**, measured: 35 bridges, 13 of them
+   stranding 10+ nodes. Growth is the signal. **M3.11 will move this number** — raising it is a
+   decision with the new measurement in hand, not a formality.
+
+### Two things the brief said that turned out to be wrong
+
+- **"Write `load-geo.ts` beside `load-content.ts`"** — `load-content.ts` is in
+  `packages/tools/content-lint/`, a different package. The loader went to
+  `packages/content/loader/`, per the brief's own header and the plan's blast radius. The
+  `readLocale` citation at `load-content.ts:84-87` was accurate.
+- **`"./geo"` became `"./geo/*"`.** A bare subpath needs an index module inside a directory that
+  must stay pure data; the pattern resolves today and a bare one would not.
+
+`geo-build` got a real fix out of this: its `JSON.parse(...) as Overlay` cast is gone. A
+hand-edited overlay with a misspelled key typechecked perfectly and silently did nothing.
+`loadGeoOverlay` is a separate export because that tool WRITES the artifacts `loadGeo` insists on
+parsing — a first build would otherwise be impossible.
+
+---
+
+## Shipped in session 7 (2026-08-12) — **PHASE 3 THROUGH M3.5**
 
 Steps 1–5 of the Phase 3 plan (`~/.claude/plans/plan-mode-build-the-synthetic-bird.md`) are
 done. **The route generator runs on real geography and the M3.5 diversity gate PASSES at a
@@ -70,11 +151,16 @@ Everything else runs on committed artifacts.
 
 Nothing is left broken. These are absent or partial, with paths:
 
-- **`packages/content/geo/overlay.json` should be `overlay.yaml`.** Its own header says M3.6
-  moves it behind a loader in `packages/content`, where `yaml` is already declared. It is JSON
-  today only because `packages/tools` cannot reach `yaml`.
-- **`packages/content/package.json` has no `"./geo"` export.** M3.6 needs one. Adding it is a
-  `ROOT_TRIGGERS` commit and takes the full-monorepo DoD.
+- ~~`overlay.json` should be `overlay.yaml`.~~ **Done at M3.6.** Byte-verified: `--check` is
+  byte-identical after the move.
+- ~~`packages/content/package.json` has no `"./geo"` export.~~ **Done at M3.6**, as `"./geo/*"`.
+- **`GEO_UNDECLARED_BRIDGE`'s budget is 13 and belongs to THIS slice.** 35 bridges, 13 stranding
+  10+ nodes, measured at 263 nodes. M3.11 quadruples the node count and the budget must be
+  re-measured, not extrapolated. If it grows faster than the node count the selector is producing
+  a stringier graph — that is the finding, not the bump.
+- **13 lifeline edges are undeclared, and `overlay.yaml`'s `criticalEdges` is still empty.**
+  Declaring them is real work with a real payoff (each is an edge whose loss cuts the map) and it
+  was not M3.6's job. Nothing depends on it yet.
 - **`densify-corridors.ts` was never built.** 16 edges (4%) exceed 450 km, the largest `D_max`
   in the plan; the max is 573 km. A `GEO_EDGE_TOO_LONG` rule added at M3.6 goes red on our own
   data immediately — the plan warns about exactly this.
@@ -91,41 +177,56 @@ Nothing is left broken. These are absent or partial, with paths:
 
 ## Next step — ONE task
 
-**M3.6: `packages/content/loader/load-geo.ts` plus the `content:lint` geo rules that can hold
-against a 263-node slice.**
+**M3.7: `legKm` and `montageLegs` on `RouteState`, at UNIFORM values everywhere. `SAVE_VERSION`
+5, `migrate_4_to_5`, and the `load-fixtures.ts` guard. The plan calls this "the T1 milestone; a
+session on its own" and it is the first thing this phase does that moves a golden digest.**
 
-A fresh agent can start here:
+The plan is `~/.claude/plans/plan-mode-build-the-synthetic-bird.md`; the leg model is its §"The
+leg model", and ADR 0026 is the decision record. A fresh agent can start here:
 
-1. Read `docs/adr/0024-geography-data-and-node-identity.md` (node ids, the OSM firewall, the
-   services table) and the header comment in `packages/content/geo/overlay.json`.
-2. Move `overlay.json` → `overlay.yaml`. `yaml` is already declared in
-   `packages/content/package.json`; `packages/tools/geo-build/cli.ts` currently `JSON.parse`s it
-   in `generate()`, and that call site moves behind the new loader.
-3. **The three geo files carry metadata keys, and every schema in this repo is `strictObject`.**
-   `nodes.gen.json` and `edges.gen.json` each carry `_format` (an array of doc lines) plus
-   `digest`/`nodesDigest` and `count`; `overlay.json` carries `_comment` and `_tolledComment`.
-   A `strictObject` file schema rejects all of them. **Do not delete the comments to make the
-   schema pass** — they are the only record of why each overlay row exists. The overlay's become
-   real `#` comments when it moves to YAML (step 2); the two `.gen.json` headers must be declared
-   in the schema instead. Decide this before writing the schema, not after it fails.
-4. Write `load-geo.ts` beside `load-content.ts`, following the `readLocale` precedent
-   (`load-content.ts:84-87`): return `{ geo: null, issues: [] }` when no geo files exist. Do NOT
-   return a missing-file `ContentIssue` — that becomes an `error('SCHEMA', …)` and turns
-   `lint.test.ts:25-28` red for the milestones before the data lands.
-5. Add `"./geo"` to `packages/content/package.json` exports. Full-monorepo DoD.
-6. Write `packages/tools/content-lint/rules-geo.ts`, each rule with a synthetic-bundle test:
-   `GEO_DISCONNECTED`, `GEO_ORPHAN_NODE`, `GEO_EDGE_ENDPOINT_UNRESOLVED`, `GEO_OVERLAY_STALE`,
-   `GEO_NAMED_BORDER`, `GEO_PLACE_BEHAVIOUR`, `GEO_NAME_FIELD_MISPLACED`, `GEO_OSM_SOURCE`,
-   `GEO_NODES_DIGEST_STALE`.
-7. **Do NOT add `GEO_EDGE_TOO_LONG` or a node-count band rule.** Both fail on the current slice
-   by construction, and the deferral to M3.11 is DECIDED — see Decisions taken below. Say so in
-   the commit so the next reader knows it was a choice.
-8. DoD: `pnpm content:lint` clean, and `lint.test.ts` must still pin `MISSING_IMAGE_MANIFEST` as
-   the only gap.
+1. **Ship uniform values, not the real ones.** M3.7 adds the FIELDS and nothing that computes
+   them: `legKm = uniformSplit(totalKm, legCount)` and `montageLegs = []`. Leg sizing, terrain
+   density and compression are M3.9. Splitting it this way is what makes the digest movement
+   attributable — see step 4.
+2. **`SAVE_VERSION` → 5 and `MIGRATIONS` gains a fourth entry.** `migrate_4_to_5` writes
+   `uniformSplit(totalKm, legCount)`, which is the **correct** value for a v4 save rather than a
+   placeholder. The `legLocations` precedent does NOT transfer: that field is read only through
+   `locationAtLeg` with a `?? 'roadside'` fallback, so an absent one degrades. `legKm` has a sum
+   invariant a per-element fallback would violate, and an absent ARRAY makes `route.legKm[i]` a
+   `TypeError` thrown out of a function whose contract says it returns `EngineError` and never
+   throws.
+3. **Do NOT backfill `legKm` into `save-v1..v4`.** That makes the migration a no-op on every
+   checked-in save and ships it untested — the exact hole `migrate.test.ts:130-159` exists to
+   close. Ship `save-v5{,-loaded}.json` plus a hand-built mid-route v4 save.
+   `migrate.test.ts:127` hard-codes `save-v4-loaded.json` as terminal and must move.
+4. **The digest is NOT the forcing function, and this is the trap.** `canonicalJson` serialises
+   `Object.keys`, so an absent key contributes nothing: adding a field to the TYPE without editing
+   `routes.json` moves **no** golden digest and leaves `state.route.legKm` as `undefined` inside a
+   type that says `readonly number[]`. Nothing typechecks `routes.json` —
+   `load-fixtures.ts:117-127` shape-checks five named fields then casts at `:129`. **Any new
+   `RouteState` field lands with a `requireArray` line in `load-fixtures.ts` in the same commit.**
+5. Also touched: `routes.json` ×3, `state/__tests__/support/make-route.ts` (**imported by 13 test
+   files**; `Partial<RouteState>` shields callers), `create-run-state.ts`, `validate-route.ts`.
+6. **Expected movement: all 9 golden digests, and NOTHING else.** `progressKm` is write-only
+   telemetry, so **neither sim baseline should move** — a digests-only diff is the signature of a
+   save-format bump, and anything more is a finding. This is the cheapest milestone to find it in.
+
+**DoD:** the five checks, `pnpm sim:diff -- --runs=2000` and `--pack=corpus --diff` both reporting
+"No change", regenerated `golden-runs.json` with the diff reviewed, and a regression test.
 
 ---
 
 ## Decisions taken (2026-08-12, by the human)
+
+Taken at M3.6, after the (a)/(b)/(c) review:
+
+- **`lat`/`lng` are CARRIED on the geo node record**, not dropped by the loader — but never on
+  `GeoNode`. ADR 0033 Decision 3; compiler-enforced by `conformance.test.ts:99`.
+- **`GEO_UNDECLARED_BRIDGE` is IN SCOPE and was built.** `GEO_NAME_SAFETY` and
+  `GEO_LOCALE_INCOMPLETE` (ADR 0028) stay deferred with `GEO_EDGE_TOO_LONG`: no regex finds a
+  politically loaded place name, and there is no review process behind it yet.
+
+Taken earlier the same day:
 
 - **`GEO_EDGE_TOO_LONG` and the node-count band rule are DEFERRED to M3.11.**
   `densify-corridors.ts` is not built now. Waypoint density is a function of the final node set,

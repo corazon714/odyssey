@@ -23,12 +23,12 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.5 (2026-08-12).** Steps **5-7 RUN**
+> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.6 (2026-08-12).** Steps **5-7 RUN**
 > against a real corpus — 13 events, 137 modifiers, 25 complications, 15 universal choices, a
-> complete `en` locale, `content:lint` clean. **Step 2 now routes on real geography** and its
-> diversity gate PASSES (median 59% against a 70% ceiling) — but it has NO CALLER: the route is
-> still caller-supplied via `RunInit.route`, and legs, days, cost and risk do not exist until
-> M3.7-M3.9. Steps 1, 3 and 4 do not exist. Three of §9's four registries are live.
+> complete `en` locale, `content:lint` clean. **Step 2 now routes on real geography**, loaded and
+> linted (ADR 0033), and its diversity gate PASSES (median 59% vs a 70% ceiling) — but it has NO
+> CALLER: the route is still caller-supplied via `RunInit.route`, and legs, days, cost and risk
+> do not exist until M3.7-M3.9. Steps 1, 3 and 4 do not exist. Three of §9's registries are live.
 >
 > **`docs/PROGRESS.md` is the authority on current state and this paragraph is not.**
 > `docs/engine-spec.md` Part II is the authority on what the engine does, written from the code.
@@ -137,20 +137,20 @@ packages/content/                                                    ✅
   __fixtures__/events/      the 9 Phase 1 fixtures, frozen, UNLINTED ✅ ADR 0022
   modifiers · complications · universal-choices .yaml   137 · 25 · 15   ✅
   flags/items/npcs/traits/endings.yaml   declaration registries      ✅
-  schema/ · loader/         Zod + terse->canonical · YAML w/ file:line:col   ✅ ADR 0009
+  schema/ · loader/         Zod + terse->canonical · YAML w/ file:line:col   ✅ ADR 0009/0033
   i18n/en/                  complete — 157 event keys + 146 chip keys ✅
   geo/{nodes,edges}.gen.json   263 nodes · 404 edges · 1 component   ✅ `pnpm geo:build`
-  geo/overlay.json          the ONE hand-edited geo file — 42 rows   ✅ moves to .yaml in M3.6
+  geo/overlay.yaml          the ONE hand-edited geo file — 42 rows   ✅ ADR 0033
   geo/sources.lock.json     source URLs · licences · hash pin        ✅ ADR 0024
   i18n/{tr,ru,de}/ · images/                                            (empty)
   images/manifest.json      image spec -> asset mapping                 (planned)
 packages/tools/                                                      ✅
   shared/ · sim/            helpers · headless sim                  ✅
   geo-build/                derive · borders · rail · verify · audit ✅ ADR 0024/0030/0031
-  content-lint/             15 rules, file:line:col, --fix           ✅ CI job
+  content-lint/             19 rules inc. 10 GEO_*, file:line:col    ✅ CI job
   content-stats/            counts + 4-axis coverage report          ✅
   imagegen/ · i18n-check/                                              (empty)
-docs/                       adr/0001-0032 · engine-spec · PROGRESS   ✅
+docs/                       adr/0001-0033 · engine-spec · PROGRESS   ✅
   enforcement.md            what enforces each §2 rule               ✅
   stack-notes.md            the dependency traps, in full            ✅
   content-style-guide.md    how to author; registry-vs-event         ✅
