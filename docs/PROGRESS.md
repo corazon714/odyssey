@@ -412,13 +412,18 @@ Supply is NOT the problem: at a world bbox every continent supplies its quota 12
 
 A fresh agent starts here:
 
-1. **Decide the landmass question first, because everything else depends on it.** One connected
-   component over Afro-Eurasia is ~805 nodes, not 1,200 — the 1,200 target implicitly assumed
-   multiple continents, which the one-component rule forbids. Either raise the Afro-Eurasia
-   quotas to reach 1,200 on one landmass, or change the one-component rule to "one component per
-   landmass" and accept that a route can never span them. **The second is a real design change
-   and needs an ADR**; ADR 0024 calls one component "a map the player can be stranded on", which
-   was written when the slice was one continent.
+1. **The landmass question is DECIDED: one component per landmass (ADR 0036, accepted, not yet
+   implemented).** Read it before anything else — and read the section on what it does NOT fix.
+   Afro-Eurasia is ONE landmass, so its 49 components are 1 landmass + 48 fragments (Britain,
+   Japan, Sicily, Madagascar and forty-odd more) and **every one still has to be ferried in or
+   dropped**. The decision buys the ability to extend past Afro-Eurasia at all; it buys nothing
+   toward closing those 48. M3.5 spent most of a milestone taking 13 components to 1 on a slice a
+   third of this size — budget accordingly.
+   Its three pieces of work, in order: define `MIN_LANDMASS_NODES`; **invert `GEO_DISCONNECTED`**
+   from a component-count error to a fragment check (its synthetic-bundle test inverts with it);
+   and make route generation **refuse a cross-landmass pair up front** rather than returning a
+   `shortfall`, which is the right shape for a thin corridor and the wrong shape for two cities
+   on different continents.
 2. **Budget for closing 49 components and 37 orphans.** M3.5 spent most of a milestone taking 13
    components to 1 on a 263-node slice. Four of the leaf branches strand ≥5 nodes.
 3. **The overlay is re-authored, not migrated.** Do it AFTER the node set is final, or it rots
