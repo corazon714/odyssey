@@ -46,7 +46,7 @@ import { legHours } from './leg-hours.ts';
  * nothing while a long one costs two. That is where the variance in the hunger curve comes
  * from, and it is why every run no longer crosses the threshold on the same leg.
  */
-const HOURS_PER_HUNGER = 6;
+export const HOURS_PER_HUNGER = 6;
 
 /**
  * Travel hours per point of hygiene. **Graded at M3.8b; it was the last cliff in this file.**
@@ -116,7 +116,7 @@ const HOURS_PER_STARVING_DAMAGE = 5;
  */
 const ENERGY_TIRED = 1;
 
-const WEATHERS = ['clear', 'rain', 'fog', 'wind', 'heat'] as const;
+export const WEATHERS = ['clear', 'rain', 'fog', 'wind', 'heat'] as const;
 
 const TICK_SOURCE = eventId('engine.world_tick');
 
