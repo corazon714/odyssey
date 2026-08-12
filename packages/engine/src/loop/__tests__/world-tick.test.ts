@@ -10,6 +10,7 @@ import { loadFixtureRouteEntries } from '../../__tests__/support/load-fixtures.t
 import {
   healthCost,
   HOURS_PER_HUNGER_DAMAGE,
+  HOURS_PER_MORALE,
   moraleCost,
   spanPoints,
   worldTick,
@@ -79,7 +80,13 @@ describe('graded penalties', () => {
 
   it('charges starvation twice as fast as hunger over the same span', () => {
     // Both rungs are per-hour, so this compares rates rather than per-leg constants.
-    const span = 40;
+    //
+    // The span is DERIVED, for the same reason the next test but one derives its own: a literal
+    // 40 asserted that `HOURS_PER_HUNGER_DAMAGE` was at most 40, because above that the hunger
+    // rung charges zero over the span and `x === 2 * 0` is only true when x is zero too. M3.11
+    // needed 44 and this failed as an arithmetic accident rather than as a broken property.
+    // A span of two full hunger rungs charges 2 there and 4 at the starving rate, always.
+    const span = HOURS_PER_HUNGER_DAMAGE * 2;
     expect(healthCost(10, 0, span)).toBe(2 * healthCost(8, 0, span));
   });
 
@@ -104,7 +111,13 @@ describe('graded penalties', () => {
     // M3.10b made the rate per-hour instead of per-leg. That is NOT a grading: there is still
     // exactly one rung, and energy 0 costs precisely what energy 1 costs. This test pins that,
     // which is the property the asymmetry is about.
-    const span = 12;
+    //
+    // DERIVED from the constant, not the literal 12 this used to carry — which was
+    // `HOURS_PER_MORALE`'s own value at M3.10b, so raising the constant made
+    // `moraleCost(1, 0, 12)` charge zero and inverted the last assertion. Exactly the trap
+    // documented two tests up for `HOURS_PER_HUNGER_DAMAGE`, one meter over and unnoticed
+    // because morale did not move in the commit that fixed the other one.
+    const span = HOURS_PER_MORALE;
     expect(moraleCost(2, 0, span)).toBe(0);
     expect(moraleCost(1, 0, span)).toBe(moraleCost(0, 0, span));
     expect(moraleCost(1, 0, span)).toBeGreaterThan(0);
@@ -154,7 +167,21 @@ describe('worldTick', () => {
       const generator = rng();
       const before = state.resources.health;
       // Several legs, because the rungs are per-hour: one short leg can round to zero.
-      for (let leg = 0; leg < 6; leg += 1) {
+      //
+      // The stopping condition is DERIVED, not a literal leg count. This loop ran exactly 6
+      // times, which at the fixture's ~5-hour car leg spans ~30 hours — enough while
+      // `HOURS_PER_HUNGER_DAMAGE` was 28 and silently false at 44, where the hungry rung
+      // charges zero over that span and `lost(8) > lost(7)` becomes `0 > 0`. Third instance of
+      // the same trap in this file, so it is now spelled as the property: travel far enough to
+      // cross two full hungry rungs, whatever that constant happens to be.
+      const elapsed = (s: RunState): number => s.clock.day * 24 + s.clock.hour;
+      const start = elapsed(state);
+      // Bounded so a zero-hour leg cannot hang the suite rather than fail it.
+      for (
+        let leg = 0;
+        leg < 200 && elapsed(state) - start < HOURS_PER_HUNGER_DAMAGE * 2;
+        leg += 1
+      ) {
         state = worldTick(state, generator);
         state = { ...state, resources: { ...state.resources, hunger } };
       }

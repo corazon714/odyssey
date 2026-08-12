@@ -5,6 +5,71 @@
 
 ---
 
+## M3.11d — the hour economy re-derived; corpus back in band at 41.0% (uncommitted, tree left dirty for review)
+
+**Corpus completion 19.2% → 41.0%, median legs 20 → 26, ending mix arrival 41.0% / gave_up 32.8%
+/ collapsed 26.1%.** Two drift constants in `packages/engine/src/loop/world-tick.ts`:
+`HOURS_PER_MORALE` 12 → 20 and `HOURS_PER_HUNGER_DAMAGE` 28 → 44 (`HOURS_PER_STARVING_DAMAGE`
+14 → 22, holding the 2:1 rung). Nothing else in the engine moved. Full sweep, both hypotheses
+priced, and what was rejected: **`docs/adr/0035`, second addendum.**
+
+**What the measurement found, which is the part worth carrying forward.** Completion on the
+corpus is a near-deterministic function of ONE number — the route's total travel hours — and not
+of legs or kilometres. Under 150 hours completes 55-85%; over 250 hours completed 0.0%. The two
+train routes prove it is hours rather than distance: 6,090 km / 36 legs is 151 hours by train and
+completed 58%, while 5,790 km / 34 legs is 213 hours by car and completed 1%.
+
+**Neither lever reaches the band alone.** Morale alone saturates at 26.6% while `collapsed` rises
+28.5% → 66.8%; starvation alone saturates at 28.1% while `gave_up` rises to 65.4%. Each deletes
+its own failure mode and hands the runs to the other meter — the conservation ADR 0035 named, now
+measured a third time. Only both together clear the floor.
+
+**The pair-set hypothesis was measured and rejected, not assumed away.** Capping `CORPUS_PAIRS`
+at the plan's 13,000 km gives 23.7% (below the floor) and 57.1% on top of this change (above the
+ceiling). It also points the wrong way: over 898 sampled city pairs, 46-48 legs is **51.4%** of
+everything in the 22-48 band, so one-pair-per-bucket already under-weights the hard tail at 20%.
+`CORPUS_PAIRS` is untouched.
+
+### THE NEXT STEP, and it is not another sweep
+
+**Five of the 25 corpus routes still complete at 0.0%** — every one over 380 travel hours, i.e.
+over ~11,000 km. The aggregate is in band; the distribution is still bimodal, exactly the
+"averaging artefact" ADR 0026's addendum described. **The fixture control shows the same wall
+from the other side: 48.5% → 75.3%, above the band, with `failure_collapsed` down to 0.1%.**
+
+The cause is structural: there is **no recovery term anywhere in `worldTick`**. Energy floors by
+mid-run and never returns, which makes `ENERGY_TIRED` permanently true and the morale bleed
+unconditional; content recovery is 0.38 picks/run. Survival is therefore a FIXED hour budget, and
+a fixed budget cannot span a route space whose hours vary 4.5×. The two honest options are a
+recovery mechanic or a route-length contract the generator enforces. **Both are milestones. Do
+not sweep these constants a fourth time expecting a different shape.**
+
+### Also found, not fixed
+
+- **The graph has a fat detour tail.** Routed km over great-circle km is p50 1.72 / p90 2.53
+  across 191 sampled long pairs — but Copenhagen→Brest, which is IN `CORPUS_PAIRS`, is **5.87**
+  (1,414 km great-circle, 8,306 km routed) and the worst sampled pair is 8.24. Since leg count
+  rises with routed distance, selecting pairs by leg bucket preferentially selects the graph's
+  worst-connected regions. Fourth instance of "the ranking, not the measurement, decides the
+  shape". Belongs to the geo work.
+- **Corpus long-range payoff fell 18.0% → 14.0%, unresolved threads 55 → 63.** Expected direction
+  — runs now last long enough to schedule consequences and then arrive before resolving them —
+  but it is drifting further from the 80% target and wants its own look.
+- **Three more tests carried leg-length assumptions**, all in `world-tick.test.ts`, all now
+  derived from the constants they were silently capping. ADR 0035's first addendum fixed exactly
+  this bug for one constant, wrote down the general rule, and left the other three.
+- **Both baseline headers said to regenerate with `cp`, which destroys them.** Recipe corrected
+  in place. While correcting it I put a literal close-comment marker in the prose and broke
+  `sim:diff` — `diff-report.ts:stripHeader` cuts at the FIRST line containing one — so the
+  corrected recipe now warns about that too.
+
+DoD: `typecheck` clean · `lint` clean · `test` 1615/1615 green · `content:lint` 0 errors
+(1 pre-existing `MISSING_IMAGE_MANIFEST` warning) · `sim:diff` **No change** on BOTH packs
+against the regenerated baselines · goldens regenerated (3 runs get further, 2 convert failure →
+arrival, 6 unchanged in outcome).
+
+---
+
 ## M3.11 — modifier chips collapse by `sourceKind` (uncommitted, tree left dirty for review)
 
 `ModifierResolution` gained `chips`: the resolved rows grouped by `sourceKind` and summed, as a

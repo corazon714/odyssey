@@ -5,7 +5,15 @@
   committed. This file is the opposite: a balance change should be visible as a diff somebody
   signed off on, not as a number that quietly moved between releases.
 
-  Regenerate deliberately:  pnpm sim -- --runs=2000  &&  cp reports/sim-latest-fixture.md docs/sim-baseline.md
+  Regenerate deliberately:  pnpm sim -- --runs=2000, then SPLICE the fresh report in below this
+                            comment block. **Do not `cp` over this file** — the recipe here said
+                            to for six milestones and it destroys the whole comment block, which
+                            is the only part a human wrote. Keep it, replace the body under it,
+                            and add a note saying what moved and why. Do not write the
+                            close-comment marker anywhere in this prose either: diff-report.ts
+                            strips the header by finding the FIRST line carrying it, so a stray
+                            one in a sentence makes sim:diff compare the leftover header against
+                            the report and flag everything.
   Compare without writing:  pnpm sim:diff -- --runs=2000
 
   ONE BASELINE PER PACK. This is the FIXTURE pack — nine hand-built events with EMPTY
@@ -71,36 +79,67 @@
   digests, choice sequences, leg counts and endings — the only textual difference was prettier
   reflowing nine single-element arrays, so the regenerated file was discarded rather than
   committed.
+
+  M3.11d MOVED THIS BASELINE HARD, and the size of the move is a FINDING about the change rather
+  than a fault in this pack. Two engine drift constants were re-derived for the widened route set
+  (HOURS_PER_MORALE 12 -> 20, HOURS_PER_HUNGER_DAMAGE 28 -> 44 with STARVING 14 -> 22); see
+  docs/sim-baseline-corpus.md and docs/adr/0035.
+
+    Completion rate    48.5% -> 75.3%   (ABOVE the 30-50% band)
+    Median legs           12 -> 15
+    failure_collapsed   8.4% -> 0.1%
+    failure_gave_up    43.1% -> 24.6%
+
+  THIS PACK IS NOW OUT OF BAND AND STARVATION IS VESTIGIAL ON IT, at 0.1% collapse. Stated
+  plainly because it is the cost of the change, not a rounding artefact. It is also the clearest
+  evidence for what the corpus baseline calls the structural problem: the drift is denominated in
+  hours with no recovery term, these nine fixture routes are 10-16 legs and about 112 travel
+  hours, and the corpus routes now run to 510. ONE per-hour economy cannot make both interesting
+  — softening it enough to give a 400-hour route a chance necessarily makes a 112-hour route
+  trivial. The two baselines now bracket that gap instead of hiding it.
+
+  THAT IS NOT A REASON TO RE-TUNE AGAINST THIS PACK. This is the empty-registry CONTROL the
+  golden runs are built on (ADR 0022, ADR 0032) — 3,662 checks pulling 0.3 chips, complication
+  rate 0.0%, no universal choices — so its completion rate is a determinism reference, not a
+  balance target. Its own header has said since M3.10b that an engine change necessarily moves
+  it. The balance measurement is the corpus.
+
+  THE GOLDENS MOVED THIS TIME, unlike at M3.11b and M3.11c where the regenerated file was
+  discarded as a prettier reflow. `stateDigest` sees the drift, so it must: three runs get
+  further (9 -> 13, 14 -> 16, 15 -> 16 legs) and two convert from failure to arrival
+  (`failure_collapsed` -> `arrival_quiet`, `failure_gave_up` -> `arrival_quiet`). Six are
+  unchanged in outcome. Every one of those deltas is in the direction a softened hour economy
+  predicts, which is the review this diff wanted.
 -->
 
 # Sim Report — seed=base contentVersion=aee5a082 runs=2000
 
-Completion rate             48.5%   (target band 30-50%)
-Median legs                    12
-Median in-game days             6
+Completion rate             75.3%   (target band 30-50%)
+Median legs                    15
+Median in-game days             8
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
-Long-range payoff rate      92.9%   (target 80%)
-Beat fill rate              54.0%
-Repeat-event rate           65.0%
+Long-range payoff rate      90.3%   (target 80%)
+Beat fill rate              50.1%
+Repeat-event rate           67.8%
 Complication rate            0.0%   (target 60%)
-Modifier chips / check        0.3   (over 3521 checks; NO modifier registry in this pack)
-Checks under 2 chips         3521   (expected — there is no registry here, so this is not a finding)
+Modifier chips / check        0.3   (over 3662 checks; NO modifier registry in this pack)
+Checks under 2 chips         3662   (expected — there is no registry here, so this is not a finding)
 Checks over 7 chips             0   (no registry in this pack)
 Universal choices offered    0.0%   (share of choices shown)
 Universal choices picked     0.0%   (over ~30% means they are flattening the corpus)
-Unresolved threads              2
+Unresolved threads              3
 
-Wall clock                 738 ms   (0.37 ms/run)
-Extrapolated to 20,000     7.4 s   (target <30 s)
+Wall clock                 573 ms   (0.29 ms/run)
+Extrapolated to 20,000     5.7 s   (target <30 s)
 
 ## Endings
-  ending.failure_gave_up              43.1%
-  ending.arrival_hollow               29.8%
-  ending.arrival_triumphant           15.0%
-  ending.failure_collapsed             8.4%
-  ending.arrival_quiet                 3.6%
+  ending.arrival_hollow               41.3%
+  ending.failure_gave_up              24.6%
+  ending.arrival_quiet                17.1%
+  ending.arrival_triumphant           16.9%
+  ending.failure_collapsed             0.1%
 
 ## Never-fired events
   (none)
@@ -111,9 +150,9 @@ Extrapolated to 20,000     7.4 s   (target <30 s)
   border.guard_remembers/acknowledge                   0.1%
   border.bribe_attempt/offer_bribe                     0.2%
   border.bribe_attempt/hide_the_cash                   0.4%
-  transit.bus_ejection/get_off                         1.3%
-  crisis.breakdown/find_help                           1.4%
-  transit.bus_ejection/plead_with_driver               1.5%
+  transit.bus_ejection/get_off                         1.1%
+  crisis.breakdown/find_help                           1.3%
+  transit.bus_ejection/plead_with_driver               1.4%
 
 ## Flags
   written: 5   read: 2
@@ -121,10 +160,10 @@ Extrapolated to 20,000     7.4 s   (target <30 s)
   read but NEVER WRITTEN:   (none)   <- gate can never open
 
 ## Resource trajectories (p10/p50/p90 by leg)
-  cash     leg5: 220/280/540   leg15: 180/460/500   leg25: —
-  health   leg5: 9/10/10   leg15: 1/6/8   leg25: —
-  morale   leg5: 4/6/7   leg15: 0/3/5   leg25: —
-  energy   leg5: 0/2/8   leg15: 0/0/4   leg25: —
+  cash     leg5: 220/280/540   leg15: 180/440/500   leg25: —
+  health   leg5: 9/10/10   leg15: 3/7/9   leg25: —
+  morale   leg5: 5/6/7   leg15: 1/3/5   leg25: —
+  energy   leg5: 0/2/8   leg15: 0/0/3   leg25: —
   hygiene  leg5: 0/2/3   leg15: 0/0/0   leg25: —
 
 ## Beat types no event can fill

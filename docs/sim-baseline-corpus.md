@@ -1,7 +1,15 @@
 <!--
   THE CORPUS BALANCE BASELINE. Committed on purpose, and reviewed like code.
 
-  Regenerate deliberately:  pnpm sim -- --runs=2000 --pack=corpus  &&  cp reports/sim-latest-corpus.md docs/sim-baseline-corpus.md
+  Regenerate deliberately:  pnpm sim -- --runs=2000 --pack=corpus, then SPLICE the fresh report
+                            in below this comment block. **Do not `cp` over this file** — the
+                            recipe here said to for six milestones and it destroys the whole
+                            comment block, which is the only part a human wrote. Keep it,
+                            replace the body under it, and add a note saying what moved and why.
+                            Do not write the close-comment marker anywhere in this prose either:
+                            diff-report.ts strips the header by finding the FIRST line carrying
+                            it, so a stray one in a sentence makes sim:diff compare the leftover
+                            header against the report and flag everything.
   Compare without writing:  pnpm sim -- --runs=2000 --pack=corpus --diff
 
   THE FULL SEED CORPUS: 13 events, 137 modifiers, 25 complications, 15 universal choices, and a
@@ -129,34 +137,82 @@
   longer in hours and the M3.10b drift constants were tuned against the shorter ones. Same
   class of problem as M3.10b and it wants the same treatment — read the ending mix, not the
   survival-conditioned trajectory table. Recorded rather than chased.
+
+  M3.11d RE-DERIVED THE HOUR ECONOMY AND THE BAND IS MET AGAIN: 19.2% -> 41.0%, median legs
+  20 -> 26. Two drift constants moved, together, and "together" is the finding rather than an
+  implementation detail:
+
+    HOURS_PER_MORALE          12 -> 20
+    HOURS_PER_HUNGER_DAMAGE   28 -> 44   (HOURS_PER_STARVING_DAMAGE 14 -> 22, the 2:1 rung held)
+
+  NEITHER LEVER REACHES THE BAND ALONE, because the failure mode is conserved — the third time
+  this project has measured that and the second time it was nearly mistaken for progress.
+  Morale 12/16/20/26/34 gives 19.2/22.4/24.1/25.4/26.6% while `gave_up` falls 52.2% -> 6.5% and
+  `collapsed` RISES 28.5% -> 66.8%. Starvation 28/14 -> 44/22 alone gives 28.1% while
+  `collapsed` falls to 6.4% and `gave_up` climbs to 65.4%. Each lever deletes its own failure
+  mode and hands the runs to the other meter. Only both together clear the floor.
+
+  THE ENDING MIX IS THE HEALTHIEST THIS PACK HAS EVER MEASURED, and it is the number that
+  matters more than completion: arrival 41.0%, gave_up 32.8%, collapsed 26.1%. Neither failure
+  mode is the majority ending, where the shipped state had gave_up at 52.2%. Both mechanics stay
+  well clear of the pillar-1 floor that refused 32/16 at M3.10b.
+
+  WHAT WAS MEASURED, AND WHAT WAS REFUTED. Completion on this pack is a near-deterministic
+  function of ONE number — the route's total travel hours — and not of legs or kilometres. Per
+  route, 25 scenarios, 200 runs each: under 150 hours completes 55-85%, over 250 hours completed
+  0.0% before this change. The two train routes settle it, because they break the km ordering:
+  6,090 km over 36 legs is 151 hours by train and completed 58.0%, while 5,790 km over 34 legs
+  is 213 hours by car and completed 1.0%. Same distance, same leg band, four times the
+  completion, and the discriminator is hours.
+
+  THE PAIR SET WAS PRICED AND IS NOT THE FIX. Capping CORPUS_PAIRS at the phase plan's 13,000 km
+  ceiling moves completion 19.2% -> 23.7% — still below the floor — and applied on top of this
+  change it would report 57.1%, ABOVE the band. It also points the wrong way: sampled over 898
+  city pairs on this slice, 46-48 legs is 51.4% of everything in the 22-48 band, so the
+  one-pair-per-bucket rule already UNDER-weights the hard tail at 20%. Trimming the set would
+  make the sim measure an easier world than the map offers. CORPUS_PAIRS is untouched.
+
+  STILL OPEN, and it is structural rather than tuning. Five of the 25 corpus routes still
+  complete at 0.0% — every one over 380 travel hours, i.e. over ~11,000 km. The distribution is
+  bimodal exactly as ADR 0026's addendum described it, and the aggregate being in band is again
+  an average over which side of the cliff the pair set samples. No per-hour constant fixes this:
+  drain is linear in hours and there is no recovery term anywhere in the engine, so survival is
+  a fixed hour budget that cannot scale with the journey. The fixture control shows the same
+  wall from the other side — see docs/sim-baseline.md. The next move is a recovery mechanic or a
+  route-length contract the generator enforces, not another sweep. See docs/adr/0035.
+
+  ALSO MOVED, and expected: long-range payoff 18.0% -> 14.0% with unresolved threads 55 -> 63.
+  Runs now last long enough to schedule consequences and then ARRIVE before resolving them, which
+  is the same effect ADR 0035 recorded when median legs rose. It is a queue-drain question, not
+  a director bug, but it is drifting further from the 80% target and wants its own look.
 -->
 
 # Sim Report — seed=base contentVersion=c10af194 runs=2000
 
-Completion rate             19.2%   (target band 30-50%)
-Median legs                    20
-Median in-game days             7
+Completion rate             41.0%   (target band 30-50%)
+Median legs                    26
+Median in-game days            10
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
-Long-range payoff rate      18.0%   (target 80%)
-Beat fill rate              28.2%
-Repeat-event rate           61.0%
-Complication rate           60.0%   (target 60%)
-Modifier chips / check        6.3   (target 3-7, over 16276 checks)
+Long-range payoff rate      14.0%   (target 80%)
+Beat fill rate              29.2%
+Repeat-event rate           67.9%
+Complication rate           60.3%   (target 60%)
+Modifier chips / check        6.4   (target 3-7, over 21063 checks)
 Checks under 2 chips            0   (each one draws nothing the registry exists for)
 Checks over 7 chips             0   (0.0% of checks; worst pulls 7)
-Universal choices offered   37.7%   (share of choices shown)
-Universal choices picked    39.2%   (over ~30% means they are flattening the corpus)
-Unresolved threads             55
+Universal choices offered   37.6%   (share of choices shown)
+Universal choices picked    38.7%   (over ~30% means they are flattening the corpus)
+Unresolved threads             63
 
-Wall clock                 2206 ms   (1.10 ms/run)
-Extrapolated to 20,000     22.1 s   (target <30 s)
+Wall clock                 1871 ms   (0.94 ms/run)
+Extrapolated to 20,000     18.7 s   (target <30 s)
 
 ## Endings
-  ending.failure_gave_up              52.2%
-  ending.failure_collapsed            28.5%
-  ending.arrival_quiet                19.2%
+  ending.arrival_quiet                41.0%
+  ending.failure_gave_up              32.8%
+  ending.failure_collapsed            26.1%
   ending.detained_at_border            0.1%
 
 ## Never-fired events
@@ -172,62 +228,62 @@ Extrapolated to 20,000     22.1 s   (target <30 s)
   weather.the_storm_you_cannot_drive_through/find_the_mechanic_first   0.0%   <- never picked
   weather.the_storm_you_cannot_drive_through/see_to_the_damage   0.0%   <- never picked
   weather.the_storm_you_cannot_drive_through/u:use_an_item   0.0%   <- never picked
-  breakdown.the_roadside_repair/u:pay_the_asking_price   0.0%
   breakdown.the_roadside_repair/u:offer_to_work_for_it   0.0%
-  crime.the_offer/put_it_somewhere_they_will_not_look   0.0%
   breakdown.the_roadside_repair/fix_it_yourself        0.0%
   breakdown.the_roadside_repair/find_someone_who_can   0.0%
-  breakdown.the_roadside_repair/nurse_it_along         0.0%
+  crime.the_offer/put_it_somewhere_they_will_not_look   0.0%
   authority.the_file_catches_up/answer_the_questions   0.0%
-  authority.the_file_catches_up/u:bluff_with_documents   0.0%
   authority.the_file_catches_up/make_it_go_away        0.0%
-  authority.the_file_catches_up/u:bribe                0.0%
-  authority.the_file_catches_up/u:run                  0.0%
-  weather.the_storm_you_cannot_drive_through/push_on_through_it   0.0%
-  road.the_hitchhiker/u:let_the_companion_handle_it    0.0%
+  breakdown.the_roadside_repair/nurse_it_along         0.0%
+  authority.the_file_catches_up/u:bluff_with_documents   0.0%
+  breakdown.the_roadside_repair/u:pay_the_asking_price   0.0%
   weather.the_storm_you_cannot_drive_through/u:ask_for_help   0.0%
+  authority.the_file_catches_up/u:run                  0.0%
+  authority.the_file_catches_up/u:bribe                0.0%
   city.the_address_that_moved/u:let_the_companion_handle_it   0.0%
-  road.the_hitchhiker/leave_them_at_the_junction       0.1%
+  road.the_hitchhiker/leave_them_at_the_junction       0.0%
+  road.the_hitchhiker/u:let_the_companion_handle_it    0.1%
   rest.the_shared_room/u:threaten                      0.1%
   encounter.the_other_traveller/u:let_the_companion_handle_it   0.1%
-  breakdown.the_roadside_repair/u:threaten             0.1%
-  weather.the_storm_you_cannot_drive_through/shelter_and_lose_the_day   0.1%
-  rest.the_shared_room/see_to_your_feet                0.1%
-  border.night_crossing/u:offer_to_work_for_it         0.2%
   border.night_crossing/offer_something                0.2%
+  border.night_crossing/u:offer_to_work_for_it         0.2%
+  breakdown.the_roadside_repair/u:threaten             0.2%
   crime.the_offer/u:create_a_distraction               0.2%
   crime.the_offer/u:offer_to_work_for_it               0.2%
+  weather.the_storm_you_cannot_drive_through/shelter_and_lose_the_day   0.2%
   transit.the_wrong_carriage/talk_your_way_through     0.2%
   transit.the_wrong_carriage/pay_the_difference        0.2%
-  rest.the_shared_room/sleep_on_your_bag               0.3%
+  rest.the_shared_room/sleep_on_your_bag               0.2%
+  rest.the_shared_room/see_to_your_feet                0.2%
   transit.the_wrong_carriage/u:offer_to_work_for_it    0.3%
-  opportunity.work_for_a_day/u:walk_away               0.3%
   filler.the_long_quiet_stretch/listen_to_the_engine   0.3%
+  opportunity.work_for_a_day/u:walk_away               0.3%
+  weather.the_storm_you_cannot_drive_through/push_on_through_it   0.4%
   rest.the_shared_room/u:create_a_distraction          0.4%
   border.night_crossing/present_papers                 0.4%
-  border.night_crossing/u:bluff_with_documents         0.5%
-  city.the_address_that_moved/u:plead_ignorance        0.5%
+  border.night_crossing/u:bluff_with_documents         0.4%
+  city.the_address_that_moved/u:plead_ignorance        0.4%
   rest.the_shared_room/pay_for_a_private_room          0.5%
   authority.the_file_catches_up/stand_your_ground      0.6%
-  rest.the_shared_room/u:pay_the_asking_price          0.6%
-  city.the_address_that_moved/work_it_out_yourself     0.6%
   encounter.the_other_traveller/u:walk_away            0.6%
+  city.the_address_that_moved/work_it_out_yourself     0.6%
+  encounter.the_other_traveller/look_at_their_leg      0.6%
   filler.the_long_quiet_stretch/u:wait_it_out          0.7%
-  encounter.the_other_traveller/look_at_their_leg      0.7%
+  weather.the_storm_you_cannot_drive_through/u:run     0.7%
   filler.the_long_quiet_stretch/keep_going             0.7%
-  weather.the_storm_you_cannot_drive_through/u:run     0.8%
   border.night_crossing/keep_it_out_of_sight           0.8%
+  rest.the_shared_room/u:pay_the_asking_price          0.8%
   road.the_hitchhiker/u:run                            0.8%
-  transit.the_wrong_carriage/u:pay_the_asking_price    1.1%
-  opportunity.work_for_a_day/take_the_day_rate         1.4%
+  transit.the_wrong_carriage/u:pay_the_asking_price    0.9%
+  encounter.the_other_traveller/share_what_you_have    1.3%
+  opportunity.work_for_a_day/take_the_day_rate         1.5%
+  crime.the_offer/say_no                               1.5%
   transit.the_wrong_carriage/u:lie_about_destination   1.6%
-  encounter.the_other_traveller/share_what_you_have    1.7%
-  opportunity.work_for_a_day/haggle_the_rate_first     1.7%
-  city.the_address_that_moved/ask_in_the_shop          1.7%
+  crime.the_offer/u:bribe                              1.6%
   road.the_hitchhiker/drive_on                         1.8%
-  crime.the_offer/u:bribe                              1.8%
-  crime.the_offer/say_no                               1.8%
-  border.night_crossing/u:bribe                        1.9%
+  opportunity.work_for_a_day/haggle_the_rate_first     1.8%
+  border.night_crossing/u:bribe                        1.8%
+  city.the_address_that_moved/ask_in_the_shop          1.9%
 
 ## Flags
   written: 20   read: 5
@@ -235,10 +291,10 @@ Extrapolated to 20,000     22.1 s   (target <30 s)
   read but NEVER WRITTEN:   (none)   <- gate can never open
 
 ## Resource trajectories (p10/p50/p90 by leg)
-  cash     leg5: 1165/2167/4214   leg15: 840/1952/3680   leg25: 236/1774/2297
-  health   leg5: 8/10/10   leg15: 2/5/8   leg25: 1/3/6
-  morale   leg5: 5/8/9   leg15: 1/5/9   leg25: 1/6/9
-  energy   leg5: 0/1/6   leg15: 0/0/1   leg25: 0/0/0
+  cash     leg5: 1165/2167/4212   leg15: 867/2018/3896   leg25: 873/1966/3280
+  health   leg5: 9/10/10   leg15: 4/7/9   leg25: 2/4/7
+  morale   leg5: 6/8/10   leg15: 2/6/10   leg25: 2/6/9
+  energy   leg5: 0/1/6   leg15: 0/0/0   leg25: 0/0/0
   hygiene  leg5: 0/1/3   leg15: 0/0/0   leg25: 0/0/0
 
 ## Beat types no event can fill

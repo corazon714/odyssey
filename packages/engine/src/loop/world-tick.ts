@@ -97,19 +97,28 @@ const HARSH_WEATHER_HOURS = 6;
  * Hunger thresholds, and how fast each rung costs health — in HOURS, like every other drain
  * here.
  *
- * **Softened twice at M3.10b** (10/5 → 16/9 → 28/14). Every constant in this file was tuned against ~12-leg
- * routes; generated routes are 22-48, and at that length starvation billed faster than any
- * recovery the corpus can offer. Measured sweep on 22-48-leg corpus routes: 10/5 → 3.6%
- * completion; 16/9 got to 26.1% and left collapse at 50.8%, still the majority ending. Once
- * morale went per-hour the lever was re-swept and 28/14 lands at 47.3%, INSIDE the band, with
- * median legs 24 against routes of 23-31. 32/16 scores 54.8% and 40/20 59.4%, both ABOVE it and
- * both making health vestigial (collapse 5.8% and 0.7%) — a mechanic that never fires is worse
- * than a harsh one (pillar 1), so 28/14 is the value that keeps collapse meaningful at 14.7%.
+ * **Softened three times** (10/5 → 16/9 → 28/14 at M3.10b, → 44/22 at M3.11). Each time for the
+ * same reason and each time because the previous value was tuned against a route set that had
+ * since been replaced. This constant is denominated in HOURS, so it is not a difficulty dial —
+ * it is a statement about how many travel hours a run survives, and it has to be re-derived
+ * whenever the hour content of a route changes.
+ *
+ * M3.11 widened the geo slice to Afro-Eurasia, and a 48-leg route went from ~6,000 km to
+ * ~15,300. Leg COUNT is capped at 48 by the compression curve (ADR 0026 Decision 4) but leg
+ * LENGTH is not, so the same 48 legs now bill 407 travel hours where they billed ~215. Measured
+ * over the whole corpus route set: total route hours span 112-510 where they spanned ~140-220,
+ * and completion is a near-deterministic function of that one number — routes under ~150 hours
+ * complete 55-85%, routes over ~250 hours complete 0.0%, with nothing in between.
+ *
+ * 44/22 is chosen with `HOURS_PER_MORALE` 20; neither lever reaches the band alone, because the
+ * failure mode is conserved (see `HOURS_PER_MORALE`). It keeps collapse meaningful at 26.1% —
+ * the pillar-1 floor that refused 32/16 at M3.10b is not close to being crossed — and it holds
+ * the 2:1 rung ratio the invariant test pins. Full sweep in docs/adr/0035's second addendum.
  */
 const HUNGER_HURTS = 8;
 const HUNGER_STARVING = 10;
-export const HOURS_PER_HUNGER_DAMAGE = 28;
-const HOURS_PER_STARVING_DAMAGE = 14;
+export const HOURS_PER_HUNGER_DAMAGE = 44;
+const HOURS_PER_STARVING_DAMAGE = 22;
 
 /**
  * Energy at or below this costs morale — and it is charged PER HOUR, not per leg (M3.10b).
@@ -128,9 +137,26 @@ const HOURS_PER_STARVING_DAMAGE = 14;
  * That is why softening health alone could not work: it converted `failure_collapsed` into
  * `failure_gave_up` (68.1% → 3.0% against 28.2% → 72.4%) without saving a single run. With
  * hunger made unreachable entirely — perfect food forever — completion still stalled at 26.3%.
+ *
+ * **12 → 20 at M3.11, and it moves TOGETHER with `HOURS_PER_HUNGER_DAMAGE` because neither
+ * works alone.** Swept on the widened route set, each lever in isolation: morale 12/16/20/26/34
+ * gives completion 19.2/22.4/24.1/25.4/26.6% and saturates below the band, while `gave_up`
+ * falls 52.2% → 6.5% and `collapsed` RISES 28.5% → 66.8%. Starvation alone does the mirror
+ * image — 28/14 → 44/22 gives 19.2% → 28.1% while `collapsed` falls to 6.4% and `gave_up`
+ * climbs to 65.4%. Each lever deletes its own failure mode and the other meter absorbs the runs
+ * it saved. That is the conservation ADR 0035 named, measured a third time.
+ *
+ * Only moving both together clears the floor: 20 + 44/22 lands 41.0% with collapse 26.1% and
+ * gave_up 32.8% — the first corpus measurement in this project where neither failure mode is
+ * the majority ending.
+ *
+ * **Exported so its test can derive a span from it.** `world-tick.test.ts` pinned the
+ * single-rung property with a hardcoded `span = 12`, which was this constant's own value and
+ * therefore capped it silently — one meter over from the `HOURS_PER_HUNGER_DAMAGE * 2` trap
+ * that comment already describes, and left in place at M3.10b because morale did not move then.
  */
 const ENERGY_TIRED = 1;
-const HOURS_PER_MORALE = 12;
+export const HOURS_PER_MORALE = 20;
 
 export const WEATHERS = ['clear', 'rain', 'fog', 'wind', 'heat'] as const;
 
