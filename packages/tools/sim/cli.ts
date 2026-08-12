@@ -4,7 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { findWorkspaceRoot } from '../shared/workspace-root.ts';
 import { diffReports, runCountOf } from './diff-report.ts';
 import { formatReport } from './format-report.ts';
-import { loadCorpusPack, loadFixturePack, loadFixtureScenarios } from './load-pack.ts';
+import {
+  loadCorpusPack,
+  loadCorpusScenarios,
+  loadFixturePack,
+  loadFixtureScenarios,
+} from './load-pack.ts';
 import { parseArgs } from './parse-args.ts';
 import { runMany } from './run-many.ts';
 
@@ -55,11 +60,21 @@ if (loaded !== null && loaded.issues.length > 0) {
 }
 
 const pack = loaded === null ? loadFixturePack() : loaded.pack;
-// Routes stay the fixture set for now. They are generic overland routes with start blocks, and
-// route GENERATION is Phase 2B `engine/src/route/` — so a corpus-specific route file would be
-// inventing the thing that milestone exists to build. Revisit when the seed corpus lands: a
-// corpus whose beat types the fixture routes never schedule would report a misleading fill rate.
-const scenarios = loadFixtureScenarios();
+
+// M3.10a: the corpus finally runs on GENERATED routes rather than borrowing the fixture's.
+// Until now a corpus whose beat types the fixture routes never schedule reported a misleading
+// fill rate — the ceiling was 38.5% and nothing said so in the report.
+//
+// The fixture pack keeps its hand-written routes, deliberately and permanently: it is the
+// control the golden runs are built on, and a control that regenerates itself from the geo
+// slice is not a control.
+const corpusRoutes = parsed.options.pack === 'corpus' ? loadCorpusScenarios() : null;
+if (corpusRoutes !== null && corpusRoutes.issues.length > 0) {
+  console.error(`sim: corpus routes did not generate (${String(corpusRoutes.issues.length)}):`);
+  for (const issue of corpusRoutes.issues) console.error(`  ${issue}`);
+  process.exit(1);
+}
+const scenarios = corpusRoutes === null ? loadFixtureScenarios() : corpusRoutes.scenarios;
 
 // The one sanctioned wall-clock read outside the app's system-clock adapter is here, in a
 // build-time tool that is not the engine — it measures the harness, never the run.

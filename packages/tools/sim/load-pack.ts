@@ -7,13 +7,17 @@ import {
   loadComplications,
   loadDeclarations,
   loadEvents,
+  loadGeo,
   loadModifiers,
   loadUniversalChoices,
 } from '@odyssey/content/loader';
 import {
   createContentPack,
+  createGeoGraph,
   createResources,
   createTransport,
+  generateRoutes,
+  nodeId,
   type ContentPack,
   type ContentRegistries,
   type GameEvent,
@@ -150,4 +154,114 @@ export function loadFixtureScenarios(): readonly FixtureScenario[] {
     startHour: start.startHour,
     weather: start.weather,
   }));
+}
+
+/**
+ * Corpus scenarios — GENERATED at sim time from the committed geo artifacts.
+ *
+ * ## Why this is not a committed `corpus-routes.json`
+ *
+ * The phase plan left that open (question 4): commit the generated file with a staleness
+ * digest, or build it here. Building it here, because **a route is a pure deterministic
+ * function of inputs that are already committed and already digest-checked** — the geo
+ * artifacts (`geo:build --check` proves they regenerate byte-identically) plus the fixed seed
+ * below. A committed route file would add a second staleness class, its own digest, its own
+ * `--check` and its own CI guard, all to re-derive something that cannot drift from its inputs.
+ * The thing that CAN drift — the geo slice — already has all of that.
+ *
+ * What is given up is reviewing a route change as a diff. What is gained is that a route change
+ * is impossible without a geo change or a code change, both of which are diffs already. See
+ * `docs/adr/0034`.
+ *
+ * ## The short band, deliberately
+ *
+ * M3.10a takes only 10-16-leg routes so route SHAPE is measured without leg COUNT moving;
+ * M3.10b raises to the full 22-48 band. ADR 0026's addendum measured 0.1% completion at 24 legs
+ * and 0.0% beyond, so a combined milestone could not tell a shape regression from the known
+ * survivability wall.
+ */
+const CORPUS_ROUTE_SEED = 'corpus:m3.10a';
+const SHORT_BAND_MIN = 10;
+const SHORT_BAND_MAX = 16;
+
+/**
+ * Endpoint pairs, by node id. Stable, so the sim is reproducible.
+ *
+ * **Four of the six cross a border, and that is the whole point of the selection.** The first
+ * attempt at this list took pairs off the overlay's tolled corridors — which are deliberately
+ * INTRA-country roads — so not one generated route passed a crossing, and
+ * `border.night_crossing` never fired in 2,000 runs. A route set that cannot reach a category
+ * of content reports a beat-fill ceiling nobody can see, which is precisely the misleading
+ * number M3.10a exists to remove.
+ *
+ * Two intra-country pairs are kept on purpose: a corpus where every route crosses a border
+ * would be the same distortion in the other direction.
+ *
+ * Chosen by measurement rather than by guess — 40 city pairs on the shipped slice yield a
+ * 10-16-leg route that passes a crossing; these are six of them.
+ */
+const CORPUS_PAIRS: readonly (readonly [string, string])[] = [
+  ['n.city.g2267095', 'n.city.g2510911'],
+  ['n.city.g2464470', 'n.city.g2525068'],
+  ['n.city.g2618425', 'n.city.g2891122'],
+  ['n.city.g2512989', 'n.city.g2972315'],
+  ['n.city.g3169070', 'n.city.g3172394'],
+  ['n.city.g2988507', 'n.city.g2989317'],
+];
+
+export function loadCorpusScenarios(): {
+  readonly scenarios: readonly FixtureScenario[];
+  readonly issues: readonly string[];
+} {
+  const contentRoot = join(
+    findWorkspaceRoot(dirname(fileURLToPath(import.meta.url))),
+    'packages',
+    'content',
+  );
+  const geo = loadGeo(contentRoot);
+  if (geo.geo === null) {
+    return { scenarios: [], issues: geo.issues.map((i) => `${i.file}: ${i.message}`) };
+  }
+
+  const built = createGeoGraph(
+    geo.geo.nodes.map((record) => record.node),
+    geo.geo.edges,
+  );
+  if (!built.ok) return { scenarios: [], issues: built.issues.map((i) => `geo graph: ${i}`) };
+
+  const graph = built.graph;
+  const scenarios: FixtureScenario[] = [];
+  const issues: string[] = [];
+
+  for (const [from, to] of CORPUS_PAIRS) {
+    const a = graph.nodeIndex.get(nodeId(from));
+    const b = graph.nodeIndex.get(nodeId(to));
+    if (a === undefined || b === undefined) {
+      issues.push(`corpus route pair names a node not in the slice: ${from} > ${to}`);
+      continue;
+    }
+
+    for (const plan of generateRoutes(graph, a, b, CORPUS_ROUTE_SEED).plans) {
+      const legs = plan.route.legCount;
+      if (legs < SHORT_BAND_MIN || legs > SHORT_BAND_MAX) continue;
+      scenarios.push({
+        route: plan.route,
+        transport: {
+          ...createTransport(plan.start.transportMode),
+          vehicleId: plan.start.transportMode === 'foot' ? null : `${plan.route.id}-vehicle`,
+          legal: plan.start.vehicleLegal,
+        },
+        resources: { ...createResources(), cash: plan.start.cash },
+        startHour: plan.start.startHour,
+        weather: plan.start.weather,
+      });
+    }
+  }
+
+  // An empty scenario set would make every sim number meaningless while the report still looked
+  // healthy, so it is a loud failure rather than a quiet zero.
+  if (scenarios.length === 0) {
+    issues.push('no corpus route landed in the 10-16 leg band — the sim would measure nothing');
+  }
+  return { scenarios, issues };
 }

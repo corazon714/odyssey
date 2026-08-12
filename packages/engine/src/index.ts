@@ -340,6 +340,13 @@ export {
   type SelectedPath,
 } from './route/select-paths.ts';
 export {
+  generateRoutes,
+  type GenerateRoutesResult,
+  type RoutePlan,
+  type RouteStart,
+} from './route/generate-routes.ts';
+export { type RoutePreview } from './route/route-preview.ts';
+export {
   collectComplications,
   EMPTY_COMPLICATIONS,
   PHASE_1_COMPLICATION_SOURCES,

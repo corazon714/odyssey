@@ -98,7 +98,7 @@ export function generateRoutes(
     // Addressed by the route's own id, so two profiles between the same pair get different
     // weather and neither depends on how many routes were generated before it.
     const label = `${String(route.id)}:start`;
-    const mode = startingMode(preview.transportMix);
+    const mode = startingMode(candidate.profile, preview.transportMix);
 
     plans.push({
       route,

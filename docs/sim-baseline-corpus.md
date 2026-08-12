@@ -49,40 +49,43 @@
   corpus read 3/5/6 at leg 5 and 0/0/3 at leg 15 — already floored for 90%+ of runs by mid-run.
   Graded, it reads 1/2/4 and 0/0/0. Grading moved WHEN hygiene floors, not WHETHER, which is
   why completion moved 0.1pp against a predicted 3-7pp.
+
+  ROUTES CHANGED AT M3.10a: the corpus no longer borrows the fixture routes. It runs on
+  routes GENERATED from the committed geo slice (docs/adr/0034), in the 10-16 leg short band.
+  Every number below is against a different route set, so this baseline does not compare to the
+  one before it — completion 44.1% -> 74.4% is the route change, not a balance regression.
 -->
 
 # Sim Report — seed=base contentVersion=c10af194 runs=2000
 
-Completion rate             44.0%   (target band 30-50%)
-Median legs                    12
-Median in-game days             4
+Completion rate             74.4%   (target band 30-50%)
+Median legs                    15
+Median in-game days             3
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
-Long-range payoff rate      78.3%   (target 80%)
-Beat fill rate              30.1%
-Repeat-event rate           35.5%
-Complication rate           59.5%   (target 60%)
-Modifier chips / check        6.7   (target 3-7, over 10947 checks)
+Long-range payoff rate      13.9%   (target 80%)
+Beat fill rate              31.5%
+Repeat-event rate           53.0%
+Complication rate           60.0%   (target 60%)
+Modifier chips / check        6.5   (target 3-7, over 10209 checks)
 Checks under 2 chips            0   (each one draws nothing the registry exists for)
-Universal choices offered   38.5%   (share of choices shown)
-Universal choices picked    36.2%   (over ~30% means they are flattening the corpus)
-Unresolved threads              5
+Universal choices offered   35.4%   (share of choices shown)
+Universal choices picked    36.0%   (over ~30% means they are flattening the corpus)
+Unresolved threads             62
 
-Wall clock                 1000 ms   (0.50 ms/run)
+Wall clock                 1001 ms   (0.50 ms/run)
 Extrapolated to 20,000     10.0 s   (target <30 s)
 
 ## Endings
-  ending.failure_collapsed            45.3%
-  ending.arrival_quiet                44.0%
-  ending.failure_gave_up              10.8%
+  ending.arrival_quiet                74.4%
+  ending.failure_collapsed            19.8%
+  ending.failure_gave_up               5.8%
 
 ## Never-fired events
   (none)
 
 ## Choices picked <2%
-  authority.the_file_catches_up/make_it_go_away        0.0%   <- never picked
-  authority.the_file_catches_up/u:bribe                0.0%   <- never picked
   border.night_crossing/make_yourself_useful           0.0%   <- never picked
   crime.the_offer/put_it_somewhere_they_will_not_look   0.0%   <- never picked
   encounter.the_other_traveller/u:use_an_item          0.0%   <- never picked
@@ -92,58 +95,64 @@ Extrapolated to 20,000     10.0 s   (target <30 s)
   road.the_hitchhiker/u:use_an_item                    0.0%   <- never picked
   weather.the_storm_you_cannot_drive_through/find_the_mechanic_first   0.0%   <- never picked
   weather.the_storm_you_cannot_drive_through/u:use_an_item   0.0%   <- never picked
-  authority.the_file_catches_up/u:bluff_with_documents   0.0%
-  authority.the_file_catches_up/u:run                  0.0%
   authority.the_file_catches_up/answer_the_questions   0.0%
-  border.night_crossing/u:offer_to_work_for_it         0.0%
-  breakdown.the_roadside_repair/fix_it_yourself        0.0%
-  city.the_address_that_moved/u:let_the_companion_handle_it   0.0%
+  authority.the_file_catches_up/u:bribe                0.0%
+  authority.the_file_catches_up/u:run                  0.0%
+  authority.the_file_catches_up/make_it_go_away        0.0%
+  authority.the_file_catches_up/u:bluff_with_documents   0.0%
   breakdown.the_roadside_repair/find_someone_who_can   0.0%
-  border.night_crossing/offer_something                0.0%
+  rest.the_shared_room/u:threaten                      0.0%
+  weather.the_storm_you_cannot_drive_through/see_to_the_damage   0.0%
+  city.the_address_that_moved/u:let_the_companion_handle_it   0.0%
+  breakdown.the_roadside_repair/fix_it_yourself        0.0%
   breakdown.the_roadside_repair/u:offer_to_work_for_it   0.0%
-  road.the_hitchhiker/u:let_the_companion_handle_it    0.0%
-  road.the_hitchhiker/leave_them_at_the_junction       0.0%
-  border.night_crossing/u:bribe                        0.0%
+  road.the_hitchhiker/leave_them_at_the_junction       0.1%
+  border.night_crossing/u:offer_to_work_for_it         0.1%
   breakdown.the_roadside_repair/nurse_it_along         0.1%
-  weather.the_storm_you_cannot_drive_through/see_to_the_damage   0.1%
-  encounter.the_other_traveller/u:let_the_companion_handle_it   0.1%
-  authority.the_file_catches_up/stand_your_ground      0.1%
-  border.night_crossing/present_papers                 0.1%
+  rest.the_shared_room/see_to_your_feet                0.1%
+  road.the_hitchhiker/u:let_the_companion_handle_it    0.1%
+  border.night_crossing/offer_something                0.1%
+  crime.the_offer/u:create_a_distraction               0.1%
+  rest.the_shared_room/u:create_a_distraction          0.1%
   border.night_crossing/keep_it_out_of_sight           0.1%
-  breakdown.the_roadside_repair/u:threaten             0.1%
-  transit.the_wrong_carriage/pay_the_difference        0.2%
-  border.night_crossing/u:bluff_with_documents         0.2%
+  crime.the_offer/u:offer_to_work_for_it               0.1%
+  rest.the_shared_room/sleep_on_your_bag               0.1%
+  transit.the_wrong_carriage/pay_the_difference        0.1%
+  transit.the_wrong_carriage/talk_your_way_through     0.1%
+  encounter.the_other_traveller/u:let_the_companion_handle_it   0.2%
+  rest.the_shared_room/u:pay_the_asking_price          0.2%
   transit.the_wrong_carriage/u:offer_to_work_for_it    0.2%
-  breakdown.the_roadside_repair/u:pay_the_asking_price   0.2%
-  transit.the_wrong_carriage/talk_your_way_through     0.2%
+  city.the_address_that_moved/work_it_out_yourself     0.2%
+  opportunity.work_for_a_day/u:walk_away               0.2%
+  rest.the_shared_room/pay_for_a_private_room          0.2%
   weather.the_storm_you_cannot_drive_through/u:ask_for_help   0.2%
-  crime.the_offer/u:offer_to_work_for_it               0.2%
-  crime.the_offer/u:create_a_distraction               0.3%
-  rest.the_shared_room/u:threaten                      0.3%
-  filler.the_long_quiet_stretch/listen_to_the_engine   0.3%
-  opportunity.work_for_a_day/u:walk_away               0.4%
-  city.the_address_that_moved/work_it_out_yourself     0.5%
-  filler.the_long_quiet_stretch/keep_going             0.6%
-  filler.the_long_quiet_stretch/u:wait_it_out          0.6%
+  authority.the_file_catches_up/stand_your_ground      0.2%
+  border.night_crossing/u:bluff_with_documents         0.3%
+  border.night_crossing/present_papers                 0.3%
+  breakdown.the_roadside_repair/u:threaten             0.3%
+  city.the_address_that_moved/u:plead_ignorance        0.4%
+  breakdown.the_roadside_repair/u:pay_the_asking_price   0.4%
+  filler.the_long_quiet_stretch/listen_to_the_engine   0.6%
+  city.the_address_that_moved/ask_in_the_shop          0.7%
   encounter.the_other_traveller/u:walk_away            0.7%
-  city.the_address_that_moved/u:plead_ignorance        0.7%
-  rest.the_shared_room/see_to_your_feet                0.8%
-  rest.the_shared_room/sleep_on_your_bag               1.2%
-  transit.the_wrong_carriage/u:lie_about_destination   1.2%
-  transit.the_wrong_carriage/u:pay_the_asking_price    1.3%
-  city.the_address_that_moved/ask_in_the_shop          1.3%
-  city.the_address_that_moved/pay_a_kid_to_take_you    1.3%
-  encounter.the_other_traveller/look_at_their_leg      1.3%
-  road.the_hitchhiker/u:run                            1.5%
-  rest.the_shared_room/u:create_a_distraction          1.5%
-  weather.the_storm_you_cannot_drive_through/push_on_through_it   1.6%
-  weather.the_storm_you_cannot_drive_through/u:run     1.6%
-  city.the_address_that_moved/u:pay_the_asking_price   1.7%
-  rest.the_shared_room/u:pay_the_asking_price          1.7%
-  rest.the_shared_room/pay_for_a_private_room          1.8%
-  crime.the_offer/u:bribe                              1.9%
-  opportunity.work_for_a_day/take_the_day_rate         1.9%
-  crime.the_offer/say_no                               2.0%
+  city.the_address_that_moved/pay_a_kid_to_take_you    0.7%
+  opportunity.work_for_a_day/take_the_day_rate         0.8%
+  opportunity.work_for_a_day/haggle_the_rate_first     0.8%
+  transit.the_wrong_carriage/u:lie_about_destination   0.9%
+  filler.the_long_quiet_stretch/keep_going             0.9%
+  filler.the_long_quiet_stretch/u:wait_it_out          0.9%
+  city.the_address_that_moved/u:pay_the_asking_price   0.9%
+  crime.the_offer/say_no                               0.9%
+  crime.the_offer/u:bribe                              0.9%
+  border.night_crossing/u:bribe                        1.0%
+  transit.the_wrong_carriage/u:pay_the_asking_price    1.0%
+  encounter.the_other_traveller/look_at_their_leg      1.1%
+  weather.the_storm_you_cannot_drive_through/push_on_through_it   1.2%
+  weather.the_storm_you_cannot_drive_through/u:run     1.3%
+  crime.the_offer/take_the_package                     1.4%
+  opportunity.work_for_a_day/u:pay_the_asking_price    1.6%
+  transit.the_wrong_carriage/move_before_they_reach_you   1.8%
+  road.the_hitchhiker/u:run                            2.0%
 
 ## Flags
   written: 20   read: 5
@@ -151,11 +160,11 @@ Extrapolated to 20,000     10.0 s   (target <30 s)
   read but NEVER WRITTEN:   (none)   <- gate can never open
 
 ## Resource trajectories (p10/p50/p90 by leg)
-  cash     leg5: 28/318/570   leg15: 0/181/440   leg25: —
-  health   leg5: 9/10/10   leg15: 0/1/3   leg25: —
-  morale   leg5: 6/8/10   leg15: 1/5/8   leg25: —
-  energy   leg5: 1/5/8   leg15: 0/0/1   leg25: —
-  hygiene  leg5: 1/2/4   leg15: 0/0/0   leg25: —
+  cash     leg5: 187/302/446   leg15: 0/254/459   leg25: —
+  health   leg5: 9/10/10   leg15: 1/3/6   leg25: —
+  morale   leg5: 7/9/10   leg15: 3/8/10   leg25: —
+  energy   leg5: 3/6/9   leg15: 0/0/6   leg25: —
+  hygiene  leg5: 2/3/5   leg15: 0/0/0   leg25: —
 
 ## Beat types no event can fill
   A slot for one of these can only expire, so the fill rate above is bounded below 100%.

@@ -82,9 +82,35 @@ export function transportMixOf(
 
 export type ModesByEdge = (edgeIdx: number) => readonly TransportMode[];
 
-/** The mode a run should START in: the best-supported one that is not walking or a boat. */
-export function startingMode(mix: readonly TransportMode[]): TransportMode {
-  return mix.find((mode) => mode !== 'foot' && mode !== 'ferry') ?? 'foot';
+/**
+ * What each profile would TRAVEL BY, given the choice.
+ *
+ * Ordering by "best supported" alone was the first attempt and it was wrong on the real graph:
+ * bus, car and truck are available on essentially every road edge, so they tie on count and the
+ * `TRANSPORT_MODES` tie-break handed `bus` to all eleven corpus routes. That erases transport as
+ * a decision AND makes every car/truck-gated event unreachable — which is the exact failure
+ * `load-pack.ts:63-69` says route and start block are kept together to prevent.
+ *
+ * A profile is a statement about how the player wants to travel, so it is the right thing to
+ * read. `illicit` prefers a truck because that is what moves goods nobody is declaring;
+ * `cheapest` takes the bus; `fastest` takes the train where there is one.
+ */
+const PROFILE_MODES: Readonly<Record<RouteProfile, readonly TransportMode[]>> = {
+  fastest: ['train', 'car', 'rideshare', 'bus', 'truck'],
+  cheapest: ['bus', 'train', 'rideshare', 'truck', 'car'],
+  safest: ['train', 'bus', 'car', 'rideshare', 'truck'],
+  scenic: ['car', 'bus', 'train', 'rideshare', 'truck'],
+  illicit: ['truck', 'car', 'rideshare', 'bus', 'train'],
+};
+
+/** The mode a run should START in: the profile's preference, among what the route supports. */
+export function startingMode(profile: RouteProfile, mix: readonly TransportMode[]): TransportMode {
+  const available = new Set(mix);
+  return (
+    PROFILE_MODES[profile].find((mode) => available.has(mode)) ??
+    mix.find((mode) => mode !== 'foot' && mode !== 'ferry') ??
+    'foot'
+  );
 }
 
 export function buildPreview(
@@ -97,7 +123,7 @@ export function buildPreview(
   const crossings = segments.filter((s) => s.viaCrossingNode).length;
   const hasFerry = segments.some((s) => s.ferry);
   const mix = transportMixOf(segments, modesFor);
-  const mode = startingMode(mix);
+  const mode = startingMode(profile, mix);
 
   const ratio = PROFILE_COST[profile];
   const recommendedCash = mulDivRound(
