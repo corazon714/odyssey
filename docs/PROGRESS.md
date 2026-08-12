@@ -349,6 +349,11 @@ Nothing is left broken. These are absent or partial, with paths:
 - ~~`overlay.json` should be `overlay.yaml`.~~ **Done at M3.6.** Byte-verified: `--check` is
   byte-identical after the move.
 - ~~`packages/content/package.json` has no `"./geo"` export.~~ **Done at M3.6**, as `"./geo/*"`.
+- **M3.9 is one slice of three.** `route/leg-plan.ts` is done and committed; `leg-locations.ts`,
+  `beat-schedule.ts`, `materialise-route.ts`, `route-preview.ts` and `generate-routes.ts` do not
+  exist. `leg-plan.ts` has **no caller** — it is pure and fully tested, so the tree is green and
+  both baselines are unmoved, but nothing generates a route yet. The exact continuation is under
+  "Next step" above.
 - **ADR 0026 Decision 6's incoherence is LIVE and has no owner.** `legKm` is baked at generation,
   so a leg planned by bus and walked after `bus_ejection` costs `legHours(86,'foot')` = 22 hours
   capped at 12. It is reachable by one shipped event on one of three fixture routes and is worth
@@ -378,9 +383,72 @@ Nothing is left broken. These are absent or partial, with paths:
 
 ## Next step — ONE task
 
-**M3.9: `leg-plan`, `leg-locations`, `beat-schedule`, `materialise-route`, `route-preview`,
-`generate-routes` — where `legKm` stops being uniform and montage legs first exist. No run-path
-caller yet.**
+**M3.9 is IN PROGRESS — one of three slices has landed (`681f621`). Continue with slice 2.**
+
+`packages/engine/src/route/leg-plan.ts` ✅ is done, tested (20 cases) and committed: density
+sizing, the compression curve, the ramped clamps, RNG-free montage selection and exact `legKm`.
+It is pure, takes segments, has **no caller**, and both sim baselines report "No change".
+
+**Two findings from slice 1 that the remaining slices depend on:**
+
+- **A ferry is excluded from surplus allocation**, not merely worth one raw leg. Without that
+  the `minLegs` floor padded a lone 900 km crossing to nineteen legs — with `ferry_boarding`
+  scheduled on one of them. The floor now goes unmet instead, which ADR 0026 Decision 4 already
+  sanctions.
+- **Terrain is invisible below ~3,000 km**: 2,000 km of mountain and 2,000 km of plain both
+  compress under `minLegs(2000)` = 22 and both clamp to 22. That is the clamp working. Pinned as
+  its own test so nobody retunes the density table chasing a difference the floor is eating.
+- ADR 0026's `LEG_DENSITY_KM` lists **`marsh` and `forest`, which are not `TerrainKind`s**. The
+  shipped table is keyed off the real eight-kind vocabulary.
+
+### Slice 2 — `leg-locations.ts` and `beat-schedule.ts`
+
+Both consume `LegPlan.arrivalLegOfEdge`, which slice 1 already returns — **one allocator, two
+consumers** (ADR 0027 Decision 1). Do not recompute it.
+
+1. `leg-locations.ts`: one `LocationType` per leg, derived from the node each leg arrives at.
+   `validateRoute` rejects a length mismatch, so it must be exactly `legCount` long.
+2. `beat-schedule.ts`: the placement table is ADR 0027 Decision 2 — `departure`@0 slack 0,
+   `finale`@`legCount−1` slack 0, `border_crossing` at the first leg of the crossing edge's span
+   capped at `MAX_BORDER_BEATS = 4` slack 1, `ferry_boarding` on the ferry edge's single leg
+   slack 0, `midpoint_crisis` at `mulDivRound(legCount, 50, 100)` ±2 jitter, `approach` at
+   `mulDivRound(legCount, 83, 100)` ±1 jitter and only when `legCount >= 14`.
+3. **Jitter is cursor-free**: `deriveKey(streamKey(seed,'routeGen'), \`${startId}>${endId}:${profile}:beat:${type}\`)`.
+Mandatory, not stylistic — the NUMBER of jitter draws depends on how many beats a route has,
+which depends on the graph, so a cursored draw would make `routeGen`'s cursor a function of
+geography and a geography edit would move every save fixture. **`drawWord` is not
+barrel-exported** (`index.ts:247`exports`deriveKey`/`streamKey` only).
+4. **Enforce the four invariants generator-side, never in `validateRoute`** (ADR 0027 Decision 3).
+   Invariant (b), non-overlapping windows, is **already violated by the shipped `fixture.illicit`**
+   — `border_crossing@17 slack 3` overlaps `approach@20`, so the border slot masks `approach`,
+   which then slides and expires, and every such collision reports as content starvation for what
+   is a scheduling bug. Adding it to `validateRoute` would invalidate that fixture, break 13 test
+   files and move the control baseline.
+5. Invariant (c) needs **≥2 legs per crossing edge**, the leg before typed `checkpoint` and the
+   crossing leg `border_crossing`, slack 1 — otherwise a slack-3 border slot has three legs where
+   no border event is location-eligible, and `locationTypes` relaxes last (rung 5) while
+   `beatGate` goes at rung 1.
+
+### Slice 3 — `materialise-route`, `route-preview`, `generate-routes`
+
+`RoutePlan = { route, start, preview }` mirroring `FixtureScenario`, because
+`load-pack.ts:63-69` is explicit that route and start block are inseparable — the walking skeleton
+had 5 of 9 events never firing when they came apart. Neither `start` nor `preview` enters
+`RunState` or `contentVersion`. The start block is DERIVED (transport from `preview.transportMix`,
+cash from `recommendedCash × 1.3`, `startHour`/`weather` from cursor-free `routeGen` draws), which
+satisfies the inseparability rule by construction rather than by convention.
+
+**Success is a seeded property loop, not a golden:** `validateRoute(generated) === null` over
+hundreds of routes, `Σ legKm === totalKm`, monotone in km, `|legCount(500) − legCount(501)| ≤ 1`,
+ascending beat emission, non-overlapping windows, border windows on eligible legs, no window on a
+montage leg, all slots `pending`, and **`routeGen`'s cursor still 0**.
+
+**DoD for the whole milestone:** the five checks, both `sim:diff`s reporting "No change" (nothing
+calls the generator yet), and an ADR only if a decision departs from 0026/0027.
+
+---
+
+### The original M3.9 brief, for reference
 
 The plan is `~/.claude/plans/plan-mode-build-the-synthetic-bird.md` §"The leg model" and
 §"BeatSchedule derivation"; ADR 0026 Decision 4 is leg sizing and ADR 0027 the beat schedule. The
