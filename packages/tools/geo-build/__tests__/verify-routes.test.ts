@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { edgeId, nodeId, type GeoPath } from '@odyssey/engine';
 
 import { graphFromArtifacts } from '../audit-diversity.ts';
-import { factsFor, readNames, verifyPair } from '../verify-routes.ts';
+import {
+  factsFor,
+  illicitCashDominates,
+  readNames,
+  verifyPair,
+  type PreviewFacts,
+} from '../verify-routes.ts';
 
 /**
  * A four-node line: A - X - B, plus C hanging off A, where X is a border crossing and A-X is a
@@ -154,5 +160,60 @@ describe('verifyPair', () => {
   it('does not flag illicit dominance when illicit cannot route at all', () => {
     const report = verifyPair(GRAPH, 'test', AYTON, BEETON, nameOf);
     expect(report.illicitDominates).toBe(false);
+  });
+
+  it('reports the degree of both endpoints, which is what names a structural failure', () => {
+    const report = verifyPair(GRAPH, 'test', AYTON, BEETON, nameOf);
+    // Ayton carries the ferry to the crossing and the road to Ceeton; Beeton is a dead end.
+    expect(report.fromDegree).toBe(2);
+    expect(report.toDegree).toBe(1);
+  });
+
+  it('gives a cause for every pair, and never `filter` when only one route exists', () => {
+    const report = verifyPair(GRAPH, 'test', AYTON, BEETON, nameOf);
+    expect(['single', 'pass', 'structural', 'filter']).toContain(report.cause);
+    if (report.routes.length < 2) expect(report.cause).toBe('single');
+  });
+});
+
+describe('illicitCashDominates', () => {
+  const preview = (
+    profile: 'illicit' | 'fastest' | 'cheapest',
+    recommendedCash: number,
+  ): PreviewFacts => ({
+    profile,
+    totalKm: 100,
+    legCount: 10,
+    montageLegCount: 0,
+    travelHours: 24,
+    crossings: 0,
+    hasFerry: false,
+    recommendedCash,
+    startingMode: 'car',
+  });
+
+  it('is true only when illicit undercuts EVERY alternative', () => {
+    expect(illicitCashDominates([preview('illicit', 100), preview('fastest', 200)])).toBe(true);
+  });
+
+  it('is false when one alternative is cheaper, even if others are not', () => {
+    // The failure this guards is `some` in place of `every`: one expensive alternative would
+    // otherwise be enough to call the illicit route dominant.
+    expect(
+      illicitCashDominates([
+        preview('illicit', 150),
+        preview('fastest', 200),
+        preview('cheapest', 120),
+      ]),
+    ).toBe(false);
+  });
+
+  it('is false on a tie, because "strictly better" has to be strict', () => {
+    expect(illicitCashDominates([preview('illicit', 100), preview('fastest', 100)])).toBe(false);
+  });
+
+  it('is false when there is no illicit route, and when it is the only route', () => {
+    expect(illicitCashDominates([preview('fastest', 100)])).toBe(false);
+    expect(illicitCashDominates([preview('illicit', 100)])).toBe(false);
   });
 });

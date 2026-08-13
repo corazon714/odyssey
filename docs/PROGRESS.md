@@ -5,6 +5,113 @@
 
 ---
 
+## Phase 3 verification — **`docs/phase-3-verification.md`** (uncommitted; tree left dirty for review)
+
+Measured at HEAD `8effe2f`, i.e. **after** the wear curve. Two halves against the same HEAD: the
+geo half **extended `pnpm geo:verify`** (no parallel reporter); the sim half ran a twelve-band
+distance sweep entirely from the scratchpad and **created zero repo files**.
+
+**Read `docs/phase-3-verification.md`. It is the authority on all of the below and this entry is
+a pointer, not a summary.**
+
+### The tree, declared
+
+Opened clean at `8effe2f`, ends at `8effe2f` with five geo-build files modified or untracked —
+NEW `route-structure.ts` (+ 17 tests), MOD `verify-routes.ts`, `report-verify.ts`,
+`__tests__/verify-routes.test.ts` (+ 6 tests). That is this verification's own deliverable.
+**Nothing is committed.**
+
+### FOUR FAILURES, none fixed, none softened (§8 of the doc)
+
+1. **Route diversity FAILS on 2 of 12 named pairs.** Chongjin–Jeju City 80% (**structural** —
+   floor 71%, degree-1 endpoint, unpassable before filtering) and **Valencia–Palermo 85%, a
+   GENUINE filter failure** newly surfaced (floor only 34%; `acceptByDiversity` never re-tests an
+   earlier route against a later one). New metric `floorPercent` separates structural from real,
+   so this is measured rather than asserted. **Degree-1 is the cause, not the test** —
+   Palermo–Riyadh is degree-1 and PASSES at 69%. `pnpm geo:diversity` still exits 0 at median 54%
+   **and its p90 is 88%**: as a per-pair guarantee the 70% ceiling is not kept. **The two failing
+   rows were deliberately KEPT rather than removed the way Barcelona–Zaragoza was.**
+2. **`selectPaths` FAILS its budget at p90 and max.** 42.11 / 122.95 ms on Node → 252.7 / 737.7 ms
+   at 6× against 150 ms. Break-even 3.56× and 1.22×, so **it fails at 4×, 6× and 8× alike** and the
+   unevidenced multiplier is not load-bearing. ~95% is Yen backfill, super-linear in hops
+   (ms/hop 0.115 → 0.511). Fix named, not done: bound `kShortestPaths`' stray ratio.
+3. **`ILLICIT STRICTLY DOMINATES` 142 of 410 = 34.6%, and it is NOT a metric artefact.** The
+   "it's tautological" defence was tested and failed: 137 of 410 are **also cheapest to prepare**
+   (96% of the set survives). Mechanism is the crossing count — a dominant illicit route avoids a
+   median of 14 crossings at 45 cash each. Content consequence now measured:
+   `borderBeats = min(crossings, 4)`, so a 0-crossing illicit route schedules zero border beats and
+   **the corpus's only `scheduleEvent` edge becomes structurally unreachable.** Still no owner.
+4. **The ferry gap.** 6 ferry edges in 1,215, all authored in `overlay.yaml` for the old 263-node
+   slice; `build-edges.ts` never generates one. **Seoul–Jeju City reads 77% land ⇒ accepted as a
+   630 km ROAD to an island**, while the real Jeju–Busan link reads 11% and is correctly refused.
+   14 shipped edges are below the 70% water threshold that should have refused them; **13 touch a
+   border-crossing node** — `place-borders.ts` splits an edge and the halves are never re-tested.
+
+Also open: **38 `winter_closed` edges, none flagged `unavoidable`**, causing 126 of 410 rung-0
+refusals (cost is diversity, not reachability — rung 4 is reached on 5 of 200 pairs).
+
+### THE BAND JUDGMENT (§7 of the doc) — the middle-band prior is WRONG
+
+**Least fun: band 10, the 4,500–6,000 km SHOULDER** (Paris → Marand, 5,726 km, `cheapest`, 35 legs,
+237 h), with band 9 replicating it on the same profile and mode. **Failure mode: TOO LONG AND TOO
+UNEVENTFUL at once** — the longest session in the game (18.9 min p50, the max of twelve) delivering
+the least authored structure of any band that promised any (**34% of its own beat ceiling, 4.97
+beats expired per run**, both worst in the set). It is the only band in the worst three of all four
+failure modes.
+
+**The middle (bands 5–8, 1,285–3,348 km) is the STRONGEST part of the game** — best chain rate
+(4.5–7.2%), best beat fill, lowest filler share, 12-minute sessions, pillar 4 satisfied with room.
+Band 7 (Helsinki → Berlin) is the healthiest row in the table.
+
+**NOT band 11**, despite it being the most _broken_ row (pillar 4 violated outright at 49.5% dead
+by halfway; `greedy-safe` **0.0%**, below `random`; zero memory chains). Two evidence reasons:
+band 12 is 45% longer and **better on every one of band 11's charges** (the worst row is not the
+longest row), and band 11 is the sample's only `illicit` route, so **every one of its content
+failures is downstream of failure 3, not of distance**. Bands 9→10 replicate monotonically on one
+profile — that is the only band effect that survives the profile confound.
+
+### What the wear curve at `8effe2f` did to this
+
+`worn()` is monotone in travel hours, so relief lands strictly in proportion: **bands 1–9 got
+0.0%** (band 9 at 189 h is 11 hours short of the knee), band 10 got 7.6%, band 11 23.3%, band 12
+**31.0%**. The curve **removed the old obvious answer** — seven routes at 0.0% completion — and
+**did not touch bands 9–10**, whose defects are beat fill and session length, not drain. It moved
+the weak point inward from the tail to the shoulder and stopped where the shoulder begins.
+
+### What would FLIP the band answer
+
+1. **Author content for the four `unfillableBeatTypes`** (`departure`, `approach`, `finale`,
+   `ferry_boarding`) and re-run the beat-fill table. If bands 9–10 then fill at 70%+, the pillar-3
+   charge is withdrawn and **the answer moves to band 11**.
+2. **Set a real `BASE_EVENT_ODDS` at M3.12b.** Every play-minute figure is an upper bound at
+   `{fire: 1, quiet: 0}`; if band 10 drops below ~13 min the "too long" half evaporates.
+3. **Cross profile with band at 9–12.** If band 11's charges replicate under `safest` they are a
+   distance effect and band 11 takes the verdict.
+
+### Two instruments this produced that did not exist
+
+- **`floorPercent`** — forced-edge distance as a share of the shortest returned route. A hard lower
+  bound on worst overlap, so structural-vs-real is measured, not argued.
+- **The form-1 / form-2 split on memory payoff.** Counting only `queueFires` **undercounts
+  narrative payoff by ~4×**: pooled 6,292 payoff fires, only 1,634 (26%) via the queue, 4,658 (74%)
+  via `requires: {flag}` through the ordinary pool. Read "memory chains completed" as "queue
+  payoffs" or the corpus looks four times less consequence-heavy than it plays.
+
+### DoD
+
+`pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm content:lint`, `pnpm format:check` — all run;
+results in §10 of the doc. **`pnpm sim:diff` NOT run and NOT required**: every edit is in
+`packages/tools/geo-build/`, `packages/engine` is untouched, no golden or baseline moved.
+CLAUDE.md needs no update — no command, rule or layout changed.
+
+### Next step — ONE task
+
+**Author content for the four `unfillableBeatTypes`.** It is item 1 of the flip list, it is the
+denominator every beat-fill number in the doc is measured against, and it closes the single
+largest unknown in the band judgment.
+
+---
+
 ## Recovery milestone step 3 — **the policy bracket is the right way up again**, and the route preview stops lying by 5%
 
 Uncommitted on `dev` over `970c021`. Two fixes and a correction pass; **no balance constant was
