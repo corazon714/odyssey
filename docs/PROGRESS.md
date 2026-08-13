@@ -5,19 +5,338 @@
 
 ---
 
+## M3.11f/g — the sim harness was sampling a fifth of its grid; both baselines rebaselined (uncommitted, tree left dirty for review)
+
+**`runMany` paired run `i` as `scenario = i % S; policy = i % P`.** That enumerates the route ×
+policy grid only when `gcd(S, P) === 1`. On the corpus S is 25 and P is 5, so `i % 5` was fully
+determined by `i % 25`: **every route was welded to exactly one policy and the sim visited 25 of
+its 125 cells.**
+
+**What ships is a Latin square**, `cellFor(i, S, P) = (i % S, (i % S + floor(i / S)) % P)`,
+exported and pure so the coverage properties are testable without engine runs. It has to satisfy
+**two** properties, and discovering there were two is the whole of this milestone: **(a)** over
+`runs = S*P` every cell exactly once, for arbitrary S and P — unconditional; **(b)** a prefix of
+`max(S, P)` runs already touches every route and every policy, because `--runs` is a round number,
+the grid size is not, and almost every invocation therefore stops mid-grid — **and (b) holds only
+when S ≥ P**. The shipped square fails (b) on 55 of the 720 enumerated shapes, all of them and
+exactly those with `2 ≤ S < P`, **including the fixture pack's own 3 × 5**, where a prefix of 5
+reaches 3 of 3 routes but only 3 of 5 policies. The corpus is 25 × 5 and is on the safe side; the
+fixture is saved by covering its 15-cell grid six times over at the default, not by the property.
+Do not quote (b) unconditionally. **A mixed-radix odometer was written
+first, had (a) and not (b), and was caught before it reached a committed baseline**: at the
+`--runs=100` default CLAUDE.md §5 documents it sampled 20 of 25 routes — always the same five
+dropped, the **five profiles of the highest leg bucket** (not "the five longest": scenario 14,
+`route.illicit.rskpfno`, is 17,521 km / 494 h and is KEPT while three shorter routes are dropped)
+— and reported completion **10.6pp optimistic**, out the top
+of the band. `__tests__/pairing.test.ts` now enumerates both properties over thirteen trap shapes
+and a 720-shape sweep, and is proved to discriminate: swapping in the old stride fails 10 tests,
+the odometer 11, the near-miss 10. **Full write-up, including the near-miss that is one `% S`
+away from the Latin square and still fails 271 of 720 shapes: `docs/adr/0038` and its addendum.**
+
+**NO ENGINE FILE MOVED, and that is proved rather than asserted.** Replaying the OLD pairing
+against the corrected tree reproduces **both** committed baseline bodies line for line — the two
+machine-dependent wall-clock lines excepted — so the engine returns identical output for identical
+`(seed, scenario, policy)` triples and 100% of the delta is attributable to which cells got
+sampled. `git status packages/engine` is empty and the goldens are untouched. **This is a
+measurement correction, not a balance change.**
+
+| line                          | corpus                              | note                                           |
+| ----------------------------- | ----------------------------------- | ---------------------------------------------- |
+| Grid cells sampled            | 25/125 → **125/125**                | new report line, above the first rate over it  |
+| Completion rate               | 41.0% → **41.9%**                   | 821 → 838 completions; mid-band before + after |
+| Median legs                   | 26 → **25**                         |                                                |
+| Long-range payoff             | 14.0% → **24.8%**                   | largest mover; n = 113 schedules / 28 fires    |
+| Unresolved threads            | 63 → **46**                         |                                                |
+| arrival / gave_up / collapsed | 41.0/32.8/26.1 → **41.9/38.3/19.8** | collapsed:gave_up 0.79 → 0.52                  |
+| Modifier chips / check        | 6.4 → **6.4**                       | 6.3677 → 6.3740 — the invariant that proves it |
+
+Every ending share divides by the ENDING total (2,002 — two runs emit `detained_at_border` plus a
+terminal ending), never by run count. 657/2002 is **32.8%**, not 32.9%; `format-report.ts` is where
+that denominator lives.
+
+**The coverage line catches HOLES, not IMBALANCE, and that gap is bounded rather than left open.**
+Between the round counts a prefix reaches its cells an unequal number of times, so the average can
+tilt while both marginals read full and the line stays silent. Measured on the 25 × 5 grid at
+2,000 runs per cell against its cell-weighted 42.53%: `--runs=39` is **+8.36pp** optimistic with
+25/25 routes and 5/5 policies, `--runs=50` is +1.54pp, `--runs=100` is −0.21pp, and the bias is
+exactly **0** at 125 and every multiple of it — 250 up, the baselines' 2,000 included. Still
+strictly better than the old stride, which was **~1.70pp off at every R permanently — that figure
+at 2,000 runs per cell**, the sample this paragraph is measured at. The same bias is **~1.64pp at
+25,000 runs per cell** (42.53% against 40.89%); see the next section but one. Two samples of one
+quantity, twelve lines apart, and neither supersedes the other.
+
+Fixture: **75.3% → 74.0%** (1,506 → 1,480 completions) and a handful of single-digit run counts.
+Its grid was _already_ fully covered (`gcd(3, 5) = 1`, 15 of 15 before and after), so its move is
+a **resample**, not a coverage fix. **And a narrower resample than that usually means:
+`scenario = i % S` is the same expression in the old stride and in the Latin square, so on BOTH
+packs every run plays the route it always played and only the POLICY moves** — 1,600 of 2,000
+corpus runs (80.0%), 1,598 of 2,000 fixture runs (79.9%), and **zero** route changes on either.
+**The fixture being accidentally coprime is the entire reason this survived to M3.11: the default
+pack could not exhibit the bug**, and it is the pack every test and every casual `pnpm sim` runs.
+
+**The aggregate was barely wrong and every per-route number was worthless**, which is why it
+passed review for three milestones. True bias on completion is **~1.64pp at 25,000 runs per
+cell** — weighting all 125 cells equally the corpus completes 42.53%, where the welded diagonal
+completes 40.89%. (**~1.70pp at 2,000 runs per cell**, 42.53% against 40.83%, which is what the
+paragraph above quotes. Same quantity, two samples.) But the welded
+harness reported **nine** routes under 1% where the truth is seven: it had `illicit.r1nta1ib`
+(260 h) at 0.2% and `cheapest.rtps1ek` (281 h) at 0.6%, both welded to `greedy-safe`, their single
+worst policy. Their true rates are **22.3% and 21.1%**. The doc reached the right seven by a
+compensating error.
+
+**Two quantities, and they must be kept apart** — the ADR's first draft named one and printed the
+other, and the table directly beneath the sentence refuted it. Over the four worst-affected
+mid-range routes, re-measured at 25,000 runs per cell: the **GAP** between a route's welded cell
+and its all-five rate is **19.4 to 35.0pp**; the **max−min policy SPREAD** inside a single route
+is **53.0 to 63.9pp**. "53-63pp" is the spread. It is the larger and more alarming number, which
+is exactly why it wanted checking before it was attached to the other claim.
+
+**100 route × policy combinations ran for the first time and none broke**: zero engine errors,
+zero empty-pool fallbacks, zero turn-cap hits.
+
+### Surfaced by the grid, not caused by the fix, and it has no owner
+
+**`policy.ts`'s stated contract is measurably false.** Over 25,000 runs each: random 21.3%,
+greedy-safe 24.9%, greedy-fast 63.9%, risk-taker 42.4%, adversarial-worst-case **60.1%**. Its
+header says a rate under `random` and under `adversarial-worst-case` bound the range a real player
+lives in. Adversarial is the **second-highest** of the five, 39pp above random — the intended
+lower bound is in the upper half of the range. Invisible until now, because each policy ran on a
+different non-overlapping fifth of the routes and the columns were not comparable.
+
+**`world-tick.ts` carries stale numbers in comments — THREE of them, not one.** Not corrected
+here: this pass was scoped to leave `packages/engine` untouched, which is what makes the
+goldens-unmoved argument above airtight. All three are prose in the drift-constant block, so the
+follow-up commit changes no behaviour and must move the goldens by nothing.
+
+- **`:114`** — "keeps collapse meaningful at **26.1%**". Now **19.8%**.
+- **`:110-111`** — "routes under ~150 hours complete **55-85%**, routes over ~250 hours complete
+  **0.0%**, with nothing in between". **Both halves are wrong, and these are the two thresholds
+  this pass corrected**: on the full 25 × 5 grid, under 150 h completes **80% to 97%**, the
+  250-300 h band completes **21% to 26%**, and nothing is near zero until **383 h**. "With nothing
+  in between" is the part that misleads worst — it asserts a dead zone where `CORPUS_PAIRS` merely
+  has a 98-hour hole between its 285 h and 383 h routes.
+- **`:149`** — "20 + 44/22 lands **41.0%** with collapse **26.1%** and gave_up **32.8%**". Now
+  **41.9% / 19.8% / 38.3%**. The sentence's claim survives — neither failure mode is the majority
+  — but all three of its numbers moved.
+
+**One follow-up commit, three comment edits, zero behaviour.**
+
+### Three defects left in `packages/tools/sim` for a human, spanning five `file:line` sites — prose and formatting, zero behaviour
+
+A documentation pass corrected the doc side of these and was scoped out of `packages/`. All three
+are comment prose or a format string; none changes a number the harness produces. **The count is
+DEFECTS — three bullets, three defects** — and the five are the `file:line` anchors they span, the
+first bullet alone holding three of them. This heading and this sentence both said "four" over a
+list of three, which is the same miscount as the second bullet's own subject; count the list
+before writing a number above it.
+
+- **`run-many.ts:113`**, **`__tests__/pairing.test.ts:18`** and **`pairing.test.ts:204`** — "always
+  the five longest" (and "the ones that complete least") is FALSE
+  at route granularity. "Ascending leg bucket, pair-major" establishes only that the five profiles
+  of the HIGHEST LEG BUCKET are dropped. Scenario 14, `route.illicit.rskpfno`, is 48 legs /
+  **17,521 km / 494 h**, sits in the third bucket, and is KEPT — longer than three of the five
+  dropped in both km and hours. Say "the five profiles of the highest leg bucket". **The +10.6pp
+  bias magnitude is unaffected and stays.**
+- **`run-many.ts:141`** — the heading says "This is the third of its family in M3.11"; ADR 0038's
+  addendum corrected the count to **fourth, not third**, and this doc block's own body at
+  `:146-147` already names the fourth ("and then a fourth, when the fix for it sampled a prefix").
+  The heading contradicts the paragraph under it.
+- **`format-report.ts:187-188`** — the coverage warning is built from
+  `` `${missingRoutes} routes` `` / `` `${missingPolicies} policies` ``, unconditionally plural, so
+  a single missing route prints **"← 1 routes NEVER RUN"**. Note `__tests__/report.test.ts:134-135`
+  **structurally cannot catch it**: those assertions are `SCENARIOS.length - 1` and
+  `POLICY_NAMES.length - 1`, which on the fixture's 3 × 5 read "2 routes" / "4 policies" — both
+  already plural. A regression test needs a shape that leaves exactly one marginal short.
+
+### DoD
+
+`typecheck` clean · `lint` clean · `format:check` clean · `test` green · `content:lint` 0 errors ·
+**both baselines regenerated at 2,000 runs against the SHIPPED Latin square, and both `sim:diff`s
+report "No change"** against the freshly spliced files — that round-trip is the check that the
+hand-written headers survived, since `stripHeader` finds the first `-->` and a `cp` would have
+destroyed them. Goldens judged by CONTENT, not by git status: `golden:update` re-emits 416 lines
+against the committed 398 every time regardless, and the JSON is deep-equal.
+
+**Evidence base for every per-route figure in this section**: the 25 × 5 grid re-measured at
+**25,000 runs per cell** — 125,000 per route, 3.125M runs, zero engine errors — on a seed stream
+sharing no prefix with the harness's `base:<i>`. Where a number here disagrees with an older one
+computed at 1,000 runs per cell, this is the one that was measured last and at 25× the sample.
+
+---
+
+## M3.11e — M3.11 CLOSES on its DoD (uncommitted, tree left dirty for review)
+
+The DoD's last open item was **`geo:verify` re-measured**; everything else on it was already
+satisfied at `04f0f38`/`6961f77`. Three jobs, no engine change, both `sim:diff`s **No change** on
+both packs.
+
+**1. `geo:verify` re-picked its pairs and re-measured its benchmark.** The old list was chosen for
+the 263-node Europe-and-Maghreb slice: five of ten named pairs no longer resolved, and
+Barcelona-Zaragoza printed a FAIL on a SINGLE HOP, which has nothing to diversify. The new
+`NAMED_PAIRS` and `SWEEP_PAIRS` are picked under a **constraint, stated in the file**: twenty (and
+twenty-four) distinct endpoints, one pair per disjoint distance band, three hops minimum, with the
+in-band tie-break a fixed stride over the alphabetical settlement list. **The 48-leg failure did
+not recur and that was measured, not hoped**: `planLegs` over the ten first routes gives 15, 20,
+22, 22, 23, 30, 32, 45, 48, 48 — two at the cap, both in the top two bands. Section 2 now reports
+**1 of 10 breaching** (Chongjin-Jeju City at 80%), where the 263-node list reported 2 of 5.
+
+**2. THE BENCHMARK'S OLD CAVEAT WAS WRONG IN ITS MODEL, not merely in its number**, and that is
+the finding. It said Dijkstra is O(E log V) so ~8x the graph is ~8x the work. Measured on 692
+nodes / 1,215 edges, 200 pairs: **five Dijkstras cost 0.64 ms mean and 1.6 ms at the worst pair —
+5% of the call.** The other ~95% is Yen, whose `kShortestPaths` runs a Dijkstra per spur node
+ALONG THE PATH, so it scales with HOP COUNT, and hops are what the continental slice changed (19
+before, 59 now). Total: mean 11.7 ms, p50 0.91, p90 41.6, max 123.7; at the stated 6x phone
+multiplier that is **FAIL at max (742 ms) and at p90 (250 ms), PASS at p50 (5.5 ms)** against
+150 ms. **The budget is NOT raised.** 150 ms is a claim about how long a player waits and the map
+growing is not an argument about players; passing today would need ~5x, which is writing the
+regression down as the requirement. The fix is the ceiling sections 2 and 4 already ask for —
+bound how far a Yen backfill may stray from the shortest path. Not M3.11 work.
+
+**3. `GEO_UNDECLARED_BRIDGE`'s budget is 13 → 0, re-measured, and it went the OPPOSITE way to the
+prediction.** ADR 0033 Decision 6 warned that growth faster than the node count would be a finding
+about the selector. On the 692-node slice: 32 bridges (was 35), **zero of them strand 10+ nodes**
+(was 13), largest stranded side in the whole graph is **4**. 2.6x the nodes, 3.0x the edges,
+average degree 3.07 → 3.51 — the 263-node slice was the stringy one, because its 10+ branches were
+islands and spurs reached by a single edge and those places have neighbours in more directions on
+a continental map. Zero is the honest calibration with 2.5x of headroom before a branch can reach
+`SIGNIFICANT_BRANCH`. The rule's test now sizes its fixture from the constant instead of a literal.
+
+**4. A DOC UNDERCOUNT, and it was worse than flagged.** `PROGRESS.md`, `docs/adr/0035` and
+`docs/sim-baseline-corpus.md` all said **five** of 25 corpus routes complete at 0.0%. Re-measured
+at 1,000 runs per route: it is **SEVEN** — 383 to 510 travel hours, 10,992 km and up. That is 28%
+of the pair set, not 20%. Corrected in all three files; the residual is stated, not softened.
+
+> **M3.11f/g: the SEVEN is right and the measurement behind it was not.** "1,000 runs per route"
+> means 1,000 runs against the ONE policy the broken stride welded that route to (ADR 0038). Re-run
+> on the full 25 × 5 grid at 1,000 runs per cell the count, the 383-510 h range and the 10,992 km
+> floor all hold **exactly** — but the same harness had also called two more routes dead that are
+> not, and "longest surviving route 285 h at **15.0%**" was really **24.88% at 25,000 runs per
+> cell** (24.5% at 1,000 runs per cell — the same route, the larger sample). See M3.11f/g above.
+
+### Also surfaced by the re-measurement, not fixed
+
+- **`ILLICIT STRICTLY DOMINATES` went from 9 of 168 sampled pairs (5%) to 142 of 410 (35%).**
+  Section 4 calls that "a design bug if > 0" and it is now a third of the graph: on those pairs
+  `illicit` is shorter than every other returned route, crosses no more borders and takes no
+  harder ground, so nothing is being traded and the other four profiles are decoration. This is
+  a cost-function question (the ticketed-mode mask buys `illicit` too much on a graph where long
+  land corridors dominate), not a geo one. It has no owner yet.
+- **`fastest`, `cheapest` and `safest` each refuse 126 of 410 pairs at rung 0**, identically —
+  the boundary mask, relaxed by the ladder immediately after. At 263 nodes the refusals were
+  `illicit`'s. Worth a look before the ladder is trusted to mean anything.
+
+### Reported, deliberately NOT built (named under M3.11 in the phase plan, absent from its DoD)
+
+`densify-corridors.ts`, `world.simplified.json`, `GEO_EDGE_TOO_LONG` and the node-count band rule.
+**Priced on the new slice so the human can decide whether M3.11 closes without them:** at a 450 km
+cap, **398 of 1,215 edges exceed it (32.8%), max 2,531 km** — against 16 edges / 4% / 573 km max at
+263 nodes. 90 edges are over 1,000 km and 12 over 2,000. Splitting every one at 450 km needs **570
+midpoint nodes**, taking the graph 692 → 1,262 nodes and 1,215 → 1,785 edges. Only 2 of the 398 are
+ferries, so this is land corridors, not sea. **That is not a threshold tweak, it is a second node
+budget** — and it would double the hop counts that already dominate the benchmark above, so it must
+be sequenced against the Yen ceiling rather than before it.
+
+### DoD
+
+`typecheck` clean · `lint` clean · `format:check` clean · `test` 1615 + 3 green ·
+`content:lint` 0 errors (1 pre-existing `MISSING_IMAGE_MANIFEST` warning) ·
+`geo:build --check` **byte-identical** · `geo:diversity` **PASS at median 54%** ·
+`sim:diff` **No change** on BOTH packs at 2,000 runs. No engine file was touched, so goldens and
+both baselines are unmoved by construction.
+
+> **M3.11f/g: that `sim:diff` line was true at `6961f77` and is no longer true of the tree.** It
+> reported "No change" because the harness was reproducing its own biased sample, not because
+> nothing had moved. Both baselines were regenerated at M3.11f/g and both `sim:diff`s report
+> "No change" against the NEW files. The "no engine file was touched" clause still holds and is
+> now doing more work than it was: it is what proves the rebaseline is a sampling correction.
+
+**M3.11 is CLOSED on the DoD as written.** What it does NOT close, and neither did the DoD:
+
+- **The route-generation budget FAILs at p90 (250 ms) and max (742 ms)** against 150 ms, passing
+  only at p50 (5.5 ms). The budget was deliberately not raised; the fix is a ceiling on how far a
+  Yen backfill may stray from the shortest path. See item 2 above.
+- **The 7-of-25 bimodal completion residual.** Needs a recovery mechanic or a route-length
+  contract, not another constant sweep (ADR 0035). **Re-measured properly at M3.11f/g**: all seven
+  are doomed under all five policies, 30 of their 35 cells being exactly 0 of 1,000.
+- **Two named-pair endpoints are degree-1, which makes route diversity impossible by
+  construction** — the same defect the Barcelona-Zaragoza row was removed for in item 1, caught
+  there as a single hop and not caught here. Verified on the committed slice: `Jeju City`
+  (`n.city.g1846266`) and `Palermo` (`n.city.g2523920`) each have exactly ONE incident edge, so
+  every candidate route to either is forced through it and all five profiles must return the same
+  final hop. 19 nodes in the graph are degree-1; these two are the ones `NAMED_PAIRS` selects.
+  The pair constraint added in item 1 controls endpoint spread and distance band but says nothing
+  about endpoint DEGREE.
+- **The ferry network is missing, and one edge is geographically wrong.** The whole 1,215-edge
+  graph has **6 ferry edges, all western-Mediterranean** (Barcelona/Algiers/Tunis/Palermo/
+  Sassari); the Afro-Eurasia scale-up added none. The consequence is concrete: **`Seoul ↔ Jeju
+City` is a 630 km edge with modes `bus/car/truck/rideshare` and no ferry — a road to an
+  island.** That also explains the permanently unfillable `ferry_boarding` beat type in both
+  baselines' "Beat types no event can fill" block.
+- The four deferred items priced above (`densify-corridors.ts`, `world.simplified.json`,
+  `GEO_EDGE_TOO_LONG`, the node-count band rule).
+
+---
+
 ## M3.11d — the hour economy re-derived; corpus back in band at 41.0% (uncommitted, tree left dirty for review)
 
 **Corpus completion 19.2% → 41.0%, median legs 20 → 26, ending mix arrival 41.0% / gave_up 32.8%
-/ collapsed 26.1%.** Two drift constants in `packages/engine/src/loop/world-tick.ts`:
+/ collapsed 26.1%.** (**M3.11f/g re-measured these on an unwelded harness: 41.9%, 25 legs, and
+41.9 / 38.3 / 19.8. No engine constant changed — see the M3.11f/g section.** The collapsed:gave_up
+ratio the sweep was scored on moved 0.79 → 0.52, so the chosen constants are not shown wrong but
+the sweep's two failure columns must be re-measured rather than diffed against.)
+Two drift constants in `packages/engine/src/loop/world-tick.ts`:
 `HOURS_PER_MORALE` 12 → 20 and `HOURS_PER_HUNGER_DAMAGE` 28 → 44 (`HOURS_PER_STARVING_DAMAGE`
 14 → 22, holding the 2:1 rung). Nothing else in the engine moved. Full sweep, both hypotheses
 priced, and what was rejected: **`docs/adr/0035`, second addendum.**
 
 **What the measurement found, which is the part worth carrying forward.** Completion on the
-corpus is a near-deterministic function of ONE number — the route's total travel hours — and not
-of legs or kilometres. Under 150 hours completes 55-85%; over 250 hours completed 0.0%. The two
-train routes prove it is hours rather than distance: 6,090 km / 36 legs is 151 hours by train and
-completed 58%, while 5,790 km / 34 legs is 213 hours by car and completed 1%.
+corpus is dominated by ONE number — the route's total travel hours — and not by legs or
+kilometres. **The VARIABLE survived M3.11f/g's re-measurement and came out stronger. The
+THRESHOLDS did not, and are corrected here rather than left standing:**
+
+| claim as written                         | on the corrected 25 × 5 grid                                               | sample           |
+| ---------------------------------------- | -------------------------------------------------------------------------- | ---------------- |
+| "under 150 hours completes 55-85%"       | **80.2% to 96.8%**                                                         | 1,000 runs/cell  |
+| "over 250 hours completed 0.0%"          | **21.1% to 26.1%** in the 250-300 h band; nothing is near zero until 383 h | 25,000 runs/cell |
+| two trains, "58% against 1%", four times | **85.23% against 46.09%, 1.8×**                                            | 25,000 runs/cell |
+
+**Every rate in that table carries its sample, because two different samples of these same
+quantities are quoted across these docs and the larger one wins.** The 250-300 h band read
+**21.3% to 25.8%** and the trains **85.4% against 46.4%** at 1,000 runs/cell; both are superseded
+here at 25× the sample. The band's top end is the part that matters: its four routes
+(260 / 272 / 281 / 285 h) read 22.32 / **26.14** / 21.06 / 24.88, so **26.14% is above the 25.8%
+ceiling this table used to state** — a refutation, not a rounding difference. The under-150 band
+is **left at 1,000 runs/cell rather than restated**: a 25,000-runs/cell rate is on record for only
+three routes in it (112 h 95.24%, 116 h 96.64%, 140 h 80.13%) and nothing here shows those are all
+of them, so the bound the sample supports is what is written.
+
+**Hours still dominate once policy is controlled for, which is the check the old sampling could
+not run.** Kendall tau-b against completion inside each policy column (n = 25 routes): hours
+−0.850 to −0.934, km −0.696 to −0.759, legs −0.653 to −0.703 — hours beats both under all five
+policies, no exception. Dropping the seven doomed routes so the cliff cannot do the sorting
+(n = 18) **widens** the gap: hours −0.732 to −0.922 against km −0.542 to −0.577. Two tie-free
+confirmations: km is refuted outright by four pairs where _more_ kilometres buy _more_ completion
+(each a mode switch costing fewer hours), and two routes at identical 43-leg counts complete 60.2%
+(1,000 runs/cell — **no 25,000-runs/cell figure for the 202 h route exists in these docs, so the
+smaller sample is stated rather than a better-looking one invented**) and 0.06% (0.060% at both
+samples) at 202 and 383 hours. **So the confound was not "hours"; it was the harness confounding
+ROUTE with POLICY.**
+
+**The residual after hours tracks transport mode, and the bound this section carried was too
+tight.** "Bounded at 7.4pp" is refuted: re-measured at 125,000 runs per route, ordering all 25
+routes by hours leaves seven adjacent inversions, all seven mode switches, and the largest is
+**+8.7pp** (187 h car 61.91% → 191 h train 70.65%, 95% CI [8.37, 9.11]) with a second at
+**+8.1pp** (213 h car → 219 h bus, [7.75, 8.53]). Both intervals clear 7.4 with room. **Write it
+as a bound with its sample size attached** — at 125,000 runs per route, no adjacent pair inverts
+by more than 8.7pp against a 95pp span — and not as "within 7.4pp everywhere"; "everywhere" is a
+claim about routes nobody ran. Two smaller corrections fall out of the same re-measurement:
+**train is not monotone in hours** (180 h 70.06% against 191 h 70.65%, +0.59pp [0.24, 0.95],
+excludes zero) where this section named bus, train and truck as the monotone ones, and **the car
+inversion at 395 h/407 h does not reproduce** — it rested on 2 completions against 5 in 5,000,
+which cannot resolve a sign, and at 125,000 runs per route the order is the expected one (0.100%
+against 0.047%). The residual still cannot be separated further on this route set, because mode is
+nearly a function of hour band here and `legHours` is itself built from a per-mode overhead and
+speed.
 
 **Neither lever reaches the band alone.** Morale alone saturates at 26.6% while `collapsed` rises
 28.5% → 66.8%; starvation alone saturates at 28.1% while `gave_up` rises to 65.4%. Each deletes
@@ -32,10 +351,37 @@ everything in the 22-48 band, so one-pair-per-bucket already under-weights the h
 
 ### THE NEXT STEP, and it is not another sweep
 
-**Five of the 25 corpus routes still complete at 0.0%** — every one over 380 travel hours, i.e.
-over ~11,000 km. The aggregate is in band; the distribution is still bimodal, exactly the
-"averaging artefact" ADR 0026's addendum described. **The fixture control shows the same wall
-from the other side: 48.5% → 75.3%, above the band, with `failure_collapsed` down to 0.1%.**
+**SEVEN of the 25 corpus routes complete under 0.2%** — every one over 380 travel hours
+(383 to 510 h, 10,992 km and up). (**"Under 0.2%", not the "at or below 0.1%" this line used to
+say.** The worst of the seven, `route.scenic.r29ui5g` at 395 h, reads 0.100% over 125,000 runs
+with a 95% interval of [0.082, 0.118] that straddles 0.1; two further 125,000-run streams give
+0.123% and 0.112%, pooling to 0.118% [0.104, 0.131] — above it. Quote a bound the sample supports.) **This paragraph said FIVE for three commits and five was never
+the measurement** — the count was carried, not taken, and it understated the residual by two
+routes and 40% of it.
+
+**Re-measured at M3.11f/g on the full 25 × 5 grid, 1,000 runs per cell (5,000 per route). The
+count, the hour range and the km floor all hold exactly; the flat "0.0%" and the provenance did
+not.** Four are true zeros over 5,000 runs; three land on **3, 2 and 5** completions — written as
+counts, not rounded to 0.0%, so nobody re-derives a false absolute. **They are doomed under all
+five policies**: of the 35 cells, 30 are exactly 0 of 1,000 and the best anywhere is 3 of 1,000.
+The doom is a property of the route, not of how it is played. **Those three counts do not ORDER
+their routes and must not be read as if they did** — at 125,000 runs per route they are 383 h
+0.060%, 395 h 0.100%, 407 h 0.047%, so the 5,000-run column gets the 395/407 pair backwards. A
+handful of completions is evidence a route is doomed and is not a ranking among doomed routes.
+
+**The cliff is bounded, not located.** It lies in **(285 h, 383 h]** — 285 h completes **24.88% at
+25,000 runs per cell** (24.5% at 1,000 runs per cell; this said 15.0%) and 383 h completes 0.06%
+(0.060% at both samples). The 98-hour span between them holds no route, and
+that is a **hole in `CORPUS_PAIRS`**, which takes one pair per leg bucket, **not a measured dead
+zone**. Write "between 285 and 383 hours"; do not pick a number inside it. Independent
+corroboration that the bound is real: `HOURS_PER_HUNGER` 6 to the starving rung is ~60 hours, plus
+10 health at `HOURS_PER_STARVING_DAMAGE` 22 is 220 more — **280 hours, from two constants and no
+simulation**, five hours under the observed lower bound. The distribution either side is bimodal,
+exactly the "averaging artefact" ADR 0026's addendum described. **The fixture control shows the
+same wall from the other side: 48.5% → 75.3% → 74.0%, above the band, `failure_collapsed` 0.1%.**
+(74.0% is the committed Latin-square figure — `docs/sim-baseline.md` body and its M3.11f/g block.
+The 75.0% this line briefly carried is the REJECTED odometer's number, which never reached a
+committed baseline and must not be quoted; both baseline headers say so in as many words.)
 
 The cause is structural: there is **no recovery term anywhere in `worldTick`**. Energy floors by
 mid-run and never returns, which makes `ENERGY_TIRED` permanently true and the morale bleed
@@ -52,9 +398,17 @@ not sweep these constants a fourth time expecting a different shape.**
   rises with routed distance, selecting pairs by leg bucket preferentially selects the graph's
   worst-connected regions. Fourth instance of "the ranking, not the measurement, decides the
   shape". Belongs to the geo work.
-- **Corpus long-range payoff fell 18.0% → 14.0%, unresolved threads 55 → 63.** Expected direction
-  — runs now last long enough to schedule consequences and then arrive before resolving them —
-  but it is drifting further from the 80% target and wants its own look.
+- **Corpus long-range payoff is 24.8% with 46 unresolved threads, and the explanation this bullet
+  carried is WITHDRAWN.** It read **18.0% → 14.0%** with threads **55 → 63**, and blamed runs
+  lasting long enough to schedule consequences and then arriving before resolving them. M3.11f/g
+  moved the line to **24.8% / 46 without touching the engine** — only which policy each route is
+  played under — so a +10.8pp swing says the rate was being measured on a biased fifth of the
+  grid, **not** that runs arrive early. Both siblings withdrew this in the previous pass
+  (`docs/sim-baseline-corpus.md`, `docs/adr/0035`); the M3.11d fence above this section covers
+  completion, median legs and the ending mix only and does not reach this list, so the withdrawal
+  is written here in full rather than inherited. It is also the lowest-n line in the report — 113
+  schedules and 28 fires across 2,000 runs, where completion rests on 2,000 — still far from the
+  80% target, and it wants a bigger instrument before anyone tunes against it.
 - **Three more tests carried leg-length assumptions**, all in `world-tick.test.ts`, all now
   derived from the constants they were silently capping. ADR 0035's first addendum fixed exactly
   this bug for one constant, wrote down the general rule, and left the other three.
@@ -499,6 +853,11 @@ plan already priced at ~181 rows and then described as a data commit anyway.
 
 Supply is NOT the problem: at a world bbox every continent supplies its quota 12×–60× over, and
 **epsilon resolutions are 0**, so `--check` determinism holds at scale.
+
+> **SUPERSEDED at M3.11e — this list is history, not instructions.** Items 1-3 and 6 shipped at
+> `04f0f38`/`6961f77`; item 4's budget of 13 was re-measured to **0** and its "16 edges >450 km,
+> max 573" is now **398 edges, max 2,531**; item 5 is untouched. The live numbers are in the
+> M3.11e section at the top of this file. A fresh agent should start there.
 
 A fresh agent starts here:
 

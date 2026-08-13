@@ -4,6 +4,7 @@ import { diffReports, runCountOf } from '../diff-report.ts';
 import { formatReport } from '../format-report.ts';
 import { loadCorpusPack, loadFixturePack, loadFixtureScenarios } from '../load-pack.ts';
 import { ascending, percentile } from '../percentile.ts';
+import { POLICY_NAMES } from '../policy.ts';
 import { runMany } from '../run-many.ts';
 
 const PACK = loadFixturePack();
@@ -40,6 +41,7 @@ describe('percentile', () => {
 describe('formatReport — the engine-spec 6 shape', () => {
   it('contains every section the spec asks for', () => {
     for (const heading of [
+      'Grid cells sampled',
       'Completion rate',
       'Never-fired events',
       'Empty-pool fallbacks',
@@ -91,6 +93,72 @@ describe('formatReport — the engine-spec 6 shape', () => {
 
   it('lists beat types no event can fill', () => {
     expect(REPORT).toContain('## Beat types no event can fill');
+  });
+});
+
+describe('the report says which part of the grid it measured', () => {
+  /**
+   * Added at M3.11g, after the SECOND pairing bug. Before it, `format-report.ts` contained the
+   * string "route" zero times: two strides in a row averaged over a collapsed sample and the
+   * artifact people read carried no line that could have said so. The report is the last place
+   * this class of defect can be caught, so it prints the sample before the first rate computed
+   * over it.
+   */
+  it('names the routes and policies behind every rate below it', () => {
+    expect(REPORT).toContain('Grid cells sampled');
+    expect(REPORT).toContain(
+      `${String(SCENARIOS.length)}/${String(SCENARIOS.length)} routes x ` +
+        `${String(POLICY_NAMES.length)}/${String(POLICY_NAMES.length)} policies`,
+    );
+  });
+
+  it('does not cry truncation when the marginals are whole', () => {
+    // 200 runs over a 15-cell grid. Cells short of the grid is ordinary; a MISSING ROUTE is not,
+    // and only the second is a finding.
+    expect(REPORT).not.toContain('NEVER RUN');
+  });
+
+  it('SHOUTS when a route or a policy never ran', () => {
+    // The odometer's failure mode, made loud: one run touches one cell, so the other routes and
+    // policies are unmeasured and every rate underneath is an average over a hole.
+    const thin = runMany(PACK, SCENARIOS, {
+      runs: 1,
+      seed: 'thin',
+      policies: [],
+      diff: false,
+      json: false,
+      pack: 'fixture',
+    });
+    const report = formatReport(thin, PACK, { seed: 'thin', runs: 1, elapsedMs: 1 });
+    expect(report).toContain('NEVER RUN');
+    expect(report).toContain(`${String(SCENARIOS.length - 1)} routes`);
+    expect(report).toContain(`${String(POLICY_NAMES.length - 1)} policies`);
+  });
+
+  it('says "1 route", not "1 routes", when exactly one marginal is short', () => {
+    // REGRESSION (M3.11g). The gap clause was unconditionally plural, so the one-short case —
+    // the COMMON one, since a grid is usually missing its last cell rather than half an axis —
+    // printed "<- 1 routes NEVER RUN" in the one line whose whole job is to be read carefully.
+    //
+    // The test above cannot catch it and no run count would let it: the fixture's 3 routes and 5
+    // policies make its assertions read "2 routes" and "4 policies", both already plural. Catching
+    // a singular needs a shape that leaves exactly ONE marginal short, which is what this picks.
+    //
+    // `runs` is DERIVED, not the literal 2. `scenario = i % S` visits a distinct route per run
+    // while `i < S`, so `S - 1` runs leave exactly one route unvisited whatever S becomes — the
+    // leg-length-assumption trap this repo has now hit five times, avoided by construction.
+    const runs = SCENARIOS.length - 1;
+    const short = runMany(PACK, SCENARIOS, {
+      runs,
+      seed: 'one-short',
+      policies: [],
+      diff: false,
+      json: false,
+      pack: 'fixture',
+    });
+    const report = formatReport(short, PACK, { seed: 'one-short', runs, elapsedMs: 1 });
+    expect(report).toContain('1 route ');
+    expect(report).not.toContain('1 routes');
   });
 });
 

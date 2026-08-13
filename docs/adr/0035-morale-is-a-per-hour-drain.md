@@ -1,6 +1,6 @@
 # 0035 — Morale is a per-hour drain, and the failure mode is conserved
 
-- **Status:** Accepted, implemented 2026-08-12 (M3.10b). **The band IS met at 47.3% — see the addendum; the Consequences section's prediction was wrong.** Superseded in its NUMBERS by the second addendum (M3.11d, 41.0%): the constants below are no longer the shipped ones. The reasoning is intact and the conservation result is now measured three times.
+- **Status:** Accepted, implemented 2026-08-12 (M3.10b). **The band IS met at 47.3% — see the addendum; the Consequences section's prediction was wrong.** Superseded in its NUMBERS by the second addendum (M3.11d, 41.0%): the constants below are no longer the shipped ones. The reasoning is intact and the conservation result is now measured three times. **Every corpus number in this ADR was measured on a harness that welded each route to ONE policy (ADR 0038); the aggregates are ~1.64pp off at 25,000 runs per cell (~1.70pp at 2,000) and the PER-ROUTE figures were not measurements at all. Corrected in place at M3.11f/g, and where a figure could not be re-derived it is marked rather than restated. The shipped completion is 41.9%, not 41.0%.**
 - **Relates to:** ADR 0014 (the drift curve is denominated in hours), ADR 0026 (the leg model
   and the survivability addendum), ADR 0034 (generated corpus routes)
 
@@ -133,22 +133,53 @@ economy did not regress. What moved is which routes it is measured on.
 
 ### What the measurement actually says
 
-Completion is a near-deterministic function of **one** number, the route's total travel hours,
-and of neither legs nor kilometres. Per route, 25 corpus scenarios, 200 runs each, all five
-policies:
+Completion is dominated by **one** number, the route's total travel hours, and by neither legs nor
+kilometres.
+
+> **M3.11f: the table below is NOT a per-route measurement and must not be quoted as one.** Its
+> caption said "200 runs each, all five policies". The harness paired runs as
+> `scenario = i % 25; policy = i % 5`, so each route saw exactly **one** policy for all 200 of its
+> runs — see ADR 0038. Policy swings a mid-range route by up to 94pp, so these cells are a route
+> crossed with an arbitrary policy. They are left standing because they were also measured on the
+> **pre-M3.11d** constants, which are no longer in the engine, so they cannot be re-derived
+> without reverting `world-tick.ts`. **The corrected, properly-crossed per-route table for the
+> SHIPPED constants is in `docs/sim-baseline-corpus.md`.** The claim the table was cited for —
+> that hours is the variable — survived re-measurement and got stronger; the thresholds did not.
 
 | total hours | 112 | 116 | 138 | 151 | 173 | 191 |  213 |  222 |  260 |  285 | 383+ |
 | ----------- | --: | --: | --: | --: | --: | --: | ---: | ---: | ---: | ---: | ---: |
 | completion  | 82% | 85% | 63% | 58% | 36% | 19% | 1.0% | 1.5% | 0.0% | 0.0% | 0.0% |
 
-Monotone, with a cliff at ~200 hours and a floor of zero past ~250. **The two train routes settle
-that hours is the variable rather than distance**, because they break the km ordering: 6,090 km
-over 36 legs is 151 hours by train and completes 58.0%, while 5,790 km over 34 legs is 213 hours
-by car and completes 1.0%. Same distance, same leg band, four times the completion.
+**The two train routes settle that hours is the variable rather than distance**, because they
+break the km ordering: 6,090 km over 36 legs is 151 hours by train, while 5,790 km over 34 legs is
+213 hours by car. Same distance, same leg band, and the faster-in-hours route wins. This ADR read
+those as 58.0% against 1.0%, "four times the completion"; on the shipped constants and the full
+25 × 5 grid they are **85.23% against 46.09% at 25,000 runs per cell, 1.8×** (85.4% against 46.4%
+at 1,000 runs per cell — same pair, 25× the sample). The multiple was wrong, the direction was
+not.
+
+**On the shipped constants the ordering is confirmed with policy controlled for**, which is the
+check the welded sampling could not run. Kendall tau-b against completion computed inside each
+policy column (n = 25): hours −0.850 to −0.934, km −0.696 to −0.759, legs −0.653 to −0.703. Hours
+beats both under all five policies. Two routes at _identical_ 43-leg counts complete 60.2%
+(1,000 runs per cell — no 25,000-runs/cell figure for the 202 h route is recorded anywhere, so the
+sample it was measured at is stated instead) and 0.06% (0.060% at both samples), at 202 and 383
+hours.
 
 The cliff is not a coincidence, and the arithmetic predicts it: hunger reaches `HUNGER_STARVING`
-at ~60 elapsed hours, and 10 points of health at one per `HOURS_PER_STARVING_DAMAGE` is 140 more.
-**Death at 200 hours, calculable from the constants without running the sim.**
+at ~60 elapsed hours, and 10 points of health at one per `HOURS_PER_STARVING_DAMAGE` is another
+10 × 14 = 140. **Death at 200 hours, calculable from the constants without running the sim.**
+
+**M3.11f — and the same arithmetic on the SHIPPED constants is the best corroboration in this
+ADR.** `HOURS_PER_STARVING_DAMAGE` is now 22, so the same sum is 60 + 10 × 22 = **280 hours**. The
+measured cliff on the corrected 25 × 5 grid lies in **(285 h, 383 h]** — 285 h completes **24.88%
+at 25,000 runs per cell** (24.5% at 1,000) and 383 h completes 0.06% (0.060% at both samples). The
+prediction lands within five hours of the observed lower bound, having been derived from two
+constants and no simulation. Note that the corrected measurement moved the cliff **from ~250 h to
+past 285 h**: the welded harness put four routes between 250 and 300 hours at ~0%, and they in
+fact complete **21.1% to 26.1% at 25,000 runs per cell** — 22.32 / 26.14 / 21.06 / 24.88 for the
+260 / 272 / 281 / 285 h routes. That band read 21.3% to 25.8% at 1,000 runs per cell, and the top
+end is the part that moved: **26.14% is above the 25.8% this sentence used to state.**
 
 ### The second hypothesis, priced and rejected
 
@@ -200,6 +231,17 @@ Morale alone drives `gave_up` 52.2% → 6.5% and `collapsed` 28.5% → **66.8%**
 does the mirror image. This is the conservation the original ADR named, measured a third time,
 and it is the reason a single-lever sweep saturates around 26-28% whichever lever you pick.
 
+> **M3.11f/g — every row of that table was scored on the welded harness (ADR 0038), and the two
+> failure columns are the ones to distrust.** The weld put the collapse-heavy policies on the
+> routes where they collapse hardest — `adversarial-worst-case` collapsed 64.9% on its five welded
+> routes against 39.1% over all 25, `risk-taker` 38.4% against 27.9% — and under-sampled `gave_up`
+> the same way on `random` (59.8% welded against 74.4%). On the shipped row that is worth 6.3pp of
+> `collapsed` and 5.4pp of `gave_up`: the SHIPS row is really **41.9% / 25 legs / 19.8% collapsed /
+> 38.3% gave_up**. **The conservation result itself is unaffected** — it is a within-row contrast
+> between levers measured the same way, and each row's bias is the same bias. The chosen constants
+> are not shown wrong by this. But the two columns are a fifth of the grid, and a fourth sweep must
+> re-measure rather than diff against them.
+
 ### Decision — re-derive both denominators, together
 
 `HOURS_PER_MORALE` **12 → 20**, `HOURS_PER_HUNGER_DAMAGE` **28 → 44**,
@@ -211,28 +253,64 @@ unchanged: the hunger rungs stay 8/10, the 2:1 damage ratio holds, morale stays 
 meter kills rather than whether runs survive. The ratio is ~1.6× on both meters, which is roughly
 what the hour content of a run grew by.
 
-**The ending mix is the argument, not the completion rate**: arrival 41.0%, gave_up 32.8%,
-collapsed 26.1% — the first corpus measurement in this project where neither failure mode is the
+**The ending mix is the argument, not the completion rate**: arrival 41.9%, gave_up 38.3%,
+collapsed 19.8% — the first corpus measurement in this project where neither failure mode is the
 majority ending, against a shipped state where `gave_up` alone was 52.2%. Both mechanics sit far
-clear of the pillar-1 floor that refused 32/16 at M3.10b. Median legs rose 20 → 26, so the
+clear of the pillar-1 floor that refused 32/16 at M3.10b. Median legs rose 20 → 25, so the
 completion did not come from runs getting shorter.
+
+> **M3.11f/g re-measured those three: 41.0 / 32.8 / 26.1 → 41.9 / 38.3 / 19.8, with no engine
+> constant changing.** The PROPERTY this section rests on holds — neither failure mode is the
+> majority — but the **collapsed:gave_up ratio it implies moved 0.79 → 0.52 on sampling alone.**
+> Do not quote the ratio from this ADR; quote it from `docs/sim-baseline-corpus.md`.
 
 ### What this costs, stated rather than buried
 
-- **The fixture control leaves the band: 48.5% → 75.3%, with `failure_collapsed` at 0.1%.**
+- **The fixture control leaves the band: 48.5% → 75.3% → 74.0%, with `failure_collapsed` at 0.1%.**
+  M3.11f/g annotation: 75.3% was the welded-sampling figure; the shipped Latin square measures
+  **74.0%** (`docs/sim-baseline.md:137` and its body, `PROGRESS` M3.11g). This ADR's status fence
+  scopes itself to "every CORPUS number", so it did not reach this fixture bullet and this was the
+  one M3.11d figure in the file left unannotated. `failure_collapsed` 0.1% is unchanged.
   Starvation is now vestigial on that pack. It is the empty-registry control the goldens are
   built on rather than a balance target (ADR 0022, ADR 0032) and its header has said since M3.10b
   that an engine change necessarily moves it — but 0.1% is worth naming, because it is the same
   wall seen from the other side. **One per-hour economy cannot serve a 112-hour route and a
   510-hour one.** Softening it enough to give the long route a chance necessarily makes the short
   one trivial. The two baselines now bracket that gap instead of hiding it.
-- **Five of 25 corpus routes still complete at 0.0%** — every one over 380 travel hours, which is
-  over ~11,000 km. The distribution is still bimodal, and the aggregate being in band is again an
-  average over which side of the cliff the pair set samples, exactly as ADR 0026's addendum
-  warned. **This is recorded as unfinished, not as fixed.**
-- Long-range payoff fell 18.0% → 14.0% and unresolved threads rose 55 → 63, because runs now last
-  long enough to schedule consequences and then arrive before resolving them. Same effect the
-  first addendum recorded when median legs rose; it wants its own look.
+- **SEVEN of 25 corpus routes complete under 0.2%** — every one over 380 travel hours (383
+  to 510 h), 10,992 km and up. **This bullet said FIVE, and five was a number nobody measured.**
+  Corrected to seven at M3.11 close, and **the seven survived M3.11f's re-measurement on the full
+  25 × 5 grid unchanged — the count, the 383-510 h range and the 10,992 km floor are all exact.**
+  What changed is the provenance and the flat zero: it is 5,000 runs per route (1,000 in each of
+  five policy cells), not 1,000 against one policy, and four are true zeros over 5,000 while three
+  land on 3, 2 and 5 completions — written as counts so nobody re-derives a false absolute.
+  **They are doomed under all five policies**: of the 35 cells, 30 are exactly 0 of 1,000 and the
+  best anywhere is 3 of 1,000, so the doom is a property of the route rather than of play. That
+  is 28% of the pair set rather than 20%. **"Under 0.2%" rather than the "at or below 0.1%" this
+  bullet used to say**, because the bound has to survive its own interval: the worst of the seven
+  (`route.scenic.r29ui5g`, 395 h) reads 0.100% at 125,000 runs, 95% CI [0.082, 0.118], straddling
+  0.1, and two further 125,000-run streams put it at 0.123% and 0.112% — pooled, 0.118%
+  [0.104, 0.131], ABOVE 0.1. All seven are comfortably under 0.2% on every stream measured; none
+  is resolved at 0.1%. **The cliff is bounded, not located** — it lies in
+  (285 h, 383 h], where 285 h completes **24.88% at 25,000 runs per cell** (24.5% at 1,000 runs
+  per cell; this bullet said 15.0%) and 383 h completes
+  0.06% (0.060% at both samples). The 98-hour span between them holds no route, and that is a hole in `CORPUS_PAIRS`, which
+  takes one pair per leg bucket, **not a measured dead zone**. The distribution either side is
+  bimodal exactly as ADR 0026's addendum warned, and the aggregate being in band is again an
+  average over which side of the cliff the pair set samples. **Recorded as unfinished, not fixed.**
+- **The reverse error is worth naming, because it is what the correction actually caught.** The
+  welded harness reported **nine** routes under 1%, not seven — it also had `illicit.r1nta1ib`
+  (260 h) at 0.2% and `cheapest.rtps1ek` (281 h) at 0.6%, because it happened to weld both to
+  `greedy-safe`, their single worst policy. Their true rates are **22.3% and 21.1%**. The doc
+  reached the right seven by excluding two routes its own harness called dead — a correct set by a
+  compensating error. Under the corrected cross the "383-510 h, 10,992 km and up" framing is true
+  rather than lucky.
+- Long-range payoff **is 24.8% with 46 unresolved threads**. This bullet read 18.0% → 14.0% and
+  55 → 63, and blamed runs lasting long enough to schedule consequences and then arriving before
+  resolving them. **That explanation is withdrawn**: unwelding the harness moved the line to 24.8% / 46 without
+  touching the engine, so the rate was being measured on a biased fifth of the grid. It is also
+  the lowest-n line in the report — 113 schedules and 28 fires across 2,000 runs — and wants a
+  bigger instrument before anyone tunes against it.
 - Goldens moved and should have: three runs get further (9 → 13, 14 → 16, 15 → 16 legs) and two
   convert from failure to arrival. Six are unchanged in outcome.
 

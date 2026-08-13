@@ -153,17 +153,112 @@
   mode and hands the runs to the other meter. Only both together clear the floor.
 
   THE ENDING MIX IS THE HEALTHIEST THIS PACK HAS EVER MEASURED, and it is the number that
-  matters more than completion: arrival 41.0%, gave_up 32.8%, collapsed 26.1%. Neither failure
+  matters more than completion: arrival 41.9%, gave_up 38.3%, collapsed 19.8%. Neither failure
   mode is the majority ending, where the shipped state had gave_up at 52.2%. Both mechanics stay
   well clear of the pillar-1 floor that refused 32/16 at M3.10b.
 
-  WHAT WAS MEASURED, AND WHAT WAS REFUTED. Completion on this pack is a near-deterministic
-  function of ONE number — the route's total travel hours — and not of legs or kilometres. Per
-  route, 25 scenarios, 200 runs each: under 150 hours completes 55-85%, over 250 hours completed
-  0.0% before this change. The two train routes settle it, because they break the km ordering:
-  6,090 km over 36 legs is 151 hours by train and completed 58.0%, while 5,790 km over 34 legs
-  is 213 hours by car and completed 1.0%. Same distance, same leg band, four times the
-  completion, and the discriminator is hours.
+  Those three read 41.0 / 32.8 / 26.1 until M3.11f/g re-measured them on an unwelded harness. The
+  32.8 is not a typo for 32.9: EVERY ending share in this report divides by the ENDING total, not
+  by the run count, and the two are not equal — 2,002 endings over 2,000 runs, because two runs
+  emit `detained_at_border` AND a terminal ending. 657/2002 is 32.82%. The
+  PROPERTY holds — neither failure mode is the majority — but the RATIO it rests on does not:
+  collapsed:gave_up moved 0.79 to 0.52 with no engine constant changing. The M3.11d sweep below
+  was scored against the welded split, so read the M3.11f/g block at the end of this header before
+  quoting that table's `collapsed` and `gave_up` columns for anything.
+
+  WHAT WAS MEASURED, AND WHAT WAS REFUTED. Completion on this pack is dominated by ONE number —
+  the route's total travel hours — and not by legs or kilometres. THE VARIABLE SURVIVED M3.11f's
+  re-measurement and came out stronger; THE THRESHOLDS DID NOT, because the per-route figures
+  behind them came from a harness that showed each route exactly one of the five policies. Every
+  number in this paragraph is taken from the full 25 x 5 grid, and EACH ONE CARRIES ITS SAMPLE,
+  because this header quotes two different samples of the same quantities and the larger one wins:
+
+    under 150 hours     80.2% to 96.8%    1,000 runs/cell   (this said 55-85%)
+    250 to 300 hours    21.1% to 26.1%   25,000 runs/cell   (this said 0.0%; nothing is near zero
+                                                             until 383 h)
+
+  THE 250-300 BAND READ "21.3% to 25.8%" AT 1,000 RUNS/CELL AND THAT IS SUPERSEDED, not merely
+  refined. The band holds exactly four routes — 260, 272, 281 and 285 h — and at 25,000 runs/cell
+  they read 22.32 / 26.14 / 21.06 / 24.88, so the top of the band is ABOVE the 25.8% ceiling this
+  file used to print. The under-150 band keeps its 1,000-runs/cell sample rather than being
+  restated, because a 25,000-runs/cell rate is recorded here for only three routes in it
+  (112 h 95.24%, 116 h 96.64%, 140 h 80.13%) and nothing in this file shows those are all of them.
+  Do not re-derive its extremes; re-measure them or leave the sample attached.
+
+  The two train routes still settle that the variable is hours rather than distance, because they
+  break the km ordering — but by a smaller multiple than this paragraph claimed: 6,090 km over 36
+  legs is 151 hours by train and completes 85.23%, while 5,790 km over 34 legs is 213 hours by car
+  and completes 46.09% (both at 25,000 runs/cell; 85.4% and 46.4% at 1,000). Same distance, same
+  leg band, 1.8x the completion. It said "four times", which was the welded 58.0% against the
+  welded 1.0%.
+
+  HOURS DOMINATE WITH POLICY CONTROLLED FOR, which is the check the old sampling could not run at
+  all. Kendall tau-b against completion, computed inside each policy column (n=25 routes): hours
+  -0.850 to -0.934, km -0.696 to -0.759, legs -0.653 to -0.703. Hours beats both under all five
+  policies with no exception and no near-miss. Dropping the seven doomed routes so the cliff
+  cannot do the sorting (n=18) WIDENS the gap rather than closing it: hours -0.732 to -0.922
+  against km -0.542 to -0.577 and legs -0.402 to -0.447.
+
+  TWO TIE-FREE CHECKS, worth more than the correlation. km is refuted outright by four pairs
+  where MORE kilometres buy MORE completion, every one of them a mode switch that costs fewer
+  hours. THIS PARAGRAPH USED TO QUOTE SIX OF THESE EIGHT RATES AT 1,000 RUNS/CELL, thirty lines
+  above better ones — the same rule this file states twice below applies to it, so each rate now
+  carries its sample and the six are superseded:
+
+    5,990 km/222 h bus   50.4%   [1,000]   to  6,090 km/151 h train  85.23%  [25,000]
+    6,356 km/260 h truck 22.32%  [25,000]  to  7,334 km/180 h train  70.06%  [25,000]
+    8,306 km/281 h bus   21.06%  [25,000]  to  8,353 km/191 h train  70.65%  [25,000]
+    8,741 km/285 h car   24.88%  [25,000]  to  9,026 km/202 h train  60.2%   [1,000]
+
+  The six that moved, in the order they are read above: 151 h 85.4 -> 85.23, 260 h 21.9 -> 22.32,
+  180 h 69.7 -> 70.06, 281 h 21.3 -> 21.06, 191 h 69.7 -> 70.65, 285 h 24.5 -> 24.88. All four
+  pairs still point the same way and the check is unweakened. The 222 h and 202 h routes are LEFT AT 1,000
+  runs/cell because no 25,000-runs/cell figure for either is recorded anywhere in these docs —
+  state the bound the sample supports rather than round a better-looking one into existence.
+  Legs are refuted by a natural experiment: two routes at exactly 43 legs complete 60.2%
+  [1,000 runs/cell] and 0.06% [0.060% at both 1,000 and 25,000 runs/cell], and the hours are 202
+  against 383.
+
+  MONOTONICITY WITHIN A MODE, RE-MEASURED AT 25,000 RUNS PER CELL — 125,000 per route, 3.125M
+  runs over the grid, zero engine errors, on a seed stream that shares no prefix with the
+  harness's. Ordering by hours inside each mode: CAR is strictly monotone across all ten of its
+  routes, BUS across all five, and TRUCK is monotone only weakly, because its four routes above
+  490 h are all exactly 0 of 125,000 — a tie, not an ordering. TRAIN IS THE EXCEPTION, and train
+  is the mode this file used to name as monotone: 180 h completes 70.06% (87,569 of 125,000)
+  against 191 h at 70.65% (88,312), +0.59pp with a 95% interval of [0.24, 0.95] that excludes
+  zero. One inversion, and it is in train rather than in car.
+
+  THE CAR INVERSION THIS FILE CLAIMED DOES NOT REPRODUCE. It read 395 h at 0.04% against 407 h at
+  0.10% — 2 completions against 5 in 5,000, which cannot resolve a sign either way. At 125,000
+  runs per route the order is the expected one: 395 h completes 0.100% (125 completions) and
+  407 h 0.047% (59), a gap of +0.05pp at roughly five standard errors. THE RULE THIS COST: a
+  count in the single digits is not a measurement and two of them are not a comparison. Do not
+  order two routes by completions you can count on one hand — either measure until the interval
+  closes, or write the counts and decline to order them.
+
+  THE RESIDUAL TRACKS MODE, NOT DISTANCE, AND IT IS LARGER THAN THIS FILE SAID. Ordering all 25
+  routes by hours leaves SEVEN adjacent inversions, and ALL SEVEN are mode switches — every one a
+  slower mode giving way to a faster one. At 125,000 runs per route, with 95% intervals:
+
+    112 h car    95.24%  ->  116 h bus    96.64%   +1.40pp  [1.25, 1.56]
+    140 h car    80.13%  ->  151 h train  85.23%   +5.10pp  [4.81, 5.40]
+    187 h car    61.91%  ->  191 h train  70.65%   +8.74pp  [8.37, 9.11]
+    213 h car    46.09%  ->  219 h bus    54.24%   +8.14pp  [7.75, 8.53]
+    260 h truck  22.32%  ->  272 h car    26.14%   +3.82pp  [3.48, 4.15]
+    281 h bus    21.06%  ->  285 h car    24.88%   +3.82pp  [3.49, 4.15]
+    383 h truck   0.06%  ->  395 h car     0.10%   +0.04pp  [0.02, 0.06]
+
+  THIS FILE SAID "within 7.4pp everywhere". IT IS NOT. The largest inversion is +8.7pp and a
+  second breaches at +8.1pp; both intervals clear 7.4 with room, so this is a refutation rather
+  than a rounding difference. The honest form is A BOUND WITH ITS SAMPLE SIZE ATTACHED: over this
+  route set, at 125,000 runs per route, no adjacent pair in the hours ordering inverts by more
+  than 8.7pp (upper end of the interval 9.1pp) against a 95pp span. Quote it that way and not as
+  "everywhere" — "everywhere" is a claim about routes nobody ran. The residual cannot be resolved
+  further on THIS route set either:
+  mode is nearly a function of hour band here (all six truck routes sit at 260-510 h, all four
+  train routes at 151-202 h) and `legHours` is itself built from a per-mode overhead and speed,
+  so "hours" partly IS "mode". Separating them needs routes that hold hours fixed across modes,
+  and none exist in `CORPUS_PAIRS`.
 
   THE PAIR SET WAS PRICED AND IS NOT THE FIX. Capping CORPUS_PAIRS at the phase plan's 13,000 km
   ceiling moves completion 19.2% -> 23.7% — still below the floor — and applied on top of this
@@ -172,47 +267,244 @@
   one-pair-per-bucket rule already UNDER-weights the hard tail at 20%. Trimming the set would
   make the sim measure an easier world than the map offers. CORPUS_PAIRS is untouched.
 
-  STILL OPEN, and it is structural rather than tuning. Five of the 25 corpus routes still
-  complete at 0.0% — every one over 380 travel hours, i.e. over ~11,000 km. The distribution is
-  bimodal exactly as ADR 0026's addendum described it, and the aggregate being in band is again
-  an average over which side of the cliff the pair set samples. No per-hour constant fixes this:
+  STILL OPEN, and it is structural rather than tuning. SEVEN of the 25 corpus routes complete
+  UNDER 0.2% — every one over 380 travel hours (383 to 510 h), 10,992 km and up. The COUNT,
+  the hour range and the km floor all survived M3.11f/g's re-measurement unchanged, to the hour and
+  to the kilometre. What did not survive is the flat "0.0%" and the provenance sentence under it,
+  which described 1,000 runs per route against ONE policy each:
+
+    383 h / 10,992 km   0.060%  (3 of 5,000)     490 h / 16,983 km   0.000%  (0 of 5,000)
+    395 h / 15,444 km   0.040%  (2 of 5,000)     494 h / 17,521 km   0.000%  (0 of 5,000)
+    407 h / 15,296 km   0.100%  (5 of 5,000)     498 h / 17,243 km   0.000%  (0 of 5,000)
+                                                 510 h / 17,999 km   0.000%  (0 of 5,000)
+
+  Four are true zeros over 5,000 runs; three are not, and are written as 3, 2 and 5 completions
+  rather than rounded to 0.0% so nobody re-derives a false absolute from a rounding artefact.
+  That is 28% of the pair set, not 20%.
+
+  THOSE THREE COUNTS DO NOT ORDER THEIR ROUTES, and the table above must not be read as if they
+  did. Re-measured at 125,000 runs per route the same three read 383 h 0.060% (75 completions),
+  395 h 0.100% (125) and 407 h 0.047% (59): the 5,000-run column gets 383 h right to three
+  decimal places and gets the 395/407 pair BACKWARDS. Keeping them as counts is what makes that
+  visible. Read them as evidence that the routes are doomed, never as a ranking among them — see
+  the car-inversion paragraph above for what ranking them cost.
+
+  AND "UNDER 0.2%" RATHER THAN "AT OR BELOW 0.1%", because a bound has to survive its own interval.
+  The worst of the seven is `route.scenic.r29ui5g` (395 h), and 0.100% at 125,000 runs is 125
+  completions with a 95% interval of [0.082, 0.118] — it straddles 0.1 and cannot settle which side
+  the route is on. Two further independent 125,000-run streams read 0.123% [0.104, 0.143] and
+  0.112% [0.094, 0.131]; pooled over 250,000 runs that is 0.118% [0.104, 0.131], ABOVE 0.1. So the
+  route is not "at or below 0.1%" and the claim was a precision the sample never had. Every one of
+  the seven is comfortably under 0.2% on every stream measured, and that is the form to quote.
+  Same rule as the car inversion: either measure until the interval closes, or state the bound the
+  sample supports.
+
+  DOOMED UNDER ALL FIVE POLICIES, which is the question the welded harness could not ask. Those
+  seven span 35 route x policy cells at 1,000 runs each: 30 of the 35 are exactly 0 of 1,000, and
+  the single best cell anywhere in the set is 3 of 1,000. No policy rescues any of them, not by a
+  percentage point — so the doom is a property of the ROUTE, not of how it is played.
+
+  THE CLIFF IS BOUNDED, NOT LOCATED, and the old text overstated what was known. It lies in
+  (285 h, 383 h]: 285 h completes 24.88% at 25,000 runs/cell (24.5% at 1,000; this said 15.0%)
+  and 383 h completes 0.06% (0.060% at both samples). The 98-hour
+  span between them contains NO ROUTE, and that is a hole in `CORPUS_PAIRS` — which takes one pair
+  per leg bucket — rather than a measured dead zone. Write "between 285 and 383 hours"; do not
+  pick a number inside it. The distribution either side is bimodal exactly as ADR 0026's addendum
+  described, and the aggregate being in band is again an average over which side of the cliff the
+  pair set samples. No per-hour constant fixes this:
   drain is linear in hours and there is no recovery term anywhere in the engine, so survival is
   a fixed hour budget that cannot scale with the journey. The fixture control shows the same
   wall from the other side — see docs/sim-baseline.md. The next move is a recovery mechanic or a
   route-length contract the generator enforces, not another sweep. See docs/adr/0035.
 
-  ALSO MOVED, and expected: long-range payoff 18.0% -> 14.0% with unresolved threads 55 -> 63.
-  Runs now last long enough to schedule consequences and then ARRIVE before resolving them, which
-  is the same effect ADR 0035 recorded when median legs rose. It is a queue-drain question, not
-  a director bug, but it is drifting further from the 80% target and wants its own look.
+  LONG-RANGE PAYOFF IS 24.8% WITH 46 UNRESOLVED THREADS, and the explanation this paragraph used
+  to carry is WITHDRAWN. It read 18.0% -> 14.0% with threads 55 -> 63, and blamed runs lasting
+  long enough to schedule consequences and then arriving before resolving them. Unwelding the
+  harness moved it to 24.8% / 46 WITHOUT TOUCHING THE ENGINE — only which policy each route is
+  played under — so a +10.8pp swing says the rate was being measured on a biased fifth of the
+  grid, not that runs arrive early. It is also the lowest-n line in this report by an order of
+  magnitude: 113 schedules and 28 fires across 2,000 runs, where completion rests on 2,000. Still
+  far from the 80% target, still wants its own look, and it wants a bigger instrument before
+  anyone tunes against it.
+
+  M3.11f/g REBASELINED BOTH PACKS AFTER A SAMPLING BUG IN THE HARNESS. NO ENGINE FILE MOVED.
+  `runMany` paired run `i` as `scenario = i % S; policy = i % P`, which enumerates the grid only
+  when `gcd(S, P) === 1`. On this pack S is 25 and P is 5, so `i % 5` was fully determined by
+  `i % 25`: every route was welded to exactly ONE policy and the sim visited 25 of its 125
+  route x policy cells.
+
+  THAT SENTENCE USED TO READ "every number in this file above this block is that biased fifth."
+  It was true when this block was appended to an all-welded header and it is FALSE NOW: the
+  M3.11f/g passes inserted corrected paragraphs ABOVE it — :173-174 (the full 25 x 5 grid), :222
+  (monotonicity re-measured at 25,000 runs/cell), :241 (125,000 runs/route with intervals), and
+  the doomed-route and tau-b tables — so as written it retroactively disowned the very
+  measurements that replaced the biased fifth. A blanket that names a POSITION ("everything
+  above") rather than a MEASUREMENT cannot survive an insertion above it; each corrected
+  paragraph now carries its own sample tag instead, and that is the durable form.
+
+  WHAT SHIPPED IS A LATIN SQUARE, `cellFor(i, S, P) = (i % S, (i % S + floor(i / S)) % P)`, and
+  that is the pairing the body below was generated by. IT HAS TWO PROPERTIES AND THEY DO NOT HOLD
+  UNDER THE SAME CONDITIONS, so do not read them as one sentence:
+
+    (a) a bijection onto the grid, for every S and P — coprime or not, S < P, either count 1.
+        UNCONDITIONAL.
+    (b) a prefix of max(S, P) runs already touches every route and every policy — the property
+        that matters, because `--runs` is a round number and the grid size is not.
+        ONLY WHEN S >= P.
+
+  (b) FAILS ON 55 OF THE 720 ENUMERATED SHAPES, all of them and exactly those with 2 <= S < P —
+  INCLUDING THE FIXTURE PACK'S OWN 3 x 5, where a prefix of max(3, 5) = 5 runs reaches 3 of 3
+  routes but only 3 of 5 policies. This pack is 25 x 5 and sits on the safe side; the fixture is
+  not, and is saved by covering its 15-cell grid six times over at the default rather than by the
+  property. Do not quote (b) unconditionally. docs/adr/0038's addendum has the enumeration and the
+  variant that closes the gap.
+
+  An intermediate mixed-radix odometer (policies on the low digit, scenarios on the high one) was
+  written, measured and REJECTED inside the same pass: it has (a) and fails (b) for every S > 1 < P,
+  so at the `--runs=100` default CLAUDE.md 5 documents it sampled 20 of 25 routes — always the same
+  five dropped, the five profiles of the HIGHEST LEG BUCKET, and five of the seven near-zero routes
+  — and reported completion 10.6pp optimistic. No number in this file was ever produced by it and
+  none is quoted from it; do not reconstruct an odometer story from this file. The enumeration that
+  killed it, and the near-miss one operator away from the Latin square, are in docs/adr/0038 and
+  its addendum.
+
+  THIS IS A MEASUREMENT CORRECTION, NOT A BALANCE CHANGE, and that is provable rather than
+  asserted. Replaying the OLD pairing against the corrected tree reproduces the previous body of
+  this file LINE FOR LINE — the only two lines that differ are the wall-clock pair this header
+  already documents as machine-dependent — and the fixture's too. So the engine returns identical
+  output for identical (seed, scenario, policy) triples, and 100% of the movement below is
+  attributable to which cells got sampled. The goldens are unmoved for the same reason:
+  `packages/engine` was not touched, and `git status` on it is empty.
+
+    Completion rate            41.0% -> 41.9%   (821 -> 838 completions; mid-band before and after)
+    Median legs                   26 -> 25
+    Long-range payoff rate     14.0% -> 24.8%   (largest mover; see the note above)
+    Beat fill rate             29.2% -> 28.0%
+    Repeat-event rate          67.9% -> 67.5%
+    Complication rate          60.3% -> 60.2%   (ATTACH_PERCENT is 60)
+    Universal choices picked   38.7% -> 38.3%
+    Unresolved threads            63 -> 46
+    Checks rolled             21,063 -> 20,501
+    Endings   arrival          41.0% -> 41.9%   (821 -> 838 runs)
+              gave_up          32.8% -> 38.3%   (657 -> 766)
+              collapsed        26.1% -> 19.8%   (522 -> 396)
+              detained          0.1% -> 0.1%    (two runs under both — unmoved)
+    cash leg25 p10/p50/p90   873/1966/3280 -> 616/1946/3248
+    Modifier chips / check       6.4 -> 6.4    (6.3677 -> 6.3740 — the invariant that proves it)
+
+  THE MARGINALS DID NOT MOVE; ONLY THE JOINT DID, and on this pack not even the route marginal's
+  membership. The scenario index is `i % 25` under BOTH pairings, character for character, so
+  every one of the 2,000 runs plays exactly the route it played before and each route still gets
+  exactly 80 runs; each policy still gets exactly 400. What changed is which policy plays which
+  route, for 1,600 of the 2,000 runs (80.0%) — and the cell count with it, 25 of 125 to 125 of
+  125, every cell visited exactly 16 times. That is also why the aggregate barely moved while
+  every per-route number was worthless: the weld's biases cancelled to within ~1.64pp in the
+  average, AT 25,000 RUNS/CELL. The 41.0% headline was right by luck, not by construction —
+  weighting all 125 cells equally, the true figure is 42.53% and the welded diagonal's is 40.89%.
+  The same quantity reads ~1.70pp at 2,000 runs/cell (42.53% against 40.83%), which is the figure
+  quoted lower in this header; they are two samples of one number, not a disagreement.
+
+  THE ENDING SHIFT IS DECOMPOSED RATHER THAN WAVED AT, because 6.3pp of a failure mode deserves
+  better than "sampling". The weld put the two collapse-heavy policies on the routes where they
+  collapse hardest, and the gave_up-heavy ones where they give up least. Measured on the
+  1,000-runs-per-cell grid, welded subset against all 25 routes — 400 is the per-POLICY count in
+  a 2,000-run report, never a per-cell one, and a cell in that report holds 80 runs welded or 16
+  corrected:
+
+    adversarial-worst-case   collapsed  64.9% welded   vs  39.1% over all routes
+    risk-taker               collapsed  38.4% welded   vs  27.9% over all routes
+    random                   gave_up    59.8% welded   vs  74.4% over all routes
+    greedy-fast              gave_up     3.5% welded   vs  15.1% over all routes
+
+  Re-weighting those is the whole of the -6.3pp collapsed / +5.4pp gave_up move.
+
+  WHAT DID NOT MOVE IS THE MORE USEFUL HALF. Empty-pool fallbacks and uneventful legs stay 0.0%,
+  errors and turn-cap hits stay 0, and chips/check is 6.37 under both pairings with `Checks over
+  7 chips` at 0 and the worst pull at 7. The fix executes 100 route x policy combinations this
+  harness had NEVER run, and not one produced an engine error, an empty pool or a turn-cap hit.
+  That is a robustness result bought by the new coverage, not a regression. The chip line is the
+  cleanest control of the lot: it is a property of the registry and the check tags, independent
+  of which route or policy is running, and it is invariant to three significant figures.
+
+  ONE PER-POLICY FINDING THE GRID MAKES UNAVOIDABLE, not caused by this fix and not repaired by
+  it. Over 25,000 runs each: random 21.3%, greedy-safe 24.9%, greedy-fast 63.9%, risk-taker
+  42.4%, adversarial-worst-case 60.1%. `policy.ts`'s own header says a rate under `random` and
+  under `adversarial-worst-case` bound the range a real player lives in. They do not — adversarial
+  has the SECOND-HIGHEST completion of the five, 39pp above random. The intended lower bound is in
+  the upper half of the range. This was invisible before, because every policy was seen on a
+  different, non-overlapping fifth of the routes and the columns were not comparable.
+
+  READING THE DIFF THAT PRODUCED THIS FILE: `city.the_address_that_moved/ask_in_the_shop` crossed
+  1.9% -> 2.0% and left the "Choices picked <2%" list, so that section is one line shorter and
+  diff-report.ts, which compares by LINE INDEX on purpose, reported every line below it as moved.
+  The `energy` and `hygiene` rows, the flag block and the whole beat-type block are textually
+  identical on both sides. Do not read them as findings. THAT SECTION IS THE NOISIEST IN THE
+  REPORT and one departure is the whole of its membership change: rows are sorted by share with
+  ties broken by key, so a one-run move swaps two adjacent rows and the line-index diff reports
+  both. Read it by key, never by position.
+
+  WHERE THE LATIN SQUARE EARNS ITS KEEP IS BELOW THE GRID, NOT AT 2,000 RUNS. At 2,000 this pack
+  is covered exactly 16 times over and the shipped pairing and the rejected odometer are the same
+  sample — 125 of 125 cells, every cell 16 times, route marginal 80, policy marginal 400 under
+  both, so the choice between them is worth nothing here. It is worth everything at the counts
+  people actually type: at `--runs=100` the Latin square runs 25/25 routes and 5/5 policies with
+  a cell-weighted completion of 42.3%, against the full grid's 42.5%; the odometer ran 20/25 and
+  53.2%. In one line: WHEN S >= P, A PREFIX OF max(S, P) RUNS TOUCHES EVERY ROUTE AND EVERY
+  POLICY — and 25 x 5 is such a shape, which is why the claim is safe HERE and not in general.
+  Both figures are re-measured at 25,000 runs per cell rather than the 16 the first pass used.
+
+  WHAT THE COVERAGE LINE CANNOT SEE, stated as a bound rather than left to be discovered: it
+  catches HOLES, not IMBALANCE. Between the round counts, a prefix can carry real bias with BOTH
+  marginals reading full and the line therefore silent, because the cells it did reach are reached
+  unequal numbers of times. Measured on this 25 x 5 grid at 2,000 runs per cell, against the
+  full grid's cell-weighted 42.5%:
+
+    --runs=39     +8.4pp optimistic     25/25 routes, 5/5 policies — the line says nothing
+    --runs=50     +1.5pp                25/25 routes, 5/5 policies — the line says nothing
+    --runs=100    -0.2pp                25/25 routes, 5/5 policies
+    --runs=125    exactly 0             and at every multiple of 125, this file's 2,000 included
+
+  So the bias is zero only at multiples of the 125-cell grid — among round numbers, 250 and up.
+  That is still strictly better than the old stride, which was ~1.70pp off at EVERY R — that
+  figure at 2,000 runs/cell, the sample this table is taken at; the same bias is ~1.64pp at
+  25,000 runs/cell, quoted above — because it
+  could never reach more than 25 of the 125 cells; the Latin square's error is a truncation
+  artefact that closes, not a permanent weld. If you run a count that is not a multiple of 125,
+  read the number as a sample and not as the grid.
+
+  THE REPORT GAINED A LINE, which is the +1 in the body length. `Grid cells sampled` prints the
+  sample before the first rate computed over it, because until now this format contained the
+  string "route" zero times — a pairing bug shipped, was baselined and was argued from, and the
+  artifact everyone reads said nothing about which part of the space had been measured.
 -->
 
 # Sim Report — seed=base contentVersion=c10af194 runs=2000
 
-Completion rate             41.0%   (target band 30-50%)
-Median legs                    26
+Grid cells sampled            125   (of 125 — 25/25 routes x 5/5 policies)
+Completion rate             41.9%   (target band 30-50%)
+Median legs                    25
 Median in-game days            10
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
-Long-range payoff rate      14.0%   (target 80%)
-Beat fill rate              29.2%
-Repeat-event rate           67.9%
-Complication rate           60.3%   (target 60%)
-Modifier chips / check        6.4   (target 3-7, over 21063 checks)
+Long-range payoff rate      24.8%   (target 80%)
+Beat fill rate              28.0%
+Repeat-event rate           67.5%
+Complication rate           60.2%   (target 60%)
+Modifier chips / check        6.4   (target 3-7, over 20501 checks)
 Checks under 2 chips            0   (each one draws nothing the registry exists for)
 Checks over 7 chips             0   (0.0% of checks; worst pulls 7)
-Universal choices offered   37.6%   (share of choices shown)
-Universal choices picked    38.7%   (over ~30% means they are flattening the corpus)
-Unresolved threads             63
+Universal choices offered   37.5%   (share of choices shown)
+Universal choices picked    38.3%   (over ~30% means they are flattening the corpus)
+Unresolved threads             46
 
-Wall clock                 1871 ms   (0.94 ms/run)
-Extrapolated to 20,000     18.7 s   (target <30 s)
+Wall clock                 1800 ms   (0.90 ms/run)
+Extrapolated to 20,000     18.0 s   (target <30 s)
 
 ## Endings
-  ending.arrival_quiet                41.0%
-  ending.failure_gave_up              32.8%
-  ending.failure_collapsed            26.1%
+  ending.arrival_quiet                41.9%
+  ending.failure_gave_up              38.3%
+  ending.failure_collapsed            19.8%
   ending.detained_at_border            0.1%
 
 ## Never-fired events
@@ -226,64 +518,63 @@ Extrapolated to 20,000     18.7 s   (target <30 s)
   rest.the_shared_room/leave_the_bulk_behind           0.0%   <- never picked
   road.the_hitchhiker/u:use_an_item                    0.0%   <- never picked
   weather.the_storm_you_cannot_drive_through/find_the_mechanic_first   0.0%   <- never picked
-  weather.the_storm_you_cannot_drive_through/see_to_the_damage   0.0%   <- never picked
   weather.the_storm_you_cannot_drive_through/u:use_an_item   0.0%   <- never picked
   breakdown.the_roadside_repair/u:offer_to_work_for_it   0.0%
-  breakdown.the_roadside_repair/fix_it_yourself        0.0%
   breakdown.the_roadside_repair/find_someone_who_can   0.0%
-  crime.the_offer/put_it_somewhere_they_will_not_look   0.0%
-  authority.the_file_catches_up/answer_the_questions   0.0%
+  weather.the_storm_you_cannot_drive_through/see_to_the_damage   0.0%
   authority.the_file_catches_up/make_it_go_away        0.0%
-  breakdown.the_roadside_repair/nurse_it_along         0.0%
+  breakdown.the_roadside_repair/fix_it_yourself        0.0%
+  crime.the_offer/put_it_somewhere_they_will_not_look   0.0%
   authority.the_file_catches_up/u:bluff_with_documents   0.0%
-  breakdown.the_roadside_repair/u:pay_the_asking_price   0.0%
-  weather.the_storm_you_cannot_drive_through/u:ask_for_help   0.0%
+  authority.the_file_catches_up/answer_the_questions   0.0%
   authority.the_file_catches_up/u:run                  0.0%
   authority.the_file_catches_up/u:bribe                0.0%
   city.the_address_that_moved/u:let_the_companion_handle_it   0.0%
+  road.the_hitchhiker/u:let_the_companion_handle_it    0.0%
+  weather.the_storm_you_cannot_drive_through/u:ask_for_help   0.0%
   road.the_hitchhiker/leave_them_at_the_junction       0.0%
-  road.the_hitchhiker/u:let_the_companion_handle_it    0.1%
+  breakdown.the_roadside_repair/nurse_it_along         0.1%
   rest.the_shared_room/u:threaten                      0.1%
   encounter.the_other_traveller/u:let_the_companion_handle_it   0.1%
-  border.night_crossing/offer_something                0.2%
-  border.night_crossing/u:offer_to_work_for_it         0.2%
-  breakdown.the_roadside_repair/u:threaten             0.2%
+  border.night_crossing/offer_something                0.1%
+  border.night_crossing/u:offer_to_work_for_it         0.1%
+  transit.the_wrong_carriage/u:offer_to_work_for_it    0.2%
+  transit.the_wrong_carriage/pay_the_difference        0.2%
+  breakdown.the_roadside_repair/u:pay_the_asking_price   0.2%
+  transit.the_wrong_carriage/talk_your_way_through     0.2%
   crime.the_offer/u:create_a_distraction               0.2%
   crime.the_offer/u:offer_to_work_for_it               0.2%
-  weather.the_storm_you_cannot_drive_through/shelter_and_lose_the_day   0.2%
-  transit.the_wrong_carriage/talk_your_way_through     0.2%
-  transit.the_wrong_carriage/pay_the_difference        0.2%
-  rest.the_shared_room/sleep_on_your_bag               0.2%
-  rest.the_shared_room/see_to_your_feet                0.2%
-  transit.the_wrong_carriage/u:offer_to_work_for_it    0.3%
+  breakdown.the_roadside_repair/u:threaten             0.2%
+  rest.the_shared_room/see_to_your_feet                0.3%
+  rest.the_shared_room/sleep_on_your_bag               0.3%
   filler.the_long_quiet_stretch/listen_to_the_engine   0.3%
   opportunity.work_for_a_day/u:walk_away               0.3%
+  border.night_crossing/present_papers                 0.3%
+  border.night_crossing/u:bluff_with_documents         0.3%
+  weather.the_storm_you_cannot_drive_through/u:run     0.3%
+  rest.the_shared_room/u:create_a_distraction          0.3%
   weather.the_storm_you_cannot_drive_through/push_on_through_it   0.4%
-  rest.the_shared_room/u:create_a_distraction          0.4%
-  border.night_crossing/present_papers                 0.4%
-  border.night_crossing/u:bluff_with_documents         0.4%
-  city.the_address_that_moved/u:plead_ignorance        0.4%
-  rest.the_shared_room/pay_for_a_private_room          0.5%
+  weather.the_storm_you_cannot_drive_through/shelter_and_lose_the_day   0.4%
   authority.the_file_catches_up/stand_your_ground      0.6%
   encounter.the_other_traveller/u:walk_away            0.6%
-  city.the_address_that_moved/work_it_out_yourself     0.6%
+  city.the_address_that_moved/u:plead_ignorance        0.6%
+  rest.the_shared_room/u:pay_the_asking_price          0.6%
   encounter.the_other_traveller/look_at_their_leg      0.6%
-  filler.the_long_quiet_stretch/u:wait_it_out          0.7%
-  weather.the_storm_you_cannot_drive_through/u:run     0.7%
-  filler.the_long_quiet_stretch/keep_going             0.7%
-  border.night_crossing/keep_it_out_of_sight           0.8%
-  rest.the_shared_room/u:pay_the_asking_price          0.8%
-  road.the_hitchhiker/u:run                            0.8%
-  transit.the_wrong_carriage/u:pay_the_asking_price    0.9%
+  filler.the_long_quiet_stretch/keep_going             0.6%
+  filler.the_long_quiet_stretch/u:wait_it_out          0.6%
+  rest.the_shared_room/pay_for_a_private_room          0.6%
+  city.the_address_that_moved/work_it_out_yourself     0.6%
+  border.night_crossing/keep_it_out_of_sight           0.9%
+  road.the_hitchhiker/u:run                            1.1%
+  transit.the_wrong_carriage/u:lie_about_destination   1.2%
   encounter.the_other_traveller/share_what_you_have    1.3%
-  opportunity.work_for_a_day/take_the_day_rate         1.5%
-  crime.the_offer/say_no                               1.5%
-  transit.the_wrong_carriage/u:lie_about_destination   1.6%
-  crime.the_offer/u:bribe                              1.6%
-  road.the_hitchhiker/drive_on                         1.8%
-  opportunity.work_for_a_day/haggle_the_rate_first     1.8%
+  crime.the_offer/u:bribe                              1.5%
+  crime.the_offer/say_no                               1.6%
+  transit.the_wrong_carriage/u:pay_the_asking_price    1.6%
+  opportunity.work_for_a_day/take_the_day_rate         1.7%
   border.night_crossing/u:bribe                        1.8%
-  city.the_address_that_moved/ask_in_the_shop          1.9%
+  road.the_hitchhiker/drive_on                         1.8%
+  opportunity.work_for_a_day/haggle_the_rate_first     2.0%
 
 ## Flags
   written: 20   read: 5
@@ -291,9 +582,9 @@ Extrapolated to 20,000     18.7 s   (target <30 s)
   read but NEVER WRITTEN:   (none)   <- gate can never open
 
 ## Resource trajectories (p10/p50/p90 by leg)
-  cash     leg5: 1165/2167/4212   leg15: 867/2018/3896   leg25: 873/1966/3280
-  health   leg5: 9/10/10   leg15: 4/7/9   leg25: 2/4/7
-  morale   leg5: 6/8/10   leg15: 2/6/10   leg25: 2/6/9
+  cash     leg5: 1145/2156/4264   leg15: 909/1948/4080   leg25: 616/1946/3248
+  health   leg5: 9/10/10   leg15: 4/7/9   leg25: 2/5/7
+  morale   leg5: 6/8/10   leg15: 2/6/9   leg25: 2/6/10
   energy   leg5: 0/1/6   leg15: 0/0/0   leg25: 0/0/0
   hygiene  leg5: 0/1/3   leg15: 0/0/0   leg25: 0/0/0
 

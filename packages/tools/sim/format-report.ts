@@ -56,6 +56,7 @@ export function formatReport(summary: SimSummary, pack: ContentPack, meta: Repor
   lines.push(
     `# Sim Report — seed=${meta.seed} contentVersion=${pack.version.slice(0, 8)} runs=${String(meta.runs)}`,
     '',
+    coverageLine(summary.coverage),
     `Completion rate            ${pct(summary.completionRate).padStart(6)}   (target band 30-50%)`,
     `Median legs                ${String(summary.medianLegs).padStart(6)}`,
     `Median in-game days        ${String(summary.medianDays).padStart(6)}`,
@@ -162,6 +163,46 @@ export function formatReport(summary: SimSummary, pack: ContentPack, meta: Repor
   }
 
   return lines.join('\n');
+}
+
+/**
+ * THE SAMPLE, printed before the first rate that is computed over it.
+ *
+ * Until M3.11g this file contained the string "route" zero times. Two pairing bugs in a row
+ * therefore ran, shipped and were argued from with nothing in the artifact people read saying
+ * which part of the space had been measured: the old stride reported an average over 25 of 125
+ * cells, and the odometer that replaced it reported an average over the 20 SHORTEST of 25 routes
+ * at the documented default run count. Both reports looked healthy. That is the same failure the
+ * pairing itself had — a collapsed space with a confident number on top of it — so the fix is not
+ * only a better stride, it is a report that cannot hide the next one.
+ *
+ * `cells` short of the grid is ordinary: `--runs` stopped mid-grid and every cell it did reach is
+ * still weighted fairly. A MARGINAL short of its total is the finding, because a route or a
+ * policy that never ran is a hole in the average rather than a smaller sample of it.
+ */
+function coverageLine(coverage: SimSummary['coverage']): string {
+  const missingRoutes = coverage.routesAvailable - coverage.routes;
+  const missingPolicies = coverage.policiesAvailable - coverage.policies;
+  // Singular matters here because the one-short case is the COMMON one — a grid is usually
+  // missing its last cell, not half its axis — and "1 routes NEVER RUN" in the line whose whole
+  // job is to be read carefully reads as a bug in the harness rather than a finding about it.
+  // Both forms are passed rather than derived: appending "s" gives "policys", which the
+  // regression test caught on its first run. English pluralisation is not a one-liner and this
+  // is not the file to attempt one in.
+  const count = (n: number, one: string, many: string): string =>
+    `${String(n)} ${n === 1 ? one : many}`;
+  const gaps = [
+    missingRoutes > 0 ? count(missingRoutes, 'route', 'routes') : null,
+    missingPolicies > 0 ? count(missingPolicies, 'policy', 'policies') : null,
+  ].filter((gap) => gap !== null);
+
+  const warning = gaps.length === 0 ? '' : `   <- ${gaps.join(' and ')} NEVER RUN`;
+  const grid =
+    `(of ${String(coverage.cellsAvailable)} — ` +
+    `${String(coverage.routes)}/${String(coverage.routesAvailable)} routes ` +
+    `x ${String(coverage.policies)}/${String(coverage.policiesAvailable)} policies)`;
+
+  return `${pad('Grid cells sampled', 27)}${String(coverage.cells).padStart(6)}   ${grid}${warning}`;
 }
 
 /** Share of fired events that the same run had already seen — the repetition signal. */
