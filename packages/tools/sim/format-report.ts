@@ -1,7 +1,12 @@
-import { ATTACH_PERCENT, collectFlagUsage, type ContentPack } from '@odyssey/engine';
+import {
+  ATTACH_PERCENT,
+  collectFlagUsage,
+  RECENCY_WINDOW,
+  type ContentPack,
+  type EventId,
+} from '@odyssey/engine';
 import { ascending, percentile } from './percentile.ts';
 import { type SimSummary } from './run-many.ts';
-import { type SimRun } from './run-one.ts';
 
 /**
  * The engine-spec §6 report, in the shape the spec specifies.
@@ -63,9 +68,29 @@ export function formatReport(summary: SimSummary, pack: ContentPack, meta: Repor
     `Never-fired events         ${String(summary.neverFired.length).padStart(6)}`,
     `Empty-pool fallbacks       ${pct(summary.fallbackRate).padStart(6)}   (target <2%)`,
     `Uneventful legs            ${pct(summary.uneventfulRate).padStart(6)}   (target <2%)`,
+    // ADR 0029 D7 item 4: quiet and empty must stay DISTINGUISHABLE. They sit adjacent rather
+    // than apart because that is what makes the distinction readable — the two lines above are
+    // content gaps and want fixing, this one is the design working and wants leaving alone.
+    // Sharing a target band with them would be the fold the fourth `SelectionResult` arm exists
+    // to prevent, so it prints no target at all until M3.12b sets one.
+    `Quiet legs (designed)      ${pct(summary.quietRate).padStart(6)}   (odds gate — designed silence, NOT the two gaps above)`,
+    // The CEILING, printed as a ceiling. Decision 3's identity is realised quiet share =
+    // (1 − P) × (1 − forcedFireShare), so this line alone decides whether a quiet-ratio target
+    // is reachable at ANY base — and doing that arithmetic here means the next person to read
+    // the report does not have to know the identity to see the bound.
+    `Forced-fire legs           ${pct(summary.forcedFireShare).padStart(6)}   (beat slot or queue due — never gated; caps quiet at ${pct(1 - summary.forcedFireShare)})`,
     `Long-range payoff rate     ${pct(summary.payoffRate).padStart(6)}   (target 80%)`,
     `Beat fill rate             ${pct(summary.beatFillRate).padStart(6)}`,
     `Repeat-event rate          ${pct(repeatRate(usable)).padStart(6)}`,
+    // THE LESS CONFOUNDED OF THE TWO — NOT AN UNCONFOUNDED ONE. Sharing units on both sides
+    // removes the SCALING confound behind the line above (`unique` is pool-capped, `fired` is
+    // not); it does NOT remove SEQUENCE COMPRESSION, which is what deleting draws actually is.
+    // Measured null at a 30% quiet share, director untouched: corpus +7.6pp, fixture −5.7pp.
+    // THE SIGN IS PACK-DEPENDENT, so M3.12b must subtract a null baseline before attributing
+    // any movement here to the director. `draws/run` is printed beside it because it is the
+    // scale of the compression, and because a line that already prints cannot gain text without
+    // moving under `sim:diff`.
+    `Near-repeat rate           ${pct(nearRepeatRate(usable)).padStart(6)}   (a redraw inside recency's own ${String(RECENCY_WINDOW)}-event window; ${drawsPerRun(usable).toFixed(2)} draws/run — LESS confounded than the line above, NOT unconfounded: subtract a null baseline before reading it)`,
     `Complication rate          ${pct(summary.complicationRate).padStart(6)}   (target ${String(ATTACH_PERCENT)}%)`,
     `Modifier chips / check     ${summary.meanChipsPerCheck.toFixed(1).padStart(6)}   ${
       hasRegistry
@@ -205,8 +230,37 @@ function coverageLine(coverage: SimSummary['coverage']): string {
   return `${pad('Grid cells sampled', 27)}${String(coverage.cells).padStart(6)}   ${grid}${warning}`;
 }
 
-/** Share of fired events that the same run had already seen — the repetition signal. */
-function repeatRate(runs: readonly SimRun[]): number {
+/**
+ * The two runs these read are narrowed to the one field they use, so a test can hand them
+ * sequences without building a 35-field `SimRun` that would be 34 fields of noise.
+ */
+type FiredSequence = { readonly firedEvents: readonly EventId[] };
+
+/**
+ * Share of fired events that the same run had already seen — TRUE, AND LENGTH-SENSITIVE.
+ *
+ * `1 - unique/fired` over a whole run. It is not wrong: the player really was shown that share
+ * of re-runs. But it is not comparable across a change that changes HOW MANY events a route
+ * draws, and the quiet-leg gate is exactly such a change. `unique` is bounded by the pool (13
+ * events on the corpus) while `fired` is not, so deleting draws raises `unique/fired` and the
+ * rate falls with the director untouched. MEASURED by deleting fired events from real corpus
+ * sequences and changing nothing else: 26.88 fired/run reads 67.5%, 17.64 fired/run reads 56.9%.
+ *
+ * IT IS KEPT, AND KEPT EXACTLY. Three reasons, in order. It is a true measurement and deleting
+ * a true measurement to fix a reading problem is a worse trade. No redefinition can be both
+ * unconfounded at a positive quiet share and arithmetically identical at `BASE_EVENT_ODDS =
+ * 1:0` — the two properties are jointly unsatisfiable, so a replacement would have to move a
+ * number the M3.12a fence exists to hold still. And the M3.12a precedent is that the report
+ * GAINS lines rather than changing them, for the same reason.
+ *
+ * So `Near-repeat rate` sits under it as the BETTER of the two, and the ADR 0029 addendum
+ * records that this line must not be read as a repetition signal across a base change.
+ *
+ * "Better" is the whole claim, and it was briefly overstated as "unconfounded" — see
+ * `nearRepeatRate`. Both lines move under a quiet share with the director untouched; the one
+ * below moves LESS and for a reason a null baseline can subtract.
+ */
+export function repeatRate(runs: readonly FiredSequence[]): number {
   let repeats = 0;
   let total = 0;
   for (const run of runs) {
@@ -218,6 +272,96 @@ function repeatRate(runs: readonly SimRun[]): number {
     }
   }
   return total === 0 ? 0 : repeats / total;
+}
+
+/**
+ * Share of draws that redrew an event the director's own `recency` factor was still penalising.
+ *
+ * ## RETRACTION (M3.12a follow-up). THIS IS NOT AN UNCONFOUNDED METRIC
+ *
+ * It shipped advertised as one — "the quiet share cancels, so what is left is a property of the
+ * DIRECTOR rather than of how often it was asked". **That is false, and it was measured false
+ * with the director LITERALLY UNCHANGED**: deleting draws from real 1:0 sequences with a
+ * non-periodic mask, at a 30% quiet share, over 2,000 runs and ten mask seeds —
+ *
+ * | pack    |    at 1:0 | compressed 30% |    null delta |
+ * | ------- | --------: | -------------: | ------------: |
+ * | corpus  | **25.99%** |     **33.57%** | **+7.6pp**    |
+ * | fixture | **62.29%** |     **56.63%** | **−5.7pp**    |
+ *
+ * Comparable in magnitude to `repeatRate`'s confound (−9.1pp corpus, −6.9pp fixture on the same
+ * sequences), and **THE SIGN IS PACK-DEPENDENT**.
+ *
+ * ## What it does and does not remove
+ *
+ * Denominating both sides in fired events removes the SCALING confound — `unique` is capped by
+ * the pool while `fired` is not, which is what makes `repeatRate` fall mechanically. It does NOT
+ * remove SEQUENCE COMPRESSION, and a quiet share is exactly a compression: deleting a draw pulls
+ * the draws on either side of it closer together in window terms. That cuts two ways at once and
+ * which one dominates depends on the baseline repeat density —
+ *
+ * - **sparse repeats (corpus, 13 events over 26.9 draws):** most repeat pairs sit OUTSIDE the
+ *   5-draw window; compression pulls them IN and the rate RISES.
+ * - **dense repeats (fixture, 62% of draws already near-repeats):** most pairs are already
+ *   inside the window; deleting a member DESTROYS the pair and the rate FALLS.
+ *
+ * ## The requirement this puts on M3.12b
+ *
+ * **Subtract a null baseline before attributing any movement to the director.** Re-run this
+ * compression against the 1:0 sequences at the realised quiet share, and read the residual. On
+ * the corpus a rise of up to ~8pp at a 30% quiet share is the NULL EXPECTATION, not a finding.
+ *
+ * The transferable lesson, and why it is in the ADR: the same review that proved **no metric can
+ * be both unconfounded at `q > 0` and arithmetically identical at 1:0** — the two properties are
+ * jointly unsatisfiable, which is D1's reason for adding a line rather than fixing one — then
+ * advertised the added line as unconfounded. An impossibility proof constrains the replacement
+ * as much as the thing replaced.
+ *
+ * IT IS STILL KEPT AND STILL THE BETTER LINE: it moves less, it moves for a reason that is
+ * measurable and subtractable, and `repeatRate`'s scaling confound is genuinely gone from it.
+ *
+ * The window is `RECENCY_WINDOW - 1` draws back, not `RECENCY_WINDOW`, and the off-by-one is
+ * load-bearing rather than sloppy: `recency` returns 1 at `gap >= RECENCY_WINDOW` and `gap` is
+ * inclusive of the current draw, so the penalty is still live for gaps 1 through
+ * `RECENCY_WINDOW - 1`. Measuring one draw wider would count redraws the factor had already
+ * forgiven and the number would stop meaning "the director overrode its own penalty".
+ */
+export function nearRepeatRate(runs: readonly FiredSequence[]): number {
+  const window = RECENCY_WINDOW - 1;
+  let near = 0;
+  let total = 0;
+
+  for (const run of runs) {
+    const fired = run.firedEvents;
+    for (let i = 0; i < fired.length; i += 1) {
+      total += 1;
+      const from = i - window < 0 ? 0 : i - window;
+      for (let j = from; j < i; j += 1) {
+        if (fired[j] === fired[i]) {
+          near += 1;
+          break;
+        }
+      }
+    }
+  }
+
+  return total === 0 ? 0 : near / total;
+}
+
+/**
+ * Draws per run — the confounder behind BOTH repetition lines, printed so it cannot hide.
+ *
+ * It was added as "the confounder behind `Repeat-event rate`". It is the confounder behind
+ * `Near-repeat rate` too: a fall in draws/run is a compressed sequence, and compression moves
+ * the near-repeat rate on its own (see `nearRepeatRate`). Read this figure BEFORE either rate —
+ * it is the size of the null effect both of them carry.
+ *
+ * Over ALL runs rather than usable ones would divide by a different population than the rates
+ * above it; the caller already passes the usable set.
+ */
+function drawsPerRun(runs: readonly FiredSequence[]): number {
+  if (runs.length === 0) return 0;
+  return runs.reduce((sum, run) => sum + run.firedEvents.length, 0) / runs.length;
 }
 
 function tally(items: readonly string[]): Map<string, number> {

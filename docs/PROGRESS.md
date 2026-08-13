@@ -5,6 +5,213 @@
 
 ---
 
+## M3.12a — the quiet-leg gate, plumbed and fenced at `BASE_EVENT_ODDS = 1:0` (uncommitted, tree left dirty for review)
+
+**SHIPPED.** The quiet-leg gate exists end to end — `director/quiet-gate.ts`, `director/event-odds.ts`,
+the `legOddsFactors` multiplier set, a fourth `SelectionResult` arm, and two new report lines — and
+it is wired at `BASE_EVENT_ODDS = 1:0`, i.e. P = 1 exactly, so **no leg can be quiet yet**. M3.12b is
+the one-constant change that sets a real base. ADR 0029 plus its three addenda is the write-up;
+`docs/adr/0029` is authoritative over everything below.
+
+**THE FENCE HELD, and the fence is the entire claim of this milestone.** Verified again at the end
+of this session, after the doc edits:
+
+- `packages/engine/src/__tests__/__fixtures__/golden-runs.json` — sha256
+  `e26770a7661a9bed42f73bf829be77b1bbd822e2266986abb3a50f058dae3a09`, 13,250 bytes, and **`git diff`
+  on it is empty**. `golden:update` was never run.
+- `pnpm sim:diff -- --runs=2000` and `pnpm sim:diff -- --pack=corpus --runs=2000` both report
+  **"No change"**.
+- Both report BODIES against `git show HEAD:` are **additive only**: exactly **three inserted lines
+  per pack** (`Quiet legs (designed)`, `Forced-fire legs`, `Near-repeat rate`), **zero deleted and
+  zero changed**, apart from the volatile `Wall clock` / `Extrapolated` pair that `diff-report.ts`
+  already ignores.
+
+**Judge the goldens by CONTENT, never by `git status`.** `pnpm golden:update` re-emits a different
+layout every time regardless of whether anything moved (prettier reflows the single-element arrays),
+so "did the goldens move?" is _unanswerable_ from a dirty-file list. The sha256 above is the check.
+
+**THE GATE ALWAYS DRAWS. It does not short-circuit at P = 1**, and that is deliberate: a
+short-circuit would mean the branch M3.12b runs was never executed at M3.12a and the fence would be
+proving the wrong thing. Measured at 2,000 runs per pack: **20,731 fixture draws and 38,165 corpus
+draws, every one of them fired, zero quiet.** (Those are selections minus forced-fire:
+31,153 − 10,422 and 53,766 − 15,601.) The M3.12b code path is exercised today, not dormant.
+
+### Three real behaviour changes, all declared, all no-ops at 1:0 and all live at M3.12b
+
+These are **behaviour**, not instrumentation — they change what the run does, not what the report
+says about it, which is exactly why ADR 0029 Decision 6's sweep missed them (see below).
+
+1. **`recency` counts DRAWS, not legs** (`scoring-factors.ts`). The unit is what the player READ.
+   `[bribe] [nothing] [nothing] [nothing] [bribe]` is five screens with the repeat plainly visible;
+   a leg that showed nothing buffers nothing.
+2. **`tag-saturation` windows FIRED events** (`tag-saturation.ts`) — history entries are filtered on
+   `eventId !== null`, so a window that promises `TAG_WINDOW` fired events delivers them.
+3. **`tension.ts` resets a high-tension streak across a quiet leg.** `tension.ts:60`'s
+   `if (entry.eventId === null) break` was **dead code** before M3.12a and became live behaviour in a
+   commit whose diff does not contain the file. A quiet leg IS the breather, so easing the next leg
+   as well spends the remedy twice.
+
+**`cooldownLegs` deliberately STAYS wall-clock legs** (`hard-filters.ts`). The split is
+**engine-owned presentation shading in draws, authored world pacing in legs**: twelve values in the
+pack were written by a human against a field named for its unit, and a montage stretch under a draws
+unit would freeze every cooldown across it. `flags`' `ttlLegs` stays legs for the same reason. **The
+unit question has no default answer — a sweep that mechanically "fixes" everything it finds is as
+wrong as one that finds nothing.**
+
+### ADR 0029 Decision 6's list of three instruments was INCOMPLETE — the real count was six
+
+Decision 6 was written while reading `run-many.ts`, so it found what was in that file, in that
+file's vocabulary ("instruments" ⇒ reported numbers). Half the real population is behaviour. Two
+further adversarial passes took 3 → 6 → 8 sites.
+
+**The one that matters for M3.12b: `Repeat-event rate` falls ~10pp at a 30% quiet share WITH THE
+DIRECTOR UNCHANGED** — `fired` shrinks while `unique` is capped by the 13-event corpus pool. It was
+the report's **only** leg-sensitive number with a non-zero reading (`fallbackRate` and
+`uneventfulRate` both read exactly 0.0% on both packs). It is kept exactly as-is, because no
+redefinition can be both unconfounded at `q > 0` and arithmetically identical at 1:0 — jointly
+unsatisfiable — and the fence requires the second.
+
+**Its replacement `Near-repeat rate` is LESS confounded but NOT unconfounded, and the original claim
+that it was has been RETRACTED.** Re-measured with the director literally unchanged (draws deleted
+from the real 1:0 sequences, non-periodic mask, 2,000 runs, ten mask seeds):
+
+| pack    | at 1:0 | at 30% quiet | **null delta** |
+| ------- | -----: | -----------: | -------------: |
+| corpus  | 25.99% |       33.57% |     **+7.6pp** |
+| fixture | 62.29% |       56.63% |     **−5.7pp** |
+
+**THE SIGN IS PACK-DEPENDENT** — sparse repeats get pulled INTO the window by compression, dense
+repeats get DESTROYED by it, and which dominates is a property of the pack's baseline repeat
+density. There is no window width or denominator that fixes this.
+
+> **M3.12b MUST SUBTRACT A NULL BASELINE before attributing any movement in either repetition line
+> to the director.** On the corpus a RISE of up to ~8pp at a 30% quiet share is the NULL
+> EXPECTATION, not a finding. The ADR's own instrument table said the opposite ("a rise is the real
+> finding") until addendum III corrected it.
+
+### M3.12b IS BLOCKED — two blockers, neither of them a tuning
+
+**Do not open M3.12b by changing `BASE_EVENT_ODDS`.** Both blockers are milestone-sized.
+
+#### Blocker 1 — MONTAGE LEGS DO NOT EXIST, so the montage multiplier is dead code
+
+**Measured this session, both packs: `montageLegs` is `[]` on every route.** Corpus 25 routes /
+**931 legs** / 0 montage; fixture 3 routes / **50 legs** / 0 montage. Nothing is being filtered — the
+set is empty.
+
+**Cause:** `packages/engine/src/route/leg-plan.ts:263` gates montage on `segments.length > target`,
+and on the 692-node slice the edges are long enough that **every path has fewer edges than its leg
+target**, so the condition is never true.
+
+**Consequences, both of which caught agents out already:**
+
+- The `montage × 0.3` multiplier in `director/quiet-gate.ts:82` is **dead code**. It is correct
+  code; it just has no inputs.
+- **ADR 0029 Decision 7 item 2 — "montage legs should be quiet most of the time" — is UNMEASURABLE.**
+  It would be computed over a class with zero members. The ADR's arithmetic around it (a 7:3 base
+  puts a montage leg at P = 41%, so quiet 59% of the time) is not wrong, it is simply about nothing.
+- **Two agent reports drew conclusions from this empty set before an adversarial check caught it.**
+  If you find yourself reasoning about montage-leg behaviour, check `montageLegs.length` first.
+
+**DEFERRED to its own piece of work by the human on 2026-08-13.** Three candidate fixes exist and
+**none has been measured or chosen** — record them as alternatives, not as a plan:
+
+1. **Relax the leg-planner condition** (`leg-plan.ts:263`) so montage can trigger without needing
+   more segments than legs.
+2. **Change route generation** so paths carry more edges.
+3. **Split the geo slice's long edges.** At a 450 km cap, **398 of 1,215 edges exceed it (32.8%),
+   max 2,531 km**; splitting every one needs **~570 midpoint nodes**. `densify-corridors.ts` has
+   never been built.
+
+#### Blocker 2 — THE COMPLETION DISTRIBUTION IS BIMODAL, and the aggregate hides it
+
+**Seven of 25 corpus routes complete under 1%** — every one over 380 travel hours (**383 to 510 h**),
+**km floor 10,992** — and they are **doomed under ALL FIVE policies**, including `risk-taker` and
+`greedy-fast`. The aggregate **41.9% is comfortably in the 30-50% band while the distribution is
+not**: the corpus is a mixture of routes that mostly complete and routes that essentially never do.
+
+**This needs a recovery mechanic or a route-length contract. Both are milestones; neither is a
+tuning**, and the hour economy has already been re-derived twice (M3.10b, M3.11d) trying to reach
+these routes without trivialising the short ones. One per-hour economy with no recovery term cannot
+make both a 112-hour fixture route and a 510-hour corpus route interesting.
+
+### Also open (carried, not closed)
+
+- **`forcedFireShare` is 29.0% corpus / 33.5% fixture over SELECTIONS**, where ADR 0029 Decision 3
+  assumed ~42-54%. **Materially high**: a given `(1 − P)` yields ~1.4× more quiet legs on the corpus
+  than the ADR's targets were set against, so **Decision 7's quiet-ratio targets are all set against
+  the wrong denominator** and must be re-read before M3.12b picks a base. The gate can reach at most
+  71.0% of corpus selections, so realised quiet caps at `0.710 × (1 − P)`.
+- **Three fenced rates are still on LEG denominators** — `complicationRate` (`presentedLegs`),
+  `uneventfulRate` and `fallbackRate` (`attemptedLegs`) — and these are **mixed-unit subtractions**:
+  a leg-INDEX sum minus per-SELECTION counts. The 0.59% corpus error is exact **only at 1:0** and
+  **grows at exactly the milestone it was deferred to**, because the absolute error is pinned at 315
+  selections while the remainder shrinks: **q=0% 0.589% · q=10% 0.655% · q=20% 0.738% · q=30% 0.844%
+  · q=40% 0.986%**. The fix is to **count the subtrahends and the minuend over one population** —
+  **NOT** "divide by selections", which would throw away the subtraction the three rates exist to
+  have. M3.12b deliverable; it was deferred because re-cutting `complicationRate` now would put a
+  `-` line in the baseline diff and kill the fence.
+- **`geo:verify`: two named-pair endpoints are degree-1**, which makes route diversity impossible on
+  the final hop.
+- **The route-generation budget fails at p90/max.**
+- **Six ferry edges are missing** (the graph's six are all western-Mediterranean).
+- **`golden:update` re-emits a different layout every run**, so "did the goldens move?" cannot be
+  answered from `git status`. Compare the sha256.
+
+### This session's `docs/` changes (JOB 1 — four review defects, no code touched)
+
+Four documentation defects from an adversarial review, all verified against the tree before writing.
+**Nothing under `packages/` was edited**; the fence was re-verified after.
+
+1. **ADR 0029's 400-run `forcedFireShare` table is LEGS-denominated** (the column literally counts
+   legs) while the 2,000-run table is over SELECTIONS, so the "agrees with the 400-run figures
+   above" claim spanned two units and the 29.0%-vs-29.0% match was a rounding coincidence. The
+   table is now labelled LEGS, the claim is **withdrawn**, and the 2,000-run table now prints
+   **both** denominators (corpus **29.2% legs / 29.0% selections**; fixture 33.5% either way) so no
+   comparison crosses a unit. The 400-run row is also flagged as **not reproducible** — the shipped
+   harness gives 6,242 / 10,708 legs, not 6,234 / 11,025, and its prose claims "the sim's own three
+   policies" when `POLICY_NAMES` has had five since the walking skeleton.
+2. **The `complicationRate` deferral now carries its growth curve** (ADR 0029 D9, and both baseline
+   headers), plus the clause distinguishing the real fix from the plausible wrong one. See the
+   bullet above.
+3. **ADR 0029's "seed-to-seed spread is under 0.6pp" is restated as "under 0.9pp, range across ten
+   mask seeds".** The original named no statistic — range, sd and half-range differ ~3× over ten
+   samples — and an independent ten-seed sweep reached **0.80pp at fixture q = 30%**. That is
+   **UNRESOLVED, not refuted** (0.80pp range is consistent with 0.6pp sd), so the bound now holds
+   under either reading. **The conclusion is unchanged and not hedged**: null deltas run 1.6-8.4pp
+   with opposite signs on the two packs, and no spread of this order manufactures a sign flip.
+4. **Denominator sweep.** Both baseline headers now say the ~42-54% Decision 3 estimate is
+   LEGS-denominated where the measured 33.5%/29.0% is SELECTIONS. Addendum II's table gained a note
+   that its "denominated in" column is the unit **before** the fix and that **rows 1-3 are still
+   legs after it**. Also fixed, though not a denominator defect: the instrument table read
+   `Repeat-event rate` **67.4% corpus / 67.7% fixture** against the fenced report bodies' **67.5% /
+   67.8%**, contradicting the ADR's own D1 paragraph.
+
+### EXACT NEXT STEP
+
+**Review and commit the M3.12a tree.** It is 23 modified + 5 untracked files under
+`packages/engine` and `packages/tools`, plus this session's edits to `docs/adr/0029`,
+`docs/sim-baseline.md`, `docs/sim-baseline-corpus.md` and this file. It has now survived **four**
+adversarial passes with the fence intact and has been left uncommitted across all of them.
+
+Before committing, re-verify the fence — it is the milestone's only claim:
+
+```bash
+pnpm typecheck && pnpm lint && pnpm test && pnpm content:lint
+sha256sum packages/engine/src/__tests__/__fixtures__/golden-runs.json   # e26770a7…dae3a09, 13,250 bytes
+pnpm sim:diff -- --runs=2000                # must read "No change"
+pnpm sim:diff -- --pack=corpus --runs=2000  # must read "No change"
+# and diff each report BODY (below the `-->`) against `git show HEAD:` —
+# exactly three inserted lines per pack, zero deleted, zero changed,
+# except the volatile Wall clock / Extrapolated pair.
+```
+
+**Then do NOT start M3.12b.** Take the montage-legs blocker first, as its own milestone: decide
+between the three candidate fixes above by measuring, because until `montageLegs` is non-empty the
+`montage × 0.3` multiplier is untestable and ADR 0029 Decision 7 item 2 cannot be evaluated at all.
+
+---
+
 ## M3.11f/g — the sim harness was sampling a fifth of its grid; both baselines rebaselined (uncommitted, tree left dirty for review)
 
 **`runMany` paired run `i` as `scenario = i % S; policy = i % P`.** That enumerates the route ×
