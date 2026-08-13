@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,6 +31,18 @@ const SKIP_DIRS = new Set([
   'android',
 ]);
 
+/**
+ * A directory holding its own `.git` is a SEPARATE CHECKOUT, not a subtree of this one.
+ *
+ * Git worktrees mark themselves with a `.git` FILE (a gitdir pointer) rather than a directory,
+ * and submodules do the same — either way the config inside is that checkout's ROOT config, so
+ * flagging it is a false positive. This matters because the agent harness creates worktrees under
+ * `.claude/worktrees/`, so an unrelated parallel session turned `pnpm lint` red here and the only
+ * way to make it green was to delete another session's working state. Matching on `.git` rather
+ * than on that path keeps it true for a worktree placed anywhere.
+ */
+const isSeparateCheckout = (/** @type {string} */ dir) => existsSync(join(dir, '.git'));
+
 /** @param {string} dir @returns {string[]} */
 function findNestedConfigs(dir) {
   const found = [];
@@ -38,6 +50,7 @@ function findNestedConfigs(dir) {
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) {
       if (SKIP_DIRS.has(entry)) continue;
+      if (isSeparateCheckout(full)) continue;
       found.push(...findNestedConfigs(full));
       continue;
     }
