@@ -213,8 +213,10 @@ export { NO_PRESENTATION, type Presentation } from './state/presentation.ts';
 export {
   clampResources,
   createResources,
+  playerGain,
   RESOURCE_BOUNDS,
   RESOURCE_KEYS,
+  RESOURCE_POLARITY,
   type ResourceKey,
   type Resources,
 } from './state/resources.ts';

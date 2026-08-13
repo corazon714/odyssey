@@ -648,38 +648,93 @@
   changed, and no ADR chose that. And on a 123-route sweep 46 of 123 routes carry NO montage leg
   at all, so a montage quiet-ratio target is computed over a thinner population than it looks.
 
+
+  M3.12b STEP 1 — A MEASUREMENT-INSTRUMENT FIX, NOT A BALANCE CHANGE. Every number below moved
+  because the SIM'S POLICIES were reading two resources backwards, not because the game changed.
+  `policy.ts` summed raw `effect.delta` across all nine resource keys, and `hunger` and `heat`
+  are inverted scales — higher is worse — so EATING SCORED AS A LOSS.
+  `encounter.the_other_traveller/buy_a_meal_from_them` (cash -12, hunger -3) totalled -15 while
+  the universal row `share_what_you_have` (cash -10, hunger +2, morale +1) totalled -7. So
+  `greedy-safe` and `risk-taker` actively AVOIDED food and `adversarial-worst-case` actively
+  SOUGHT it. Scoring now goes through the engine's `RESOURCE_POLARITY`
+  (packages/engine/src/state/resources.ts), which lives beside RESOURCE_BOUNDS because it is a
+  fact about the resource rather than about the harness — the result screen needs it too.
+
+  THE ENGINE IS UNTOUCHED EXCEPT FOR THAT CONSTANT AND ONE PREVIEW FIELD, AND THE GOLDENS PROVE
+  IT: golden-runs.json regenerated JSON-deep-equal at this commit. Compared by CONTENT, because
+  golden:update always re-emits a different byte layout and `git status` therefore cannot answer
+  the question.
+
+  WHICH POLICIES MOVED, COUNTED ON 2,000 TRACED RUNS rather than inferred: 942 of 2,000 runs
+  changed at least one choice — greedy-safe 400/400, risk-taker 400/400, adversarial-worst-case
+  142/400, and `random` and `greedy-fast` 0/400. Those last two do not read these totals at all,
+  which is the check that the fix is scoped to the three that do.
+
+  HUNGER REMOVED PER 100 IN-GAME HOURS, before -> after: greedy-fast 5.98 -> 5.98 (unchanged,
+  scores time only), adversarial 5.20 -> 5.26, greedy-safe 2.72 -> 3.67, random 2.25 -> 2.25
+  (unchanged), risk-taker 0.70 -> 2.41. Pooled 3.41 -> 3.98. The policy SPREAD collapses from
+  8.5x to 2.7x, and the 8.5x was the artefact — the cautious player was eating a third as much
+  as the adversary trying to die.
+
+  WHAT MOVED IN THE REPORT, and it is the ENDING MIX that matters here rather than completion.
+  Completion 43.5% -> 41.3%, i.e. -2.2pp and still inside the 30-50% band. Median legs 24 -> 23,
+  median in-game days 10 -> 9. Long-range payoff 25.7% -> 18.2% with unresolved threads 48 ->
+  114: shorter runs leave more queued threads unresolved, and that pair moves together for the
+  reason it always has.
+
+  THE ENDING MIX INVERTS, AND THAT IS THE FINDING. failure_gave_up 37.1% -> 45.8% overtakes
+  arrival_quiet 43.5% -> 41.3% as the plurality, while failure_collapsed falls 19.3% -> 12.8%.
+  A player who eats when eating is worth it starves less and demoralises more. The failure mode
+  a recovery mechanic is being sized against is therefore MORALE, measured, and it was HEALTH
+  through the broken lens.
+
+  THE FIXTURE BASELINE DID NOT MOVE, and that was checked rather than assumed: 0 of 2,000 fixture
+  runs changed a single choice. That pack does carry 4 heat and 1 hunger effects, so it is not
+  vacuous. The sign DOES decide one ordering there — `border.bribe_attempt/hide_the_cash` goes
+  from best-case +1 to -1 and crosses `present_documents` — but the two are never co-presented,
+  because `present_documents` requires a valid passport no fixture scenario grants. The control
+  is immune BY A CONTENT ACCIDENT, not by structure; docs/sim-baseline.md carries the detail.
+
+  REPORT FORMAT CHANGED at the recovery milestone step 1: `hunger` joins the resource
+  trajectory table, and the local key list is renamed `TRAJECTORY_KEYS`. It had been called
+  `RESOURCE_KEYS`, shadowing the engine export of that name with a five-element subset — the
+  same shape of defect as the sign bug fixed in this commit, a private copy of engine knowledge
+  that silently disagrees with it. Hunger was the meter the table could not plot, and
+  `world-tick.ts` charges health only once hunger passes HUNGER_HURTS, so the whole starvation
+  story was happening off-camera. Step 2 sizes a recovery mechanic against exactly that meter.
+  Both baselines regenerate together because diff-report.ts compares by line index.
 -->
 
 # Sim Report — seed=base contentVersion=c10af194 runs=2000
 
 Grid cells sampled            125   (of 125 — 25/25 routes x 5/5 policies)
-Completion rate             43.5%   (target band 30-50%)
-Median legs                    24
-Median in-game days            10
+Completion rate             41.3%   (target band 30-50%)
+Median legs                    23
+Median in-game days             9
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
 Quiet legs (designed)        0.0%   (odds gate — designed silence, NOT the two gaps above)
 Forced-fire legs            29.1%   (beat slot or queue due — never gated; caps quiet at 70.9%)
-Long-range payoff rate      25.7%   (target 80%)
+Long-range payoff rate      18.2%   (target 80%)
 Beat fill rate              27.2%
-Repeat-event rate           66.5%
-Near-repeat rate            26.6%   (a redraw inside recency's own 6-event window; 26.08 draws/run — LESS confounded than the line above, NOT unconfounded: subtract a null baseline before reading it)
-Complication rate           59.9%   (target 60%)
-Modifier chips / check        6.4   (target 3-7, over 19810 checks)
+Repeat-event rate           66.4%
+Near-repeat rate            27.2%   (a redraw inside recency's own 6-event window; 25.34 draws/run — LESS confounded than the line above, NOT unconfounded: subtract a null baseline before reading it)
+Complication rate           60.1%   (target 60%)
+Modifier chips / check        6.3   (target 3-7, over 18115 checks)
 Checks under 2 chips            0   (each one draws nothing the registry exists for)
 Checks over 7 chips             0   (0.0% of checks; worst pulls 7)
-Universal choices offered   37.6%   (share of choices shown)
-Universal choices picked    38.6%   (over ~30% means they are flattening the corpus)
-Unresolved threads             48
+Universal choices offered   37.5%   (share of choices shown)
+Universal choices picked    40.3%   (over ~30% means they are flattening the corpus)
+Unresolved threads            114
 
-Wall clock                 1838 ms   (0.92 ms/run)
-Extrapolated to 20,000     18.4 s   (target <30 s)
+Wall clock                 1753 ms   (0.88 ms/run)
+Extrapolated to 20,000     17.5 s   (target <30 s)
 
 ## Endings
-  ending.arrival_quiet                43.5%
-  ending.failure_gave_up              37.1%
-  ending.failure_collapsed            19.3%
+  ending.failure_gave_up              45.8%
+  ending.arrival_quiet                41.3%
+  ending.failure_collapsed            12.8%
   ending.detained_at_border            0.1%
 
 ## Never-fired events
@@ -695,61 +750,61 @@ Extrapolated to 20,000     18.4 s   (target <30 s)
   weather.the_storm_you_cannot_drive_through/find_the_mechanic_first   0.0%   <- never picked
   weather.the_storm_you_cannot_drive_through/u:use_an_item   0.0%   <- never picked
   breakdown.the_roadside_repair/find_someone_who_can   0.0%
+  breakdown.the_roadside_repair/nurse_it_along         0.0%
+  breakdown.the_roadside_repair/u:pay_the_asking_price   0.0%
   crime.the_offer/put_it_somewhere_they_will_not_look   0.0%
+  breakdown.the_roadside_repair/u:threaten             0.0%
   breakdown.the_roadside_repair/u:offer_to_work_for_it   0.0%
-  weather.the_storm_you_cannot_drive_through/see_to_the_damage   0.0%
+  border.night_crossing/keep_it_out_of_sight           0.0%
   breakdown.the_roadside_repair/fix_it_yourself        0.0%
   authority.the_file_catches_up/make_it_go_away        0.0%
   authority.the_file_catches_up/u:bluff_with_documents   0.0%
+  authority.the_file_catches_up/stand_your_ground      0.0%
   authority.the_file_catches_up/u:bribe                0.0%
   road.the_hitchhiker/u:let_the_companion_handle_it    0.0%
   authority.the_file_catches_up/u:run                  0.0%
+  weather.the_storm_you_cannot_drive_through/push_on_through_it   0.0%
+  weather.the_storm_you_cannot_drive_through/shelter_and_lose_the_day   0.0%
   road.the_hitchhiker/leave_them_at_the_junction       0.0%
   city.the_address_that_moved/u:let_the_companion_handle_it   0.0%
-  authority.the_file_catches_up/answer_the_questions   0.0%
-  weather.the_storm_you_cannot_drive_through/u:ask_for_help   0.0%
-  breakdown.the_roadside_repair/nurse_it_along         0.0%
+  weather.the_storm_you_cannot_drive_through/see_to_the_damage   0.1%
   encounter.the_other_traveller/u:let_the_companion_handle_it   0.1%
   rest.the_shared_room/u:threaten                      0.1%
+  encounter.the_other_traveller/share_what_you_have    0.1%
   border.night_crossing/offer_something                0.1%
   border.night_crossing/u:offer_to_work_for_it         0.1%
-  breakdown.the_roadside_repair/u:pay_the_asking_price   0.1%
-  transit.the_wrong_carriage/u:offer_to_work_for_it    0.1%
-  breakdown.the_roadside_repair/u:threaten             0.2%
+  transit.the_wrong_carriage/u:offer_to_work_for_it    0.2%
   crime.the_offer/u:create_a_distraction               0.2%
-  transit.the_wrong_carriage/talk_your_way_through     0.2%
   transit.the_wrong_carriage/pay_the_difference        0.2%
   crime.the_offer/u:offer_to_work_for_it               0.2%
-  weather.the_storm_you_cannot_drive_through/u:run     0.3%
-  opportunity.work_for_a_day/u:walk_away               0.3%
+  rest.the_shared_room/u:create_a_distraction          0.2%
+  weather.the_storm_you_cannot_drive_through/u:ask_for_help   0.2%
   rest.the_shared_room/see_to_your_feet                0.3%
-  weather.the_storm_you_cannot_drive_through/push_on_through_it   0.3%
+  opportunity.work_for_a_day/u:walk_away               0.3%
+  city.the_address_that_moved/work_it_out_yourself     0.3%
+  road.the_hitchhiker/u:run                            0.3%
+  authority.the_file_catches_up/answer_the_questions   0.3%
   rest.the_shared_room/sleep_on_your_bag               0.3%
-  filler.the_long_quiet_stretch/listen_to_the_engine   0.3%
-  border.night_crossing/present_papers                 0.3%
-  border.night_crossing/u:bluff_with_documents         0.4%
-  weather.the_storm_you_cannot_drive_through/shelter_and_lose_the_day   0.4%
-  rest.the_shared_room/u:create_a_distraction          0.4%
-  encounter.the_other_traveller/u:walk_away            0.5%
+  weather.the_storm_you_cannot_drive_through/u:run     0.5%
+  encounter.the_other_traveller/u:walk_away            0.6%
   city.the_address_that_moved/u:plead_ignorance        0.6%
-  authority.the_file_catches_up/stand_your_ground      0.6%
-  filler.the_long_quiet_stretch/keep_going             0.6%
+  border.night_crossing/present_papers                 0.6%
   encounter.the_other_traveller/look_at_their_leg      0.6%
-  filler.the_long_quiet_stretch/u:wait_it_out          0.6%
-  city.the_address_that_moved/work_it_out_yourself     0.6%
+  border.night_crossing/u:bluff_with_documents         0.7%
+  filler.the_long_quiet_stretch/stop_and_rest          0.7%
   rest.the_shared_room/u:pay_the_asking_price          0.7%
   rest.the_shared_room/pay_for_a_private_room          0.8%
-  border.night_crossing/keep_it_out_of_sight           0.9%
-  road.the_hitchhiker/u:run                            1.0%
-  transit.the_wrong_carriage/u:lie_about_destination   1.2%
-  encounter.the_other_traveller/share_what_you_have    1.4%
+  transit.the_wrong_carriage/u:lie_about_destination   0.8%
+  transit.the_wrong_carriage/talk_your_way_through     1.3%
+  filler.the_hours_between/watch_the_road              1.4%
   crime.the_offer/say_no                               1.5%
-  crime.the_offer/u:bribe                              1.5%
-  road.the_hitchhiker/drive_on                         1.6%
+  crime.the_offer/u:bribe                              1.6%
+  opportunity.work_for_a_day/take_the_day_rate         1.6%
+  transit.the_wrong_carriage/move_before_they_reach_you   1.7%
   transit.the_wrong_carriage/u:pay_the_asking_price    1.7%
-  opportunity.work_for_a_day/take_the_day_rate         1.7%
-  border.night_crossing/u:bribe                        1.8%
+  city.the_address_that_moved/ask_in_the_shop          1.8%
   opportunity.work_for_a_day/haggle_the_rate_first     1.9%
+  border.night_crossing/u:bribe                        1.9%
 
 ## Flags
   written: 20   read: 5
@@ -757,10 +812,11 @@ Extrapolated to 20,000     18.4 s   (target <30 s)
   read but NEVER WRITTEN:   (none)   <- gate can never open
 
 ## Resource trajectories (p10/p50/p90 by leg)
-  cash     leg5: 1145/2132/4264   leg15: 871/1892/3833   leg25: 574/1897/2959
-  health   leg5: 9/10/10   leg15: 4/7/9   leg25: 2/5/7
-  morale   leg5: 6/8/10   leg15: 2/6/10   leg25: 2/6/10
+  cash     leg5: 1145/2132/4264   leg15: 867/1881/3870   leg25: 558/1863/3064
+  health   leg5: 9/10/10   leg15: 4/8/9   leg25: 3/5/7
+  morale   leg5: 5/8/10   leg15: 2/6/10   leg25: 2/6/10
   energy   leg5: 0/1/6   leg15: 0/0/0   leg25: 0/0/0
+  hunger   leg5: 5/8/10   leg15: 9/10/10   leg25: 8/10/10
   hygiene  leg5: 0/0/3   leg15: 0/0/0   leg25: 0/0/0
 
 ## Beat types no event can fill

@@ -41,6 +41,23 @@ const MAX_BORDER_BEATS = 4;
 export type RoutePreview = {
   readonly profile: RouteProfile;
   readonly totalKm: number;
+  /**
+   * IN-GAME HOURS THE WHOLE ROUTE COSTS, at the mode this profile would actually travel by.
+   *
+   * The number was already computed here — `rationsNeeded` divides by it — and thrown away.
+   * Exposing it is design pillar 4's honest answer on its own: a 523-hour route is a different
+   * proposition from a 112-hour one, and the player should be able to see that BEFORE
+   * committing rather than discover it on leg 30. `totalKm` does not say it, because hours are
+   * a function of mode as well as distance — a ferry leg and a train leg of equal length are
+   * not equal journeys.
+   *
+   * It is advice, not state. Like every other field here it never enters `RunState` or
+   * `contentVersion`, so nothing about it can move a save version or a golden run.
+   *
+   * At the STARTING mode, and only the starting mode. A run that loses its truck and walks
+   * costs more hours than this says; the preview describes the plan, not the run.
+   */
+  readonly travelHours: number;
   readonly legCount: number;
   readonly montageLegCount: number;
   readonly crossings: number;
@@ -132,8 +149,9 @@ export function buildPreview(
     ratio.den,
   );
 
-  // Rations are RIGHT because they reuse `HOURS_PER_HUNGER`: retuning the hunger rate updates
-  // the supply requirement automatically, instead of leaving a second number to remember.
+  // The route's total duration, and the input to `rationsNeeded` below. Rations are RIGHT
+  // because they reuse `HOURS_PER_HUNGER`: retuning the hunger rate updates the supply
+  // requirement automatically, instead of leaving a second number to remember.
   const montage = new Set(plan.montageLegs);
   const totalHours = plan.legKm.reduce(
     (sum, km, leg) => sum + legHours(km, mode, montage.has(leg)),
@@ -148,6 +166,7 @@ export function buildPreview(
   return {
     profile,
     totalKm: plan.totalKm,
+    travelHours: totalHours,
     legCount: plan.legCount,
     montageLegCount: plan.montageLegs.length,
     crossings,

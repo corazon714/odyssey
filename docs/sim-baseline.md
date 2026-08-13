@@ -293,6 +293,35 @@
   calls, and the four further leg-denominated sites that were swept and left alone, are in the
   ADR 0029 addendum.
 
+
+  M3.12b STEP 1 — VERIFIED UNMOVED, WHICH IS NOT THE SAME AS NOT REGENERATED. The sim's policy
+  scoring was summing raw resource deltas, so it read `hunger` and `heat` — the two inverted
+  scales, where higher is worse — backwards, and scored eating as a loss. It now goes through the
+  engine's `RESOURCE_POLARITY`. THE BODY BELOW IS BYTE-IDENTICAL to the one before it apart
+  from the wall-clock line, which this header already declares machine-dependent and not a
+  signal. The regeneration was run to establish that rather than skipped: 0 of 2,000 fixture
+  runs changed a single choice.
+
+  NOT VACUOUS. This pack carries 4 heat and 1 hunger effects, so the fix could have reached it.
+  It did not, and the reason is narrower than "no ordering is decided" — that phrasing stood here
+  briefly and is false. The sign DOES decide one: on `border.bribe_attempt`, `hide_the_cash`
+  (heat +1; cash -60, heat +3) has a best case of +1 under the old scorer and -1 under the new,
+  which crosses `present_documents`' flat 0 and flips `risk-taker`'s pick. That pair is simply
+  never co-presented — `present_documents` carries `requires: {kind: passport, present: true,
+  valid: true}` and no fixture scenario satisfies it, which is why it reads 0.0% never picked
+  below. So this pack is immune BY A CONTENT ACCIDENT, not by structure: give a fixture run a
+  valid passport and the control would move. The control stayed a control
+  while the corpus moved -2.2pp on completion and inverted its ending mix. What moved there, and
+  why it is an instrument fix rather than a balance change, is in docs/sim-baseline-corpus.md.
+
+  REPORT FORMAT CHANGED at the recovery milestone step 1: `hunger` joins the resource
+  trajectory table, and the local key list is renamed `TRAJECTORY_KEYS`. It had been called
+  `RESOURCE_KEYS`, shadowing the engine export of that name with a five-element subset — the
+  same shape of defect as the sign bug fixed in this commit, a private copy of engine knowledge
+  that silently disagrees with it. Hunger was the meter the table could not plot, and
+  `world-tick.ts` charges health only once hunger passes HUNGER_HURTS, so the whole starvation
+  story was happening off-camera. Step 2 sizes a recovery mechanic against exactly that meter.
+  Both baselines regenerate together because diff-report.ts compares by line index.
 -->
 
 # Sim Report — seed=base contentVersion=aee5a082 runs=2000
@@ -318,8 +347,8 @@ Universal choices offered    0.0%   (share of choices shown)
 Universal choices picked     0.0%   (over ~30% means they are flattening the corpus)
 Unresolved threads              5
 
-Wall clock                 607 ms   (0.30 ms/run)
-Extrapolated to 20,000     6.1 s   (target <30 s)
+Wall clock                 580 ms   (0.29 ms/run)
+Extrapolated to 20,000     5.8 s   (target <30 s)
 
 ## Endings
   ending.arrival_hollow               40.1%
@@ -351,6 +380,7 @@ Extrapolated to 20,000     6.1 s   (target <30 s)
   health   leg5: 9/10/10   leg15: 3/7/9   leg25: —
   morale   leg5: 5/6/7   leg15: 1/3/5   leg25: —
   energy   leg5: 0/2/8   leg15: 0/0/3   leg25: —
+  hunger   leg5: 5/8/10   leg15: 10/10/10   leg25: —
   hygiene  leg5: 0/2/3   leg15: 0/0/0   leg25: —
 
 ## Beat types no event can fill

@@ -121,6 +121,7 @@ export type SimRun = {
     readonly health: number;
     readonly morale: number;
     readonly energy: number;
+    readonly hunger: number;
     readonly hygiene: number;
   }[];
   readonly turnCapHit: boolean;
@@ -182,6 +183,7 @@ export function runOne(
     health: number;
     morale: number;
     energy: number;
+    hunger: number;
     hygiene: number;
   }[] = [];
   const CHECKPOINT_LEGS = new Set([5, 15, 25]);
@@ -209,6 +211,7 @@ export function runOne(
         health: state.resources.health,
         morale: state.resources.morale,
         energy: state.resources.energy,
+        hunger: state.resources.hunger,
         hygiene: state.resources.hygiene,
       });
     }

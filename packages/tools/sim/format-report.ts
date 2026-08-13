@@ -21,7 +21,22 @@ import { type SimSummary } from './run-many.ts';
  * The flag analysis finds gates that can never open.
  */
 const CHECKPOINT_LEGS = [5, 15, 25] as const;
-const RESOURCE_KEYS = ['cash', 'health', 'morale', 'energy', 'hygiene'] as const;
+
+/**
+ * The meters the trajectory table plots — a DISPLAY SUBSET, deliberately not all nine.
+ *
+ * Renamed off `RESOURCE_KEYS` because it shadowed the engine export of that name with a shorter
+ * list, and a five-element array wearing the nine-element vocabulary's name is the same shape of
+ * defect as the sign bug this file was edited alongside: a private copy of engine knowledge that
+ * silently disagrees with it.
+ *
+ * `hunger` is here as of the recovery milestone's step 1. It was absent, which meant the report
+ * could not plot the meter that drives the health drain — `world-tick.ts` charges health only
+ * once hunger passes `HUNGER_HURTS`, so a run's whole starvation story was happening off-camera.
+ * `heat`, `bank` and `reputation` stay out: they are decision inputs rather than survival meters,
+ * and the table is already three columns wide per row.
+ */
+const TRAJECTORY_KEYS = ['cash', 'health', 'morale', 'energy', 'hunger', 'hygiene'] as const;
 
 function pct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
@@ -157,7 +172,7 @@ export function formatReport(summary: SimSummary, pack: ContentPack, meta: Repor
   );
 
   lines.push('', '## Resource trajectories (p10/p50/p90 by leg)');
-  for (const key of RESOURCE_KEYS) {
+  for (const key of TRAJECTORY_KEYS) {
     const cells = CHECKPOINT_LEGS.map((leg) => {
       const values = ascending(
         usable.flatMap((r) => r.checkpoints.filter((c) => c.leg === leg).map((c) => c[key])),

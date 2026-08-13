@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { HOURS_PER_HUNGER } from '../../loop/world-tick.ts';
 import { createRngCursors } from '../../rng/rng-cursors.ts';
 import { createRunState } from '../../state/create-run-state.ts';
 import { createRunInit } from '../../state/run-init.ts';
@@ -182,5 +183,36 @@ describe('the start block is derived, never authored', () => {
       expect(plan.preview.rationsNeeded).toBeGreaterThan(0);
       expect(Number.isInteger(plan.preview.rationsNeeded)).toBe(true);
     }
+  });
+
+  /**
+   * `travelHours` is the number `rationsNeeded` was ALREADY dividing, now exposed.
+   *
+   * Asserted as that identity rather than against a figure. Pillar 4 wants the player to see that
+   * a 523-hour route is not a 112-hour one, and a preview computing its own hours would be free to
+   * disagree with the supply requirement printed beside it. Both sides derive from
+   * `HOURS_PER_HUNGER`, so retuning the hunger rate moves them together or this fails.
+   *
+   * What this does NOT prove, despite an earlier version of this comment claiming it: that no
+   * second summation exists. A duplicate that happened to agree would satisfy the identity just
+   * as well, and agreeing-today duplicates are exactly the defect class. The single-summation
+   * guarantee comes from `route-preview.ts`, where one `totalHours` local feeds both consumers —
+   * read it there. This test pins the RELATIONSHIP, which is worth having and is not the same
+   * claim.
+   */
+  it('exposes the total travel hours rations were already computed from', () => {
+    for (const { plan } of ALL) {
+      const hours = plan.preview.travelHours;
+      expect(hours).toBeGreaterThan(0);
+      expect(Number.isInteger(hours)).toBe(true);
+      expect(plan.preview.rationsNeeded).toBe(Math.ceil(hours / HOURS_PER_HUNGER));
+    }
+  });
+
+  it('tells routes apart by duration, which is the point of printing it', () => {
+    // Anti-vacuity for the identity above — a constant would satisfy it, and a preview whose
+    // hours never move is not a decision the player can make anything of.
+    const distinct = new Set(ALL.map(({ plan }) => plan.preview.travelHours));
+    expect(distinct.size).toBeGreaterThan(1);
   });
 });

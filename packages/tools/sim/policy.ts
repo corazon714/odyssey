@@ -1,8 +1,10 @@
 import {
   evaluatePredicate,
+  playerGain,
   presentedChoices,
   type Choice,
   type ContentPack,
+  type Effect,
   type GameEvent,
   type RegistryComplication,
   type Rng,
@@ -77,23 +79,51 @@ export function selectableChoices(
  * the safe player's completion rate and the gambler's bracket the range a real player lives
  * in.
  */
-function costTotal(choice: Choice): number {
+/**
+ * Resource deltas summed by their EFFECT ON THE PLAYER, never by their arithmetic sign.
+ *
+ * ## Why the naive `total += effect.delta` was wrong
+ *
+ * `hunger` and `heat` are inverted scales — higher is worse — and a bare sum scores them
+ * backwards, so EATING READ AS A LOSS. Measured on the corpus before the fix:
+ * `encounter.the_other_traveller/buy_a_meal_from_them` (cash -12, hunger -3) scored **-15**,
+ * while the universal row `share_what_you_have` (cash -10, hunger +2, morale +1) scored
+ * **-7**. Buying food was therefore the worse option by more than twice, on every policy that
+ * reads these totals: `greedy-safe` and `risk-taker` actively AVOIDED eating and
+ * `adversarial-worst-case` actively SOUGHT it.
+ *
+ * That is not a balance finding, it is an instrument fault, and it inverted the one axis a
+ * recovery mechanic has to be sized against. Hunger removed per 100 in-game hours ran
+ * `greedy-fast` 5.98 / `adversarial` 5.20 / `greedy-safe` 2.72 / `random` 2.25 /
+ * `risk-taker` 0.70 — an 8.5x spread across policies that was **entirely** an artefact of the
+ * sign convention, with the adversary out-eating the cautious player two to one.
+ *
+ * `RESOURCE_POLARITY` is the ENGINE's, deliberately: a copy here would be a second definition
+ * of a fact about the resource, and it would drift the moment a resource is added. Do not
+ * "simplify" this back to a bare sum.
+ *
+ * ## What is still crude, so nobody mistakes this for correct scoring
+ *
+ * The totals remain unweighted across resources — `cash` moves in tens and the 0-10 meters
+ * move in ones, so cash dominates any comparison. That was true before this fix and is
+ * unchanged by it. The fix is the SIGN, which decided the ordering; the SCALE decides only how
+ * far apart two options sit, and a policy is a coarse stand-in for a player either way.
+ */
+function playerTotal(effects: readonly Effect[]): number {
   let total = 0;
-  for (const cost of choice.costs) {
-    if (cost.op === 'resource') total += cost.delta;
+  for (const effect of effects) {
+    if (effect.op === 'resource') total += playerGain(effect.key, effect.delta);
   }
   return total;
 }
 
+function costTotal(choice: Choice): number {
+  return playerTotal(choice.costs);
+}
+
 function outcomeTotals(choice: Choice): readonly number[] {
   const base = costTotal(choice);
-  return choice.outcomes.map((outcome) => {
-    let total = base;
-    for (const effect of outcome.effects) {
-      if (effect.op === 'resource') total += effect.delta;
-    }
-    return total;
-  });
+  return choice.outcomes.map((outcome) => base + playerTotal(outcome.effects));
 }
 
 /** The outcome that hurts most. `greedy-safe` maximises it; `adversarial` minimises it. */
