@@ -78,6 +78,38 @@ const TAIL_PERCENT = 25;
 /** A route that is a third montage is eight summary screens and there is no game left. */
 const MAX_MONTAGE_SHARE = 3;
 
+/**
+ * Has montage absorbed enough of the deficit?
+ *
+ * **There are two regimes and no honest single formula**, which is what ADR 0039 is about. The
+ * deficit `rawLegs - target` is real in both, but it is denominated differently:
+ *
+ * - **Compression** (`segments.length >= target`, short edges): every segment already gets its
+ *   floor of one leg, so `legCount` is `segments.length` whatever montage does. `target` is
+ *   therefore a budget of PLAYABLE legs and montage marks the excess. Stop when the unmarked
+ *   legs fit.
+ * - **Expansion** (`target > segments.length`, long edges — every route on the current slice):
+ *   `legCount` is exactly `target` whatever montage does, because the surplus allocator spreads
+ *   `target - segments.length` extra legs over the free segments. Montage does not change the
+ *   count, it changes WHO gets the surplus: a montaged segment takes one leg and its share goes
+ *   to segments worth travelling through. Stop when the survivors fit `target` at FULL density —
+ *   that is the point at which nothing is being compressed any more.
+ *
+ * Writing one expression for both is what produced the bug: `segments.length > target` reads as
+ * the compression test and silently means "never" in the other regime.
+ */
+function montageSatisfied(
+  expanding: boolean,
+  segmentCount: number,
+  montagedCount: number,
+  freeUnits: number,
+  target: number,
+): boolean {
+  return expanding
+    ? mulDivRound(freeUnits, 1, LEG_SCALE) + montagedCount <= target
+    : segmentCount - montagedCount <= target;
+}
+
 /** One edge of the chosen path, with everything leg planning and montage selection read. */
 export type LegSegment = {
   readonly edgeIdx: number;
@@ -258,15 +290,34 @@ export function planLegs(segments: readonly LegSegment[]): LegPlan {
   // ── montage: crush the dullest stretches rather than shrinking everything ────────────
   // THE CAP WINS OVER THE DEFICIT (ADR 0026 Decision 4): leg count may run over target
   // rather than summarise a third of the journey.
+  //
+  // THE GATE IS `rawLegs > target`, WHICH IS ADR 0026 DECISION 4'S OWN WORDING. It shipped as
+  // `segments.length > target`, which is the same test only while a segment is worth at most
+  // one leg. On this slice the median path edge is 378 km against densities of 120-450 km, so
+  // every route is in the expansion regime and the branch was unreachable — `montageLegs` was
+  // empty on all 25 corpus routes. ADR 0039 has the measurement.
   const montageBudget = Math.floor(target / MAX_MONTAGE_SHARE);
   const montaged = new Set<number>();
-  if (segments.length > target && montageBudget > 0) {
-    const order = [...segments].sort(byDullness);
+  const expanding = target > segments.length;
+  if (rawLegs > target && montageBudget > 0) {
+    // **The first and last segments are never candidates.** The first owns leg 0 and the last
+    // owns `legCount - 1`, which are the slack-0 anchors of `departure` and `finale`; invariant
+    // (d) in `beat-schedule.ts` DROPS a beat whose window is montage rather than moving it, so
+    // montaging either anchor deletes that beat outright. Measured on the corpus before this
+    // guard existed: 10 `finale` and 6 `departure` slots lost across 25 routes. Losing `finale`
+    // is the exact metric-gaming ADR 0027 Decision 5 forbids — it is unfillable today, so
+    // dropping it RAISES beat fill with nothing changing for a player.
+    //
+    // It also guarantees the free set is non-empty whenever montage is, so the surplus always
+    // has somewhere to go.
+    const order = segments.slice(1, -1).sort(byDullness);
+    let freeUnits = units.reduce((a, b) => a + b, 0);
     for (const segment of order) {
       if (montaged.size >= montageBudget) break;
-      if (segments.length - montaged.size <= target) break;
+      if (montageSatisfied(expanding, segments.length, montaged.size, freeUnits, target)) break;
       if (segment.viaCrossingNode || segment.ferry) break; // sorted last; nothing duller remains
       montaged.add(segment.edgeIdx);
+      freeUnits -= rawUnits(segment);
     }
   }
 

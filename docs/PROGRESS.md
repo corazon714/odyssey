@@ -5,6 +5,105 @@
 
 ---
 
+## Montage legs exist — `leg-plan.ts` tested one of two regimes. **M3.12b is UNBLOCKED**
+
+**`RouteState.montageLegs` was `[]` on all 25 corpus routes and had been since M3.9.** ADR 0029
+gives montage legs a ×0.3 event-odds multiplier and makes "montage legs should be quiet most of
+the time" one of M3.12b's four calibration targets — a target computed over a class with no
+members. Two agent reports drew conclusions from it before an adversarial check caught it.
+
+**It was not the geo slice and not route generation.** `leg-plan.ts:263` gated on
+`segments.length > target` where ADR 0026 Decision 4 says **`rawLegs > target`**. Those are the
+same test only while a path edge is worth at most one leg; the median edge on this slice is
+378 km against densities of 120–450, so an edge is worth 1.5–4 legs and the planner is in the
+**expansion** regime on every route the generator can produce.
+
+| across the 25 corpus routes | min | median | max |
+| --------------------------- | --: | -----: | --: |
+| `segments.length`           |   3 |     22 |  33 |
+| `rawLegs`                   |  11 |     49 | 115 |
+| `target`                    |  22 |     38 |  48 |
+
+`rawLegs > target` on **23 of 25**; `segments.length > target` on **0 of 25**. On a 123-route
+sweep the shipped gate fires 5 times and the ADR's 89. The compression montage exists to absorb
+was happening the whole time (115 raw legs → a target of 48) — it was just being spread over
+every segment, which is verbatim the "shrinking everything" that sentence rejects.
+
+**The three candidate fixes were priced before choosing, and densification was both the most
+expensive and the least effective**: splitting every edge at 450 km (~570 midpoint nodes,
+692 → 1,262, and it doubles the hop counts that already make `geo:verify` FAIL at p90/max) still
+only gets the _shipped_ gate to fire on 4 of 25. It does not touch the ADR's gate at all.
+
+`docs/adr/0039` is the full reasoning. Three things worth knowing without reading it:
+
+1. **Leg count moved on 0 of 123 generated routes.** The 22–48 band, `minLegs`/`maxLegs` and
+   total route length are untouched — montage redistributes the surplus rather than shrinking
+   anything. 157 of 931 corpus legs (16.9%) are montage, carrying **48% of corpus km**.
+2. **The first and last segments are never montage candidates**, because they own leg 0 and
+   `legCount − 1`, the slack-0 anchors of `departure` and `finale`, and ADR 0027 invariant (d)
+   DROPS such a beat rather than sliding it. Without the guard the corpus lost 10 `finale` and 6
+   `departure` slots — and `finale` is unfillable, so dropping it RAISES beat fill with nothing
+   changing for a player, which is exactly ADR 0027 Decision 5's forbidden move.
+3. **Every montage test in the file used a 60–90-segment synthetic route** — all in the one
+   regime the gate did test. The tests and the bug shared a mental model. Three new tests fail
+   on the pre-fix tree with `expected 0 to be greater than 0`; verified by stashing the fix.
+
+### What moved, and the one mechanism behind all of it
+
+**The fixture pack did not move, and that is structural rather than lucky:** goldens and
+`docs/sim-baseline.md` both build from `loadFixtureScenarios()` — the hand-authored
+`routes.json`, which carries `montageLegs: []` and **never calls `planLegs`**. So a `leg-plan.ts`
+change cannot reach them. `sim:diff` says "No change" and no golden digest moved.
+
+Quoted at **20,000 runs**, not the 2,000 the baseline is generated at, because `payoffRate`'s
+denominator is only ~600 and a 2,000-run reading of it is noise:
+
+| metric             |  before |     after |      Δ |
+| ------------------ | ------: | --------: | -----: |
+| Completion         |   42.2% | **44.1%** | +1.9pp |
+| Long-range payoff  |   24.6% | **18.5%** | −6.1pp |
+| Beat fill          |   28.1% | **26.1%** | −2.0pp |
+| Unresolved threads |     521 |   **452** |    −69 |
+| Checks resolved    | 205,612 |   196,382 |  −4.5% |
+| Median legs / days | 25 / 10 |   25 / 10 |      — |
+
+A montage leg replaces `k` ordinary legs over the same ground and `legHours` charges the per-mode
+overhead **once instead of k times** — a 1,200 km car segment is 21 hours as one montage leg
+against 35 as five ordinary ones. Drift is per-hour (ADR 0035), so fewer hours over the same
+distance is less drain. Completion up follows; **montage is a time discount nobody explicitly
+chose**, and that is the most important sentence here for whoever tunes next. Ordinary `roadside`
+legs fall 311 → 279, so generic queued payoffs lose windows — that is the payoff rate, and
+unresolved threads falling 69 at the same time confirms it is fewer schedules reaching fewer
+eligible legs rather than more failures.
+
+**Beat fill fell for a reason that is not the one to guess.** `border_crossing` and `checkpoint`
+LEG counts are identical on both trees (119 and 114) and crossings were never montage candidates.
+Their SPACING changed: montage collapses the dull stretch between two crossings, they become
+adjacent, their slack-1 windows overlap and invariant (b) drops one. **71 → 58 border slots**,
+18% of one of only two fillable beat types, outweighing the 6 unfillable `approach` slots that
+also left the denominator. If M3.12b wants them back the lever is a rule against montaging a
+segment ADJACENT to a crossing — that trades montage coverage for beat coverage and wants
+measuring.
+
+### DoD
+
+`typecheck` clean · `lint` **0 errors** · `test` **1658 vitest + 3 jest green** ·
+`content:lint` 0 errors (1 pre-existing `MISSING_IMAGE_MANIFEST`) · `format:check` clean for
+every file this touched (8 pre-existing `.claude/*` warnings are untouched and predate it) ·
+`sim:diff` **"No change"** on the fixture pack, goldens unmoved · corpus baseline regenerated at
+2,000 and round-trips clean.
+
+### Left open, deliberately
+
+- **The 48% montage km share is a design call, not a defect** — p50 35% and p90 73% per route;
+  the worst route summarises 73% of 17,521 km into 11 of its 48 legs. A 17,000 km continental
+  route probably SHOULD be mostly summary. Stated so M3.12b calibrates against a measured
+  population rather than discovering it.
+- **The 13 lost border slots** (Decision 3 above).
+- **Montage as an unpriced time discount.** Completion moved +1.9pp with no constant changed.
+
+---
+
 ## M3.11f/g — the sim harness was sampling a fifth of its grid; both baselines rebaselined (uncommitted, tree left dirty for review)
 
 **`runMany` paired run `i` as `scenario = i % S; policy = i % P`.** That enumerates the route ×

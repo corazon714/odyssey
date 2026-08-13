@@ -476,36 +476,77 @@
   sample before the first rate computed over it, because until now this format contained the
   string "route" zero times — a pairing bug shipped, was baselined and was argued from, and the
   artifact everyone reads said nothing about which part of the space had been measured.
+
+  MONTAGE LEGS EXIST NOW, and that is the whole of this revision (docs/adr/0039). The gate in
+  leg-plan.ts asked `segments.length > target` where ADR 0026 Decision 4 says `rawLegs > target`.
+  Those are the same test only while a path edge is worth at most one leg; the median edge on
+  this slice is 378 km against densities of 120-450, so `rawLegs > target` held on 23 of these
+  25 routes while `segments.length > target` held on none. montageLegs was empty on every route
+  the generator could produce, and ADR 0029's montage calibration target was being computed over
+  a class with no members.
+
+  NO ENGINE CONSTANT MOVED and leg count moved on zero of 123 generated routes. The 22-48 band,
+  minLegs/maxLegs and total route length are untouched. What moved is which legs carry which
+  kilometres: 157 of 931 corpus legs (16.9%) are now montage, carrying 48% of corpus km.
+
+  THE FIXTURE BASELINE DID NOT MOVE, and that is structural rather than lucky: golden runs and
+  docs/sim-baseline.md both build from loadFixtureScenarios(), the hand-authored routes.json,
+  which never calls planLegs. A leg-plan.ts change cannot reach them. sim:diff on the fixture
+  pack reports "No change" and no golden digest moved.
+
+  WHAT MOVED HERE, one mechanism behind all of it: a montage leg replaces k ordinary legs over
+  the same ground, and legHours charges the per-mode overhead ONCE instead of k times. A 1,200 km
+  car segment is 21 hours as one montage leg against 35 as five ordinary ones. Drift is per-hour
+  (docs/adr/0035), so fewer hours over the same distance is less drain.
+
+    Completion         42.2% -> 44.1%   mid-band; montage is a TIME DISCOUNT nobody chose
+    Long-range payoff  24.6% -> 18.5%   roadside legs 311 -> 279; queued payoffs lose windows
+    Beat fill          28.1% -> 26.1%   border slots 71 -> 58, see below
+    Unresolved threads   521 -> 452
+    Checks            205,612 -> 196,382   choice mix shifted to paying rather than rolling
+
+  Those are quoted at 20,000 runs, not at the 2,000 this file is generated at, because
+  payoffRate's denominator is only ~600 and a 2,000-run reading of it is noise. The body below is
+  the 2,000-run report and its payoff line should be read as a sample.
+
+  BEAT FILL FELL AND THE REASON IS NOT THE ONE TO GUESS. border_crossing and checkpoint LEG
+  COUNTS are identical on both trees (119 and 114) and crossings were never montage candidates.
+  Their SPACING changed: montage collapses the dull stretches between two crossings, they become
+  adjacent, their slack-1 windows overlap, and ADR 0027 invariant (b) drops one. 71 -> 58 border
+  slots, which is 18% of one of only two fillable beat types in this corpus, and it outweighs the
+  6 unfillable `approach` slots that also left the denominator. departure and finale are 25/25 on
+  both trees because the first and last segments are never montage candidates (ADR 0039
+  Decision 2); without that guard 10 finale and 6 departure slots were deleted outright.
 -->
 
 # Sim Report — seed=base contentVersion=c10af194 runs=2000
 
 Grid cells sampled            125   (of 125 — 25/25 routes x 5/5 policies)
-Completion rate             41.9%   (target band 30-50%)
+Completion rate             43.9%   (target band 30-50%)
 Median legs                    25
 Median in-game days            10
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
-Long-range payoff rate      24.8%   (target 80%)
-Beat fill rate              28.0%
-Repeat-event rate           67.5%
-Complication rate           60.2%   (target 60%)
-Modifier chips / check        6.4   (target 3-7, over 20501 checks)
+Long-range payoff rate      18.8%   (target 80%)
+Beat fill rate              26.0%
+Repeat-event rate           67.3%
+Complication rate           60.1%   (target 60%)
+Modifier chips / check        6.4   (target 3-7, over 19643 checks)
 Checks under 2 chips            0   (each one draws nothing the registry exists for)
 Checks over 7 chips             0   (0.0% of checks; worst pulls 7)
-Universal choices offered   37.5%   (share of choices shown)
-Universal choices picked    38.3%   (over ~30% means they are flattening the corpus)
-Unresolved threads             46
+Universal choices offered   37.4%   (share of choices shown)
+Universal choices picked    38.5%   (over ~30% means they are flattening the corpus)
+Unresolved threads             43
 
 Wall clock                 1800 ms   (0.90 ms/run)
 Extrapolated to 20,000     18.0 s   (target <30 s)
 
 ## Endings
-  ending.arrival_quiet                41.9%
-  ending.failure_gave_up              38.3%
-  ending.failure_collapsed            19.8%
-  ending.detained_at_border            0.1%
+  ending.arrival_quiet                43.8%
+  ending.failure_gave_up              36.3%
+  ending.failure_collapsed            19.7%
+  ending.detained_at_border            0.2%
 
 ## Never-fired events
   (none)
@@ -519,62 +560,62 @@ Extrapolated to 20,000     18.0 s   (target <30 s)
   road.the_hitchhiker/u:use_an_item                    0.0%   <- never picked
   weather.the_storm_you_cannot_drive_through/find_the_mechanic_first   0.0%   <- never picked
   weather.the_storm_you_cannot_drive_through/u:use_an_item   0.0%   <- never picked
-  breakdown.the_roadside_repair/u:offer_to_work_for_it   0.0%
-  breakdown.the_roadside_repair/find_someone_who_can   0.0%
-  weather.the_storm_you_cannot_drive_through/see_to_the_damage   0.0%
-  authority.the_file_catches_up/make_it_go_away        0.0%
-  breakdown.the_roadside_repair/fix_it_yourself        0.0%
   crime.the_offer/put_it_somewhere_they_will_not_look   0.0%
+  weather.the_storm_you_cannot_drive_through/see_to_the_damage   0.0%
+  breakdown.the_roadside_repair/find_someone_who_can   0.0%
+  breakdown.the_roadside_repair/u:offer_to_work_for_it   0.0%
+  breakdown.the_roadside_repair/fix_it_yourself        0.0%
+  authority.the_file_catches_up/make_it_go_away        0.0%
   authority.the_file_catches_up/u:bluff_with_documents   0.0%
-  authority.the_file_catches_up/answer_the_questions   0.0%
-  authority.the_file_catches_up/u:run                  0.0%
-  authority.the_file_catches_up/u:bribe                0.0%
-  city.the_address_that_moved/u:let_the_companion_handle_it   0.0%
-  road.the_hitchhiker/u:let_the_companion_handle_it    0.0%
   weather.the_storm_you_cannot_drive_through/u:ask_for_help   0.0%
+  authority.the_file_catches_up/u:bribe                0.0%
+  authority.the_file_catches_up/u:run                  0.0%
+  road.the_hitchhiker/u:let_the_companion_handle_it    0.0%
+  authority.the_file_catches_up/answer_the_questions   0.0%
+  city.the_address_that_moved/u:let_the_companion_handle_it   0.0%
   road.the_hitchhiker/leave_them_at_the_junction       0.0%
-  breakdown.the_roadside_repair/nurse_it_along         0.1%
+  breakdown.the_roadside_repair/nurse_it_along         0.0%
   rest.the_shared_room/u:threaten                      0.1%
   encounter.the_other_traveller/u:let_the_companion_handle_it   0.1%
-  border.night_crossing/offer_something                0.1%
   border.night_crossing/u:offer_to_work_for_it         0.1%
+  breakdown.the_roadside_repair/u:pay_the_asking_price   0.1%
+  border.night_crossing/offer_something                0.1%
   transit.the_wrong_carriage/u:offer_to_work_for_it    0.2%
-  transit.the_wrong_carriage/pay_the_difference        0.2%
-  breakdown.the_roadside_repair/u:pay_the_asking_price   0.2%
   transit.the_wrong_carriage/talk_your_way_through     0.2%
-  crime.the_offer/u:create_a_distraction               0.2%
-  crime.the_offer/u:offer_to_work_for_it               0.2%
   breakdown.the_roadside_repair/u:threaten             0.2%
+  crime.the_offer/u:create_a_distraction               0.2%
+  transit.the_wrong_carriage/pay_the_difference        0.2%
+  weather.the_storm_you_cannot_drive_through/push_on_through_it   0.2%
+  weather.the_storm_you_cannot_drive_through/u:run     0.2%
+  crime.the_offer/u:offer_to_work_for_it               0.2%
+  filler.the_long_quiet_stretch/listen_to_the_engine   0.3%
   rest.the_shared_room/see_to_your_feet                0.3%
   rest.the_shared_room/sleep_on_your_bag               0.3%
-  filler.the_long_quiet_stretch/listen_to_the_engine   0.3%
-  opportunity.work_for_a_day/u:walk_away               0.3%
   border.night_crossing/present_papers                 0.3%
   border.night_crossing/u:bluff_with_documents         0.3%
-  weather.the_storm_you_cannot_drive_through/u:run     0.3%
-  rest.the_shared_room/u:create_a_distraction          0.3%
-  weather.the_storm_you_cannot_drive_through/push_on_through_it   0.4%
-  weather.the_storm_you_cannot_drive_through/shelter_and_lose_the_day   0.4%
+  opportunity.work_for_a_day/u:walk_away               0.3%
+  weather.the_storm_you_cannot_drive_through/shelter_and_lose_the_day   0.3%
+  rest.the_shared_room/u:create_a_distraction          0.4%
+  encounter.the_other_traveller/u:walk_away            0.5%
+  city.the_address_that_moved/u:plead_ignorance        0.5%
   authority.the_file_catches_up/stand_your_ground      0.6%
-  encounter.the_other_traveller/u:walk_away            0.6%
-  city.the_address_that_moved/u:plead_ignorance        0.6%
-  rest.the_shared_room/u:pay_the_asking_price          0.6%
-  encounter.the_other_traveller/look_at_their_leg      0.6%
-  filler.the_long_quiet_stretch/keep_going             0.6%
-  filler.the_long_quiet_stretch/u:wait_it_out          0.6%
-  rest.the_shared_room/pay_for_a_private_room          0.6%
   city.the_address_that_moved/work_it_out_yourself     0.6%
+  filler.the_long_quiet_stretch/keep_going             0.6%
+  filler.the_long_quiet_stretch/u:wait_it_out          0.7%
+  encounter.the_other_traveller/look_at_their_leg      0.7%
+  rest.the_shared_room/pay_for_a_private_room          0.7%
+  rest.the_shared_room/u:pay_the_asking_price          0.7%
   border.night_crossing/keep_it_out_of_sight           0.9%
-  road.the_hitchhiker/u:run                            1.1%
+  road.the_hitchhiker/u:run                            1.0%
   transit.the_wrong_carriage/u:lie_about_destination   1.2%
-  encounter.the_other_traveller/share_what_you_have    1.3%
+  encounter.the_other_traveller/share_what_you_have    1.5%
   crime.the_offer/u:bribe                              1.5%
-  crime.the_offer/say_no                               1.6%
-  transit.the_wrong_carriage/u:pay_the_asking_price    1.6%
+  crime.the_offer/say_no                               1.5%
+  border.night_crossing/u:bribe                        1.6%
+  road.the_hitchhiker/drive_on                         1.6%
+  transit.the_wrong_carriage/u:pay_the_asking_price    1.7%
   opportunity.work_for_a_day/take_the_day_rate         1.7%
-  border.night_crossing/u:bribe                        1.8%
-  road.the_hitchhiker/drive_on                         1.8%
-  opportunity.work_for_a_day/haggle_the_rate_first     2.0%
+  opportunity.work_for_a_day/haggle_the_rate_first     1.9%
 
 ## Flags
   written: 20   read: 5
@@ -582,10 +623,10 @@ Extrapolated to 20,000     18.0 s   (target <30 s)
   read but NEVER WRITTEN:   (none)   <- gate can never open
 
 ## Resource trajectories (p10/p50/p90 by leg)
-  cash     leg5: 1145/2156/4264   leg15: 909/1948/4080   leg25: 616/1946/3248
+  cash     leg5: 1145/2165/4264   leg15: 857/1913/3843   leg25: 638/1886/3036
   health   leg5: 9/10/10   leg15: 4/7/9   leg25: 2/5/7
-  morale   leg5: 6/8/10   leg15: 2/6/9   leg25: 2/6/10
-  energy   leg5: 0/1/6   leg15: 0/0/0   leg25: 0/0/0
+  morale   leg5: 6/8/10   leg15: 2/6/10   leg25: 2/6/10
+  energy   leg5: 0/2/6   leg15: 0/0/0   leg25: 0/0/0
   hygiene  leg5: 0/1/3   leg15: 0/0/0   leg25: 0/0/0
 
 ## Beat types no event can fill

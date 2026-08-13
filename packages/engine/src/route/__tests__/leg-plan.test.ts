@@ -223,6 +223,65 @@ describe('montage selection is stable, and never eats a scene', () => {
     }
   });
 
+  it('fires when rawLegs exceeds target but the SEGMENTS do not — the M3.12 regression', () => {
+    // THE test this file was missing. Eight 1,500 km mountain edges raw-count as 80 legs and
+    // compress to a 48-leg target: the route is being squeezed by 32 legs, which is exactly the
+    // deficit ADR 0026 Decision 4 says montage exists to absorb.
+    //
+    // The gate shipped as `segments.length > target` — 8 > 48, never true — so montage was
+    // empty on ALL 25 corpus routes and every route the generator can produce on the current
+    // slice. Every montage test above builds a 60-to-90-segment route, which is the OTHER
+    // regime, and that is why nothing caught it. ADR 0039.
+    const plan = planLegs(evenRoute(8, 1500, 'mountain'));
+    expect(plan.legCount).toBe(48);
+    expect(plan.montageLegs.length).toBeGreaterThan(0);
+    expect(plan.legKm.reduce((a, b) => a + b, 0)).toBe(plan.totalKm);
+  });
+
+  it('leaves leg count alone in the expansion regime — it redistributes, it does not shrink', () => {
+    // `legCount` is `target` whether or not anything is montaged, because the surplus allocator
+    // spreads `target - segments.length` extra legs either way. What montage changes is WHO
+    // gets them: a montaged segment takes one leg and its share goes to the rest. Measured over
+    // 123 generated routes, leg count moved on zero of them.
+    for (const km of [900, 1200, 1500, 2000]) {
+      const plan = planLegs(evenRoute(8, km, 'mountain'));
+      expect(plan.legCount).toBe(
+        Math.min(maxLegs(plan.totalKm), Math.max(minLegs(plan.totalKm), plan.legCount)),
+      );
+      expect(plan.legKm).toHaveLength(plan.legCount);
+      expect(plan.legKm.reduce((a, b) => a + b, 0)).toBe(plan.totalKm);
+    }
+  });
+
+  it('never montages the first or last leg, in EITHER regime', () => {
+    // They are the slack-0 anchors of `departure` and `finale`, and `beat-schedule.ts`
+    // invariant (d) DROPS a beat whose window is montage rather than sliding it. Without this
+    // guard the corpus lost 10 `finale` and 6 `departure` slots across 25 routes — and losing
+    // `finale` is the metric-gaming ADR 0027 Decision 5 forbids, because it is unfillable, so
+    // dropping it raises beat fill while nothing changes for a player.
+    for (const segments of [evenRoute(8, 1500, 'mountain'), evenRoute(60, 300, 'steppe')]) {
+      const plan = planLegs(segments);
+      expect(plan.montageLegs.length).toBeGreaterThan(0);
+      expect(plan.montageLegs).not.toContain(0);
+      expect(plan.montageLegs).not.toContain(plan.legCount - 1);
+    }
+  });
+
+  it('caps montage at a third in the expansion regime too', () => {
+    const plan = planLegs(evenRoute(10, 2000, 'mountain'));
+    expect(plan.montageLegs.length).toBeGreaterThan(0);
+    expect(plan.montageLegs.length).toBeLessThanOrEqual(Math.floor(plan.legCount / 3));
+  });
+
+  it('stays silent on a route that is being PADDED rather than compressed', () => {
+    // `rawLegs < target` means the floor is inflating a short route, and there is no deficit to
+    // absorb. Two of the 25 corpus routes are in this state and montaging them would summarise
+    // a journey that is already too thin.
+    const plan = planLegs(evenRoute(3, 400, 'plain'));
+    expect(plan.legCount).toBe(minLegs(1200));
+    expect(plan.montageLegs).toEqual([]);
+  });
+
   it('is invariant to unrelated segments — dullness reads only the segment itself', () => {
     // The property that stops adding a node in France reshuffling a montage in Greece.
     const a = segment({ distanceKm: 200, terrain: 'steppe', servicesCount: 1 });
