@@ -322,6 +322,20 @@
   `world-tick.ts` charges health only once hunger passes HUNGER_HURTS, so the whole starvation
   story was happening off-camera. Step 2 sizes a recovery mechanic against exactly that meter.
   Both baselines regenerate together because diff-report.ts compares by line index.
+
+  UNMOVED at the recovery milestone step 3, and this time BY STRUCTURE rather than by content
+  accident. That step weighted `playerTotal` by a per-resource cash-equivalent worth
+  (packages/tools/sim/resource-weights.ts), which reordered choices all over the corpus pack —
+  pooled completion there moved 41.3% -> 36.0% and `adversarial-worst-case` fell 64.7% -> 6.9%.
+  Here, **0 of 27 (event x scoring-policy) argmaxes flip against 13 of 39 on the corpus**: these
+  nine events separate their choices by cash sums far larger than any meter term can reach even
+  at heat's weight of 40, so no weight in that table can cross two of them.
+
+  Note the contrast with the step-1 entry above, which found this pack immune to the SIGN fix
+  only because `present_documents` is unreachable without a passport no scenario grants. A
+  control that is immune by accident tells you nothing when the accident changes; a control that
+  is immune because its numbers are two orders of magnitude apart is one you can rely on. Both
+  regenerated at 2,000 runs and this body came back byte-identical.
 -->
 
 # Sim Report — seed=base contentVersion=aee5a082 runs=2000
@@ -347,8 +361,8 @@ Universal choices offered    0.0%   (share of choices shown)
 Universal choices picked     0.0%   (over ~30% means they are flattening the corpus)
 Unresolved threads              5
 
-Wall clock                 580 ms   (0.29 ms/run)
-Extrapolated to 20,000     5.8 s   (target <30 s)
+Wall clock                 874 ms   (0.44 ms/run)
+Extrapolated to 20,000     8.7 s   (target <30 s)
 
 ## Endings
   ending.arrival_hollow               40.1%

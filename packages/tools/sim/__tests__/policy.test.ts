@@ -16,6 +16,7 @@ import {
 } from '@odyssey/engine';
 import { loadCorpusPack, loadFixtureScenarios } from '../load-pack.ts';
 import { POLICIES } from '../policy.ts';
+import { isMeter, RESOURCE_WEIGHTS } from '../resource-weights.ts';
 
 /**
  * THE SIGN CONVENTION, PINNED.
@@ -153,4 +154,115 @@ describe('policy scoring reads a resource by its effect on the player', () => {
       expect(POLICIES['adversarial-worst-case'].choose(pair, STATE, RNG)?.id).toBe(lose.id);
     },
   );
+});
+
+/**
+ * THE SCALE CONVENTION, PINNED — the sign's successor fault.
+ *
+ * `playerTotal` summed `playerGain` across resources UNWEIGHTED. `cash` and `bank` are unbounded
+ * and move in tens, the six meters are 0-10 and move in ones, `reputation` is -5..+5 — so any
+ * cash term swamped any meter term and the policies stopped modelling players. Measured at
+ * 50,000 runs per policy on `--pack=corpus`: `greedy-safe` 18.8%, `random` 21.4%, `risk-taker`
+ * 36.8%, `adversarial-worst-case` 64.7%, `greedy-fast` 65.7%. The deliberate lower bound came
+ * out second-highest, because maximising an unweighted total makes the cautious player hoard
+ * cash and the adversary spend it on food and rest.
+ *
+ * The property below is the PRICE, not any one weight: a cash sum smaller than what a meter
+ * point is worth must not beat that point, and a larger one must. Both halves are derived from
+ * `RESOURCE_WEIGHTS` rather than written out, so repricing a meal moves the fixtures with the
+ * table instead of turning this file red for the wrong reason.
+ */
+describe('a resource is scored at its cash-equivalent worth, not at its raw magnitude', () => {
+  // Every bounded resource — the six 0-10 meters plus `reputation`. Derived, so a resource added
+  // with a ceiling is covered the day it is added.
+  const BOUNDED = RESOURCE_KEYS.filter(isMeter);
+
+  it('covers every resource, and keeps money as the unit the others are priced in', () => {
+    // Anti-vacuous, and anti-degenerate: a table of all-1s is the unweighted sum this fixes.
+    expect(BOUNDED.length).toBeGreaterThan(0);
+    for (const key of RESOURCE_KEYS) expect(RESOURCE_WEIGHTS[key]).toBeGreaterThan(0);
+    expect(RESOURCE_WEIGHTS.cash).toBe(1);
+    expect(RESOURCE_WEIGHTS.bank).toBe(1);
+    expect(BOUNDED.some((key) => RESOURCE_WEIGHTS[key] > 1)).toBe(true);
+  });
+
+  /**
+   * One outcome each, so maximin, maximax and minimin all read the same number and the
+   * assertion is about the SCORE rather than about which tail a policy looks at.
+   *
+   * `delta` is written through `RESOURCE_POLARITY` so "+1 point" means one point BETTER OFF on
+   * an inverted meter too — otherwise this would silently test the sign fix again on `hunger`
+   * and `heat` instead of the scale.
+   */
+  function payout(id: string, effects: readonly Effect[]): Choice {
+    return {
+      id: choiceId(id),
+      labelKey: `test.${id}`,
+      requires: ALWAYS,
+      hiddenUnless: null,
+      costs: [],
+      skillCheck: null,
+      search: null,
+      outcomes: [
+        {
+          weight: 1,
+          onCheck: null,
+          requires: ALWAYS,
+          textKey: `test.${id}.outcome`,
+          textVariants: [],
+          effects: [...effects],
+        },
+      ],
+    };
+  }
+
+  function onePointBetter(id: string, key: ResourceKey): Choice {
+    return payout(id, [{ op: 'resource', key, delta: RESOURCE_POLARITY[key] }]);
+  }
+
+  function cashGain(id: string, amount: number): Choice {
+    return payout(id, [{ op: 'resource', key: 'cash', delta: amount }]);
+  }
+
+  /**
+   * THE REGRESSION. Fails on the unweighted sum for every bounded resource, because there every
+   * meter point is worth exactly 1 and any cash sum above 1 beats it.
+   *
+   * Ids sort the WRONG answer first, matching this file's existing idiom: `best` breaks an exact
+   * tie by preferring the smaller id, so a scoring bug that collapsed the pair to one number
+   * would pick `a_` and fail here rather than pass on the tie-break.
+   */
+  it.each(BOUNDED)('a cash sum under the price of one %s point does not beat it', (key) => {
+    const price = RESOURCE_WEIGHTS[key];
+    const cheapCash = cashGain('a_cash_under_the_price', price - 1);
+    const point = onePointBetter('b_one_point', key);
+    const pair = [cheapCash, point];
+
+    expect(POLICIES['greedy-safe'].choose(pair, STATE, RNG)?.id).toBe(point.id);
+    expect(POLICIES['risk-taker'].choose(pair, STATE, RNG)?.id).toBe(point.id);
+    // The floor has to agree, or the bracket the report is built on is one-sided again.
+    expect(POLICIES['adversarial-worst-case'].choose(pair, STATE, RNG)?.id).toBe(cheapCash.id);
+  });
+
+  /**
+   * The mirror: a cash sum ABOVE the price does beat a meter point, so the scorer is not simply
+   * "meters always win".
+   *
+   * WHAT THIS DOES NOT DO, because an earlier version of this comment claimed it did: constrain
+   * the harvested rates. Both halves derive `price` from the same table under test, so they can
+   * only ever be self-consistent — set every meter weight to 1e9 and all seven keys still pass
+   * both halves. There is no independent oracle for a rate read off the corpus, and a
+   * self-derived assertion presented as a check is a thing this repo has now shipped twice in
+   * one day. The guard against a bad weight is the HARVEST being reproducible from
+   * `packages/content/`, not this suite.
+   */
+  it.each(BOUNDED)('a cash sum over the price of one %s point does beat it', (key) => {
+    const price = RESOURCE_WEIGHTS[key];
+    const point = onePointBetter('a_one_point', key);
+    const richCash = cashGain('b_cash_over_the_price', price + 1);
+    const pair = [point, richCash];
+
+    expect(POLICIES['greedy-safe'].choose(pair, STATE, RNG)?.id).toBe(richCash.id);
+    expect(POLICIES['adversarial-worst-case'].choose(pair, STATE, RNG)?.id).toBe(point.id);
+  });
 });

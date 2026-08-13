@@ -158,6 +158,28 @@ const HOURS_PER_STARVING_DAMAGE = 22;
 const ENERGY_TIRED = 1;
 export const HOURS_PER_MORALE = 20;
 
+/**
+ * The per-leg travel-time jitter, INCLUSIVE AT BOTH ENDS — `Rng.nextInt`'s contract.
+ *
+ * Named and exported so `route-preview.ts` can state the expected duration of a route from the
+ * same numbers the tick draws from, instead of keeping a second copy of this distribution. The
+ * preview understated every route by `legCount / 2` hours for as long as it summed the static
+ * `legHours` alone.
+ *
+ * **These values are under review and the constant does not endorse them.** `nextInt` is
+ * inclusive at both ends, so `(-1, 2)` draws from {-1, 0, 1, 2} with a mean of **+0.5 hours per
+ * leg**, while `docs/adr/0014` ("the ±1 hour jitter on travel time") and `docs/adr/0026`
+ * ("±1 hour on a 5-hour leg is texture") both describe the intent as symmetric ±1. If the ADRs
+ * are right the upper bound is an off-by-one from an exclusive-max assumption, and correcting it
+ * moves every downstream RNG draw and therefore every golden run — which is why it is recorded
+ * here rather than changed here.
+ *
+ * Whichever way that lands, the preview is correct without a further edit: at {-1, 0, 1} the
+ * expectation below is zero and the static sum becomes the honest answer on its own.
+ */
+export const LEG_JITTER_MIN = -1;
+export const LEG_JITTER_MAX = 2;
+
 export const WEATHERS = ['clear', 'rain', 'fog', 'wind', 'heat'] as const;
 
 const TICK_SOURCE = eventId('engine.world_tick');
@@ -183,7 +205,7 @@ export function worldTick(state: RunState, rng: Rng): RunState {
   // Floored after the jitter as well as inside `legHours`, so a one-hour leg cannot roll to zero
   // and stop the clock. No current route reaches it — the shortest leg any fixture produces is
   // four hours after a −1 — but a zero-hour leg would silently break `spanPoints` for everything.
-  const hours = Math.max(1, base + rng.nextInt(-1, 2, 'worldTick'));
+  const hours = Math.max(1, base + rng.nextInt(LEG_JITTER_MIN, LEG_JITTER_MAX, 'worldTick'));
 
   const elapsed = elapsedHours(state);
   const harsh = HARSH_WEATHER.includes(state.weather) && hours >= HARSH_WEATHER_HOURS;

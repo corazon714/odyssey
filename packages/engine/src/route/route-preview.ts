@@ -1,6 +1,6 @@
 import { type NodeId } from '../ids/content-ids.ts';
 import { legHours } from '../loop/leg-hours.ts';
-import { HOURS_PER_HUNGER } from '../loop/world-tick.ts';
+import { HOURS_PER_HUNGER, LEG_JITTER_MAX, LEG_JITTER_MIN } from '../loop/world-tick.ts';
 import { mulDivRound } from '../modifiers/modifier-tunables.ts';
 import { type RouteProfile } from '../state/route-state.ts';
 import { TRANSPORT_MODES, type TransportMode } from '../state/transport-state.ts';
@@ -42,7 +42,12 @@ export type RoutePreview = {
   readonly profile: RouteProfile;
   readonly totalKm: number;
   /**
-   * IN-GAME HOURS THE WHOLE ROUTE COSTS, at the mode this profile would actually travel by.
+   * IN-GAME HOURS THE WHOLE ROUTE IS EXPECTED TO COST, at the mode this profile would travel by.
+   *
+   * **Expected, not static.** It is the `legHours` sum PLUS the mean of `worldTick`'s per-leg
+   * jitter — see `legJitterHours`, which is also where the argument for reporting a mean rather
+   * than a floor lives. The first version of this field summed `legHours` alone and understated
+   * every route by `legCount / 2` hours.
    *
    * The number was already computed here — `rationsNeeded` divides by it — and thrown away.
    * Exposing it is design pillar 4's honest answer on its own: a 523-hour route is a different
@@ -130,6 +135,51 @@ export function startingMode(profile: RouteProfile, mix: readonly TransportMode[
   );
 }
 
+/**
+ * Hours `worldTick`'s per-leg jitter is EXPECTED to add across a whole route.
+ *
+ * ## The defect this fixes
+ *
+ * `travelHours` shipped as the static `legHours` sum, and that is not what a route costs.
+ * `worldTick` bills `max(1, legHours + rng.nextInt(LEG_JITTER_MIN, LEG_JITTER_MAX))` per leg, and
+ * `nextInt` is inclusive at both ends — so the draw is over {-1, 0, 1, 2}, whose mean is **+0.5,
+ * not 0**. The preview was therefore low by `legCount / 2` on every route in the same direction:
+ * 11 hours on a 22-leg route, 24 on a 48-leg one, and measured at R = H + legs/2 on all 18 corpus
+ * routes with enough arrivals, max deviation 1.0 h.
+ *
+ * ## Expected value, not the static floor
+ *
+ * The alternative was to leave the sum alone and document it as a floor. Rejected: a number
+ * labelled a floor that is beaten by essentially every run is not a floor a player can plan
+ * against, and a preview systematically 5% low in a CONSISTENT direction is worse than a noisy
+ * one — it is a bias, and the player who learns to add 5% has been made to do the engine's
+ * arithmetic. The preview's whole purpose is to let the route be judged before it is committed to.
+ *
+ * ## Derived from the tick's own bounds, never hardcoded as `legCount / 2`
+ *
+ * A literal `+ legCount / 2` would be a second, silent copy of a distribution that lives in
+ * `world-tick.ts`, and it would be WRONG the moment those bounds move — including in the specific
+ * way they are currently under review (see `LEG_JITTER_MIN`). Reading the bounds means the
+ * correction is zero automatically if the jitter becomes symmetric, with no second edit and no
+ * stale comment.
+ *
+ * Integer arithmetic via `mulDivRound` for the reason `leg-hours.ts` gives: this figure is
+ * advisory and never reaches the clock, but keeping one rounding convention across the module
+ * costs nothing and removes the question.
+ *
+ * ## The two ways this is still approximate, said rather than hidden
+ *
+ * It is a MEAN. A single run lands either side of it, and `worldTick`'s `max(1, ...)` floor
+ * makes the true expectation a shade higher on any leg whose static cost is one hour — no route
+ * on the shipped slice produces one, since every mode but `foot` carries an overhead of 2 or
+ * more. And like every other field here it describes the STARTING mode: a run that loses its
+ * truck and walks costs more than this says.
+ */
+function legJitterHours(legCount: number): number {
+  // Mean of a uniform draw over an inclusive integer range. Zero when the bounds are symmetric.
+  return mulDivRound(legCount, LEG_JITTER_MIN + LEG_JITTER_MAX, 2);
+}
+
 export function buildPreview(
   profile: RouteProfile,
   segments: readonly LegSegment[],
@@ -152,11 +202,15 @@ export function buildPreview(
   // The route's total duration, and the input to `rationsNeeded` below. Rations are RIGHT
   // because they reuse `HOURS_PER_HUNGER`: retuning the hunger rate updates the supply
   // requirement automatically, instead of leaving a second number to remember.
+  //
+  // `worldTick`'s jitter is added because it is NOT zero-mean, which is what made the first
+  // version of this field defective — see `legJitterHours`.
   const montage = new Set(plan.montageLegs);
-  const totalHours = plan.legKm.reduce(
+  const staticHours = plan.legKm.reduce(
     (sum, km, leg) => sum + legHours(km, mode, montage.has(leg)),
     0,
   );
+  const totalHours = staticHours + legJitterHours(plan.legCount);
 
   // Fuel matters because it CLAMPS at 10: a long route cannot be fuelled at the start, so
   // refuelling is a thing that has to happen on the way — and that is where events live.

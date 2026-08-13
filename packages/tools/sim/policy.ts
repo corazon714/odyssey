@@ -1,6 +1,5 @@
 import {
   evaluatePredicate,
-  playerGain,
   presentedChoices,
   type Choice,
   type ContentPack,
@@ -11,14 +10,40 @@ import {
   type RunState,
   createPredicateContext,
 } from '@odyssey/engine';
+import { weightedGain } from './resource-weights.ts';
 
 /**
  * How the simulated player chooses.
  *
  * A policy is a stand-in for the choiceSequence a real player produces, and the SPREAD across
- * policies is what makes a balance report meaningful: a completion rate under `random` and
- * under `adversarial-worst-case` bound the range a real player lives in. One policy would
- * only tell you about itself.
+ * policies is what makes a balance report meaningful: `random` and `adversarial-worst-case`
+ * bound the range a real player lives in from BELOW — nobody plays worse than a coin, and
+ * nobody plays worse than someone trying to lose. One policy would only tell you about itself.
+ *
+ * ## The bracket, measured. 50,000 runs per policy, `--pack=corpus`
+ *
+ * ```
+ *                          before weighting   after
+ * adversarial-worst-case        64.7%          6.9%   <- floor
+ * random                        21.4%         21.4%   <- unskilled reference
+ * greedy-safe                   18.8%         38.5%
+ * risk-taker                    36.8%         47.2%
+ * greedy-fast                   65.7%         65.7%   <- ceiling, see below
+ * ```
+ *
+ * Before, the deliberate floor sat SECOND-HIGHEST and two of the three deliberate policies came
+ * out below a coin flip. That was an instrument fault, not a balance finding — see `playerTotal`
+ * and `resource-weights.ts`. `random` and `greedy-fast` are unchanged to the digit because
+ * neither reads `playerTotal`, which is the cheapest available check that the fix touched only
+ * what it claimed to.
+ *
+ * ## `greedy-fast` is a CEILING, not a member of the bracket
+ *
+ * It scores `-timeCost` and reads no resource at all, so it is a fixed tie-break rather than a
+ * player model: no player optimises purely for elapsed hours while starving. It tops the table
+ * because ADR 0035 established that completion is a near-deterministic function of total route
+ * hours, which makes minimising time accidentally close to optimal PLAY. Read it as an oracle
+ * bounding what the route allows, and assert the bracket over the other four.
  *
  * The policy's Rng is a SEPARATE generator from the run's. Drawing the player's decisions
  * from the engine's own cursors would make the "player" part of the world state and break the
@@ -102,17 +127,30 @@ export function selectableChoices(
  * of a fact about the resource, and it would drift the moment a resource is added. Do not
  * "simplify" this back to a bare sum.
  *
+ * ## The SCALE, fixed one milestone later — and it decided the ordering too
+ *
+ * The paragraph that stood here said the totals remained unweighted, that cash dominated any
+ * comparison, and that this only changed "how far apart two options sit". **That last clause was
+ * wrong**, and measuring it is what produced `resource-weights.ts`: an unweighted sum made
+ * `greedy-safe` hoard cash it should have spent on food and rest, and put the deliberate lower
+ * bound `adversarial-worst-case` second-HIGHEST of the five on completion. A scale error large
+ * enough to make one term irrelevant IS an ordering error.
+ *
+ * `weightedGain` converts every resource into cash-equivalent value, at rates harvested from the
+ * corpus's own trade rows. Which weights are measured and which are assumed is spelled out
+ * there, along with why they are the SIM's and not the engine's.
+ *
  * ## What is still crude, so nobody mistakes this for correct scoring
  *
- * The totals remain unweighted across resources — `cash` moves in tens and the 0-10 meters
- * move in ones, so cash dominates any comparison. That was true before this fix and is
- * unchanged by it. The fix is the SIGN, which decided the ordering; the SCALE decides only how
- * far apart two options sit, and a policy is a coarse stand-in for a player either way.
+ * The valuation is LINEAR and state-free. A point of morale at morale 1 is worth far more than
+ * at morale 9, and no fixed weight can say so; the three scoring policies do not read `state`
+ * at all. A policy is a coarse stand-in for a player, and this is where the remaining coarseness
+ * lives.
  */
 function playerTotal(effects: readonly Effect[]): number {
   let total = 0;
   for (const effect of effects) {
-    if (effect.op === 'resource') total += playerGain(effect.key, effect.delta);
+    if (effect.op === 'resource') total += weightedGain(effect.key, effect.delta);
   }
   return total;
 }

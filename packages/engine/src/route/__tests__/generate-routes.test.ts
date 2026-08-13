@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { HOURS_PER_HUNGER } from '../../loop/world-tick.ts';
+import { legHours } from '../../loop/leg-hours.ts';
+import { HOURS_PER_HUNGER, LEG_JITTER_MAX, LEG_JITTER_MIN } from '../../loop/world-tick.ts';
+import { mulDivRound } from '../../modifiers/modifier-tunables.ts';
 import { createRngCursors } from '../../rng/rng-cursors.ts';
 import { createRunState } from '../../state/create-run-state.ts';
 import { createRunInit } from '../../state/run-init.ts';
@@ -206,6 +208,45 @@ describe('the start block is derived, never authored', () => {
       expect(hours).toBeGreaterThan(0);
       expect(Number.isInteger(hours)).toBe(true);
       expect(plan.preview.rationsNeeded).toBe(Math.ceil(hours / HOURS_PER_HUNGER));
+    }
+  });
+
+  /**
+   * THE REGRESSION. `travelHours` shipped as the static `legHours` sum, which is not what a route
+   * costs: `worldTick` bills `legHours + nextInt(LEG_JITTER_MIN, LEG_JITTER_MAX)` per leg, and
+   * `nextInt` is inclusive at BOTH ends, so the draw {-1, 0, 1, 2} has a mean of +0.5. Every
+   * preview was low by `legCount / 2` — 11 h on a 22-leg route, 24 h on a 48-leg one — in the same
+   * direction on every route, which is a bias rather than noise.
+   *
+   * The static sum IS recomputed here, and that is the point rather than a duplication slip: the
+   * assertion is precisely that the field is NOT that number. It calls the same exported
+   * `legHours` the production path calls rather than reimplementing the per-mode arithmetic, so
+   * the only thing restated is the loop.
+   *
+   * Both sides read `LEG_JITTER_*`, so if the bounds are ever made symmetric — they are under
+   * review, see the constant — this keeps passing with the correction at zero, and it is not the
+   * test that has to be remembered.
+   */
+  it('reports the EXPECTED duration, jitter included, not the static leg sum', () => {
+    const expectedJitter = (legCount: number): number =>
+      mulDivRound(legCount, LEG_JITTER_MIN + LEG_JITTER_MAX, 2);
+
+    // Anti-vacuous: at a zero correction every assertion below degenerates to the old behaviour,
+    // so the suite must say out loud which regime it is running in.
+    const asymmetric = LEG_JITTER_MIN + LEG_JITTER_MAX !== 0;
+
+    for (const { seed, pair, plan } of ALL) {
+      const montage = new Set(plan.route.montageLegs);
+      const staticHours = plan.route.legKm.reduce(
+        (sum, km, leg) => sum + legHours(km, plan.start.transportMode, montage.has(leg)),
+        0,
+      );
+      const where = `${seed} ${pair} ${plan.route.profile}`;
+
+      expect(`${where}: ${String(plan.preview.travelHours)}`).toBe(
+        `${where}: ${String(staticHours + expectedJitter(plan.route.legCount))}`,
+      );
+      if (asymmetric) expect(plan.preview.travelHours).toBeGreaterThan(staticHours);
     }
   });
 

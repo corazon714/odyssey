@@ -5,6 +5,548 @@
 
 ---
 
+## Recovery milestone step 3 — **the policy bracket is the right way up again**, and the route preview stops lying by 5%
+
+Uncommitted on `dev` over `970c021`. Two fixes and a correction pass; **no balance constant was
+touched and `golden-runs.json` did not move.**
+
+### Job 1 — `playerTotal` is WEIGHTED, at rates harvested from the corpus
+
+Step 1 fixed the SIGN of a resource delta and said in its own docstring that the SCALE only
+decided "how far apart two options sit". **That was wrong and this is the measurement of how
+wrong.** `cash` and `bank` are unbounded and move in tens, the six meters are 0-10 and move in
+ones, `reputation` is −5..+5 — so an unweighted sum made every cash term dominate every meter
+term, and the policies stopped being the players they are named after.
+
+**Completion by policy, 50,000 runs each, `--pack=corpus`:**
+
+| policy                   | before | after | reads `playerTotal`? |
+| ------------------------ | -----: | ----: | -------------------- |
+| `adversarial-worst-case` |  64.7% |  6.9% | yes                  |
+| `random`                 |  21.4% | 21.4% | **no**               |
+| `greedy-safe`            |  18.8% | 38.5% | yes                  |
+| `risk-taker`             |  36.8% | 47.2% | yes                  |
+| `greedy-fast`            |  65.7% | 65.7% | **no**               |
+
+**The bracket is restored.** `adversarial-worst-case` is now strictly the minimum of the five
+instead of the second-highest, and `random` sits strictly below all three deliberate policies —
+the floor and the unskilled reference, with everything that is actually trying above them. The two
+policies that do not read `playerTotal` came back **identical to the digit**, which is the
+cheapest available proof that the change touched only what it claimed to.
+
+**`greedy-fast` should NOT be inside the bracket, and now says so in its own docstring.** It
+scores `-timeCost` and reads no resource at all — a fixed tie-break, not a player model, since no
+player optimises purely for elapsed hours while starving. It tops the table because ADR 0035
+established completion as a near-deterministic function of total route hours, which makes
+minimising time accidentally close to optimal PLAY. Read it as a ceiling on what the route allows
+and assert the bracket over the other four.
+
+#### The rates are harvested, and three of the nine are ASSUMED
+
+Every money-for-meter trade in the corpus (13 events, 25 complications, 15 universal choices) was
+enumerated. Fifteen rows trade money against a meter; **six move money against exactly one meter**,
+and only those are usable prices — a row that buys energy and hygiene with the same thirty cash
+says what the pair is worth, not what either is.
+
+| meter        |   n | rates (cash/point) | weight | basis                                   |
+| ------------ | --: | ------------------ | -----: | --------------------------------------- |
+| `cash`       |   — | —                  |      1 | numeraire, by definition                |
+| `bank`       |   — | —                  |      1 | numeraire — same unit, different gates  |
+| `hunger`     |   1 | 4.0                |      4 | **MEASURED**                            |
+| `energy`     |   2 | 12.5, 15.0         |     14 | **MEASURED** (median 13.75)             |
+| `morale`     |   1 | 15.0               |     15 | **MEASURED**                            |
+| `heat`       |   2 | 40.0, 40.0         |     40 | **MEASURED**                            |
+| `health`     |   0 | never traded       |     15 | _ASSUMED_ — median of the four measured |
+| `hygiene`    |   0 | never traded       |     15 | _ASSUMED_                               |
+| `reputation` |   0 | never traded       |     15 | _ASSUMED_                               |
+
+**The spread is BETWEEN meters, not within them**, which is what justifies a vector rather than
+one blended rate: heat's two rows agree to the digit across two unrelated events, energy's two sit
+20% apart, and the 10× gap from hunger to heat is the corpus saying food is cheap and a police
+file is not. **`health` is the weight most likely to be wrong** — it is the meter that ends runs
+and the corpus is silent on it. The one row that looks like a health price
+(`opportunity.work_for_a_day/take_the_day_rate`, +50 cash for energy −5 AND health −1) buys both
+with the same 50, so 50 is an upper bound on the pair rather than a price for either.
+
+Range-normalising by `RESOURCE_BOUNDS` was considered as the fallback and cannot do the job on its
+own: `cash` and `bank` have `max: null`, so there is no range to divide by and cash's scale is the
+entire defect. Some anchor has to come from content. Once it does, and since every bounded
+resource here shares a range of exactly 10, "an unpriced point is worth the median priced point"
+and "normalise by range" are the same statement.
+
+#### Where the weights live: `packages/tools/sim`, not the engine
+
+Argued rather than assumed, because step 1 went the other way. `RESOURCE_POLARITY` is in the
+engine because polarity is a fact about the RESOURCE — hunger is a pressure gauge in every pack
+that will ever exist. **An exchange rate is a fact about a CORPUS.** These numbers were read off
+`packages/content/`; they are not true of `--pack=fixture`, and they move the day an author
+reprices a meal. Putting them in the engine would also put a balance opinion in a module nothing
+in the engine reads — `applyEffects` and `clampResources` have no use for what a point is worth.
+The engine still owns the key set, the bounds and the polarity, all imported, so a ninth resource
+is a type error here rather than a silent zero.
+
+**Regression test**: `policy.test.ts` pins the PRICE from both sides — a cash sum under a meter
+point's weight must not beat it, and a sum over it must. Derived from `RESOURCE_WEIGHTS`, over
+every bounded key, so a resource added with a ceiling is covered the day it is added. Verified
+failing first: with `playerTotal` reverted to `playerGain`, **7 of 25 fail**, one per bounded
+resource, all `expected 'a_cash_under_the_price' to be 'b_one_point'`. The upper-bound half is the
+anti-overfit guard — making meters enormous would satisfy the first half at any weight.
+
+### Job 2 — `RoutePreview.travelHours` reports the EXPECTED duration, not the static sum
+
+Shipped defective at step 1: it summed `legHours` alone, while `worldTick` bills
+`max(1, legHours + jitter)` where the jitter is **inclusive at both ends** — {−1, 0, 1, 2}, mean
+**+0.5 per leg**. Every route was understated by `legCount / 2`: 11 h at 22 legs, 24 h at 48, in
+the same direction every time. Measured at `R = H + legs/2` on all 18 corpus routes with enough
+arrivals, max deviation 1.0 h.
+
+**Decision: report the expected value.** A figure documented as a floor but beaten by essentially
+every run is not a floor anyone can plan against, and a preview 5% low in a CONSISTENT direction
+is a bias rather than noise — the player who learns to add 5% is doing the engine's arithmetic.
+The preview exists to let a route be judged before it is committed to.
+
+**Derived from `LEG_JITTER_MIN`/`LEG_JITTER_MAX`, now named and exported from `world-tick.ts`,
+never hardcoded as `legCount / 2`.** A literal would be a second silent copy of a distribution
+that lives in the tick, and wrong the moment those bounds move — including in the specific way
+they are under review below. Integer arithmetic through `mulDivRound`, matching the module.
+
+**`rationsNeeded` shares the local and moves with it, which is the fix and not a side effect.** It
+is `ceil(travelHours / HOURS_PER_HUNGER)`, so it was under-provisioning by the same 5% — roughly
++2 rations on a 22-leg route and +4 on a 48-leg one. One `totalHours` local still feeds both
+consumers, so `generate-routes.test.ts`'s identity between them still holds.
+
+**Nothing measured moved.** `RoutePreview` never enters `RunState` or `contentVersion`, and grep
+confirms no consumer in `packages/engine/src/loop`, `state` or `packages/tools/sim` — the sim
+reads `plan.route` and `plan.start`. Goldens and both baselines are unaffected by this job.
+
+#### STOP AND REPORT — `nextInt(-1, 2)` is probably itself an engine bug, and it is NOT fixed here
+
+`Rng.nextInt(minInclusive, maxInclusive)` is inclusive at both ends: `rng.test.ts` pins it
+("nextInt stays within the inclusive range", and `nextInt(1, 6)` covering six distinct values),
+and `world-tick.ts` uses it correctly two lines below — `nextInt(0, 3) === 0` is exactly the "one
+leg in four" its comment claims. So `(-1, 2)` is not a misreading of the contract by accident of
+ignorance.
+
+**But two ADRs describe the intent as symmetric.** `docs/adr/0014` calls it "the ±1 hour jitter on
+travel time"; `docs/adr/0026` argues "±1 hour on a 5-hour leg is texture, ±20% on a 30-hour
+montage is noise". Neither mentions a +0.5 h/leg drift, and a systematic upward bias on travel
+time is not something either would have left unremarked. **The likeliest reading is that `(-1, 2)`
+was meant to be {−1, 0, 1} and carries an exclusive-max assumption.**
+
+Changing it moves the value of every subsequent draw on the `worldTick` stream, so **every golden
+run and both baselines move**. Per the task's instruction that is reported, not landed. What
+landed is the named constants and the preview reading them, which is correct under both futures:
+at {−1, 0, 1} the correction is zero and the static sum becomes the honest answer with no second
+edit. **Decide this before the knee sweep** — it is worth 11-24 h on every route, i.e. the same
+order as the constants the sweep is trying to size.
+
+### Job 3 — six corrections to the step-2 entry below
+
+All re-derived from the code or recomputed, not taken on trust. Four confirmed as stated, one
+refined, one not found.
+
+1. **CONFIRMED and applied.** Route 14 at band 15% is 4.96%, not 6.1%, so "3 routes under 5%" is
+   **4** — the band takes three routes off the floor, not four. Applied with a footnote: it could
+   NOT be independently reproduced here, because `S` is survival in travel hours and the sim's
+   `--json` trace emits only whole `days`.
+2. **CONFIRMED and applied.** 41.3% → 46.0% is 4.7pp, stated as 4.3pp; the +2.3/+2.0 split sums to
+   4.3 and covers 11 of 25 routes, dropping fourteen. The residual's mechanism is now named: the
+   model compares each run's `S` against the route MEAN `R` while each run's own `R` is a random
+   variable, and job 2 shows that spread is signed rather than symmetric.
+3. **CONFIRMED and applied**, recomputed hour by hour against the real constants. `spanPoints`
+   FLOORS against the absolute clock, so morale hits 0 at **220/220/220/260** h
+   (truck/car/bus/train) and health at **264** h, against the table's 221/221/230/266 and 274.
+4. **CONFIRMED and applied.** The "morale starts at 7 is why" counterfactual holds at clock offset
+   0 and fails across most of the corpus: with morale starting at 10, health binds in only **12 of
+   28** mode × corpus-start-hour cells. At offset 8, morale-at-10 still walls at 272 h against
+   health's 278 h.
+5. **CONFIRMED and applied.** Energy is `spanPoints(...) + (harsh ? 1 : 0)` — the harsh-weather
+   point is per-LEG and outside the span, so the analytic energy column is an upper bound and the
+   morale wall derived from it is too.
+6. **REFINED.** The reviewer's sub-claim that health's wall spans 264-288 h and can tie train's
+   does not reproduce: across the corpus's real start hours (**5-11**, verified from
+   `loadCorpusScenarios`) health lands at **259 h at offset 5 and 275-280 h at 6-11**, and train's
+   margin is 4-31 h and never zero. Health is genuinely mode-invariant — nothing in `healthCost`
+   reads the mode — but it is not OFFSET-invariant, which is the real correction. Written that way.
+7. **NOT FOUND.** There is no `+270 lines` claim anywhere in `docs/PROGRESS.md`; if it was made it
+   was made in a session report. `git diff --numstat` on the entry says **+269 / −0**, and the
+   step-2 DoD block now records that figure so the claim has a home.
+
+### Baselines and checks
+
+**`--pack=corpus` MOVED and `--pack=fixture` did not, and which one moved is the finding.**
+Corpus: completion 41.3% → 36.0%, median legs 23 → 22, `gave_up` 45.8% → 51.6%, `collapsed`
+12.8% → 12.3%, unresolved threads 114 → 98. The completion drop is arithmetic on the policy table
+— `adversarial` alone is −57.8pp on a fifth of the grid.
+
+**The line worth reading is `Universal choices picked` 40.3% → 26.9%**, against a report note that
+calls anything over ~30% a sign the registry is flattening the corpus. Under unweighted totals the
+cheap universal rows won on cash alone; pricing the meters put the authored choices back in
+contention. That was a content finding attributed to content, and it was the instrument.
+
+Fixture unmoved, checked rather than assumed: **0 of 27 (event × scoring-policy) argmaxes flip
+there against 13 of 39 on the corpus.** Structural this time, not the content accident step 1
+found — those nine events separate their choices by cash sums no meter term can reach even at
+heat's 40.
+
+### DoD
+
+1. `pnpm typecheck` clean. 2. `pnpm lint` clean. 3. `pnpm test` green — 83 files / 1,784 tests,
+   plus mobile's 2/3. 4. `pnpm content:lint` clean (0 errors, the standing
+   `MISSING_IMAGE_MANIFEST` warning). 5. `pnpm sim:diff -- --runs=2000` on BOTH packs: both report
+   "No change" after rebaselining; the deltas are above. `pnpm format:check` clean.
+   **`golden-runs.json` is untouched** — job 1 is tools-only and job 2 changed a field no run reads.
+   Regression tests verified failing before each fix. **Not committed.**
+
+### Next step — ONE task
+
+**Sweep the wear curve's KNEE, with a MORALE target, on the fixed instrument.** `FULL_UNTIL` over
+`{140, 160, 180, 200, 240}` at the 50% mid-rate, 2,000 runs/cell on the full 25 × 5 grid,
+reporting per-route completion and the `gave_up`/`collapsed` split at each. The curve as specified
+is refuted by its own 300-hour floor — for any route past 360 h, `worn(R) ≥ 240 + 0.5 × 120 = 300`
+at any tail including zero, while 30% completion needs `worn(R)` between 267 and 278 h. The band
+is not the constant; the knee is.
+
+**Two things must be read before that sweep quotes a number.** Every completion figure in the
+step-2 entry below was measured through the unweighted instrument and is stale by the amounts in
+the policy table above — **re-measure, do not adjust.** And the `nextInt(-1, 2)` question above is
+worth 11-24 h per route, which is the same order as what the sweep is sizing; decide it first or
+the sweep measures two changes at once.
+
+---
+
+## Recovery milestone step 1 SHIPPED (`970c021`) · step 2 measured: **the wear curve is not supported as specified**
+
+### Step 1 — the instrument, fixed before anything was sized through it
+
+Shipped at **`970c021`**, `fix(sim): the policies were scoring hunger backwards`. No mechanic.
+
+`policy.ts` summed raw `effect.delta` across all nine resource keys. `hunger` and `heat` are
+INVERTED scales — higher is worse — so **eating scored as a loss**:
+`encounter.the_other_traveller/buy_a_meal_from_them` (cash −12, hunger −3) totalled −15 against
+`u:share_what_you_have` (cash −10, hunger +2, morale +1) at −7. `greedy-safe` and `risk-taker`
+actively AVOIDED food; `adversarial-worst-case` actively SOUGHT it. 942 of 2,000 traced runs
+changed at least one choice (greedy-safe 400/400, risk-taker 400/400, adversarial 142/400,
+`random` and `greedy-fast` 0/400 — they do not read these totals).
+
+Four things landed with it:
+
+- **`RESOURCE_POLARITY` + `playerGain` in the ENGINE**, beside `RESOURCE_BOUNDS`
+  (`packages/engine/src/state/resources.ts`). Polarity is a fact about the resource — the result
+  screen colours a delta with it, the journal words a gain or a loss with it, balance scores one
+  with it. Three private copies is the duplication CLAUDE.md §8 names as this project's main
+  failure mode. `hygiene` is NORMAL and is the easy mistake: it decays downward but 10 is clean.
+- **`TRAJECTORY_KEYS`** in `format-report.ts`, renamed from a five-key `RESOURCE_KEYS` that
+  shadowed the engine's nine-key export, **plus the `hunger` row** it could not print. The first
+  attempt printed a confident `0/0/0` that was `percentile([])`; collected at the source in
+  `run-one.ts` it reads `5/8/10` at leg 5 and `9/10/10` at leg 15.
+- **`RoutePreview.travelHours`** — the total `rationsNeeded` was already dividing and throwing
+  away. Design pillar 4's honest answer on its own.
+- Both baselines moved; **`golden-runs.json` regenerated JSON-deep-equal**, `SAVE_VERSION`
+  unchanged at 5.
+
+### The ending mix INVERTED, and that is what it does to the design
+
+|                     | through the broken lens | corrected |
+| ------------------- | ----------------------: | --------: |
+| completion          |                   43.5% | **41.3%** |
+| `failure_gave_up`   |                   37.1% | **45.8%** |
+| `failure_collapsed` |                   19.3% | **12.8%** |
+
+Completion barely moved and stayed mid-band, so nothing sized against "how often does a run
+finish" changes. **The failure mode did.** Through the broken lens the dominant failure looked
+like starvation; measured correctly it is **MORALE**, by a plurality. A recovery mechanic scoped
+to hunger was scoped to a target a third smaller than the instrument reported — and the
+`look_after_yourself` registry graft, which is best at HEALTH, is aimed at the minority meter.
+
+### Step 2 — S measured per route, on corrected policies
+
+**250,000 runs: 25 corpus routes × 5 policies × 2,000, zero engine errors.** Harness in the
+scratchpad, seed namespace `surv:` (no prefix shared with the sim's `base:`); the repo was not
+touched except for this file. 2,000/cell is chosen so a per-route figure pools 10,000 runs and
+p99 rests on 100 order statistics rather than the single digits this repo has twice been burned
+by; the doomed-route completions below rest on 10,000 each.
+
+**S is TRAVEL hours, and that is not the clock.** `advanceLeg` advances time only inside
+`worldTick`; `resolveChoice` can add up to 16 more from an event's own effects, and
+`spanPoints(elapsed, hours, per)` charges the travel span only. Median run: **191 travel hours
+against 222 clock hours** — a 16% gap that would have gone straight into any curve sized on the
+clock.
+
+**S is CENSORED and was treated as censored.** A run that ARRIVES is not "died at s hours", it is
+"survived at least s hours", and s is then the ROUTE's length rather than the player's. Quantiles
+are **Kaplan-Meier** with arrivals as right-censored observations; a quantile above the censoring
+point is printed `—` rather than invented. The conflation is worth 22%:
+
+| pooled S            |  p5 | p25 |     p50 | p75 |     p90 | p95 | p99 |
+| ------------------- | --: | --: | ------: | --: | ------: | --: | --: |
+| **KM (censored)**   | 116 | 166 | **236** | 293 | **316** | 336 | 367 |
+| naive over all runs | 115 | 148 |     191 | 239 |     287 | 301 | 336 |
+| failures only       | 107 | 145 |     184 | 252 |     295 | 306 | 342 |
+
+The judge's case rests on `112/193/303/438`, which is the **naive** row. The censored median is
+**236 h, not 193** — the pooled p50 understated survival by 22%.
+
+### Per-route S (KM, arrivals censored) — the seven doomed routes
+
+| idx | profile | mode  | legs |   H |   R | today |  p5 | p25 | p50 | p75 | p90 | p95 | p99 | max fail |
+| --- | ------- | ----- | ---: | --: | --: | ----: | --: | --: | --: | --: | --: | --: | --: | -------: |
+| 19  | illicit | truck |   43 | 398 | 420 |  0.1% | 123 | 170 | 233 | 277 | 319 | 339 | 369 |      426 |
+| 20  | scenic  | car   |   48 | 406 | 430 |  0.0% | 111 | 154 | 212 | 276 | 317 | 338 | 381 |      432 |
+| 22  | scenic  | car   |   48 | 407 | 431 |  0.1% | 113 | 152 | 212 | 277 | 319 | 340 | 386 |      429 |
+| 14  | illicit | truck |   48 | 490 | 514 |  0.0% | 130 | 185 | 210 | 290 | 315 | 333 | 373 |      457 |
+| 21  | illicit | truck |   48 | 509 | 533 |  0.0% | 145 | 175 | 251 | 292 | 299 | 304 | 319 |      409 |
+| 24  | illicit | truck |   48 | 513 | 537 |  0.0% | 145 | 178 | 248 | 282 | 303 | 307 | 319 |      458 |
+| 23  | illicit | truck |   48 | 523 | 547 |  0.0% | 130 | 173 | 236 | 278 | 304 | 310 | 332 |      425 |
+
+`H` is the STATIC leg sum; **`R` is what the route actually bills** and it is consistently
+`H + legs/2`, verified on all 18 routes with enough arrivals to measure it (largest deviation
+1.0 h). `worldTick` jitters with `rng.nextInt(-1, 2)`, which is **inclusive on both ends** —
+{−1, 0, 1, 2}, mean **+0.5** — so the preview understated its own route by 11–24 hours.
+
+**FIXED IN THIS TREE, so read the columns accordingly:** `RoutePreview.travelHours` now reports
+the expected value and equals `R`, derived from the exported `LEG_JITTER_MIN`/`LEG_JITTER_MAX`
+rather than a second copy of the distribution. The `H` column above is retained as the static sum
+because the quantile measurements were taken against it. Size the curve on **R**.
+
+**AND THE JITTER ITSELF IS UNDER REVIEW, recorded rather than fixed.** `docs/adr/0014` ("the ±1
+hour jitter on travel time") and `docs/adr/0026` ("±1 hour on a 5-hour leg is texture") both
+describe the intent as SYMMETRIC ±1, but `nextInt` is inclusive at both ends so `(-1, 2)` draws
+{−1, 0, 1, 2}. If the ADRs are right this is an off-by-one from an exclusive-max assumption, and
+every route in the game is 5% longer than designed. Correcting it moves every downstream RNG draw
+and therefore every golden run, so it is its own milestone and must not be folded into a
+balance commit.
+
+### The band question, answered — and the answer is that the band is not the constant
+
+`worn(H)` = full drain to 240 h, 50% for the next 120, `tail` beyond 360.
+
+| route (R)  | band | worn(R) | quantile of that route's own S | completion |
+| ---------- | ---- | ------: | -----------------------------: | ---------: |
+| 19 (420 h) | 15%  |     309 |                          p87.4 |      12.6% |
+|            | 25%  |     315 |                          p88.0 |      12.0% |
+|            | 35%  |     321 |                          p91.3 |       8.7% |
+| 20 (430 h) | 15%  |     311 |                          p86.2 |      13.8% |
+|            | 25%  |     318 |                          p90.5 |       9.5% |
+|            | 35%  |     325 |                          p92.8 |       7.2% |
+| 22 (431 h) | 15%  |     311 |                          p85.6 |      14.4% |
+|            | 25%  |     318 |                          p88.8 |      11.2% |
+|            | 35%  |     325 |                          p92.0 |       8.0% |
+| 14 (514 h) | 15%  |     323 |                        p95.0 † |      4.96% |
+|            | 25%  |     339 |                          p96.0 |       4.0% |
+|            | 35%  |     354 |                          p97.8 |       2.2% |
+| 21 (533 h) | 15%  |     326 |                          p99.3 |       0.7% |
+|            | 25%  |     343 |                          p99.8 |       0.3% |
+|            | 35%  |     361 |                          p99.9 |       0.1% |
+| 24 (537 h) | 15%  |     327 |                          p99.3 |       0.7% |
+|            | 25%  |     344 |                          p99.7 |       0.3% |
+|            | 35%  |     362 |                         p100.0 |       0.0% |
+| 23 (547 h) | 15%  |     328 |                          p97.5 |       2.5% |
+|            | 25%  |     347 |                         p100.0 |       0.0% |
+|            | 35%  |     365 |                         p100.0 |       0.0% |
+
+† **Route 14 at band 15% was re-measured at 4.96% over 20,000 runs**, against the 6.1% this table
+first carried; the cell and its quantile are corrected together because they are complements. It
+straddles the 5% line, and that flips a headline three paragraphs down — see there. **Not
+independently reproduced in the session that wrote this footnote**: `S` is survival in TRAVEL
+hours and the sim's `--json` trace emits only whole `days`, so re-deriving the quantile needs an
+instrument that does not exist in the repo, and the policy fix landed since would have moved the
+distribution anyway. Treat 4.96% as the later of two measurements, not as a confirmed one.
+
+**Read it against the criterion the brief set — past p95 buys nothing, below p50 trivialises.**
+Not one candidate band lands below p85 on any doomed route. The three routes at 398–407 h sit at
+p85–p93 under every band; the four at 490–523 h sit at **p94–p100 under every band**, i.e. past
+the "buys nothing" line for 25% and 35% and inside a hair of it for 15%. No band is anywhere near
+trivialising anything.
+
+**The band is worth ±0.5pp of corpus completion and the knee is worth +4.7pp.** Corpus-mean
+completion: 41.3% today → **46.0% (15%) / 45.4% (25%) / 45.0% (35%)**. Moving 25% → 15% is worth
+0.54pp; 25% → 35% is −0.44pp.
+
+**The decomposition of that gain DOES NOT CLOSE, and the gap is a finding rather than rounding.**
+41.3% → 46.0% is **4.7pp**, not the 4.3pp this paragraph claimed. The split offered — +2.3pp from
+the four routes at 261–284 h, +2.0pp from all seven doomed routes — sums to 4.3 and accounts for
+11 of the **25** corpus routes, silently dropping **fourteen**. Two things are therefore true at
+once: the headline was understated by 0.4pp, and the attribution covers less than half the grid.
+
+Part of the residual is an artefact of the model rather than of the curve. Every "completion under
+the curve" figure is `P(S > worn(R))` with `R` taken as the route's MEAN billed hours, while each
+run's own `R` is a random variable — `worldTick` jitters every leg, so a 48-leg route's realised
+total spreads around its mean by roughly ±√48 hours. Comparing a run's own `S` against the fleet
+mean rather than against its own realised `R` mixes that spread into the estimate, in a direction
+that is signed rather than symmetric because the jitter itself is (see the entry above this one).
+**Re-derive the decomposition per run, not per route, before quoting the split again.**
+
+**The shape has a 300-hour floor and that floor, not the tail, sets the answer.** For any route
+past 360 h, `worn(R) ≥ 240 + 0.5 × 120 = 300` at ANY tail, including zero. So `P(S > 300)` is a
+hard ceiling on what the proposed curve can ever buy:
+
+| route      | today | **ceiling at tail = 0** | 15%   | 25%   | 35%  |
+| ---------- | ----: | ----------------------: | ----- | ----- | ---- |
+| 19 (420 h) |  0.1% |               **14.6%** | 12.6% | 12.0% | 8.7% |
+| 20 (430 h) |  0.0% |               **14.3%** | 13.8% | 9.5%  | 7.2% |
+| 22 (431 h) |  0.1% |               **16.9%** | 14.4% | 11.2% | 8.0% |
+| 14 (514 h) |  0.0% |               **15.0%** | 4.96% | 4.0%  | 2.2% |
+| 21 (533 h) |  0.0% |                **8.0%** | 0.7%  | 0.3%  | 0.1% |
+| 24 (537 h) |  0.0% |               **13.1%** | 0.7%  | 0.3%  | 0.0% |
+| 23 (547 h) |  0.0% |               **13.5%** | 2.5%  | 0.0%  | 0.0% |
+
+**Reaching 30% completion needs `worn(R)` between 267 and 278 h. The curve cannot go below 300.**
+Holding the 50% mid-rate and a 25% tail, the KNEE would have to move **240 h → 143–178 h** to get
+these routes to 30%, and to 106–154 h for 40%. That is the constant that sets it.
+
+**RECOMMENDATION. If a band must be picked, pick 15% — but the honest finding is that the
+mechanic as specified does not do the job it was proposed for.** 15% dominates the other two on
+every one of the seven routes and costs nothing anywhere else (the bands are identical below
+360 h). It leaves the corpus at **4** routes under 5% completion instead of 7 — 21, 24, 23 **and
+14**, which lands at 4.96% and not the 6.1% first recorded — and 5 routes inside 30–50% instead
+of 3. **That correction halves the headline**: the band was sold on taking four routes off the
+floor and it takes three. It does NOT collapse the bimodality: per-route completion goes from
+`0.0 … 94.0` to `0.7 … 94.7`. The 4.67× H-spread does compress to 2.90×, and the completion
+spread does not follow it, which is the whole claim the curve was sold on.
+
+### Which meter binds after the curve — the composition argument FAILS
+
+**Analytically, from the real constants and `createResources`, with no events at all** — and
+**corrected 2026-08-13**; the first version of this table accrued continuously, but `spanPoints`
+FLOORS against the ABSOLUTE clock, so every non-energy figure in it was late by 4–14 h:
+
+| mode  | energy ≤ `ENERGY_TIRED` at | morale 0 at | health 0 at | binds      |
+| ----- | -------------------------: | ----------: | ----------: | ---------- |
+| truck |                       81 h |   **220 h** |       264 h | **MORALE** |
+| car   |                       81 h |   **220 h** |       264 h | **MORALE** |
+| bus   |                       90 h |   **220 h** |       264 h | **MORALE** |
+| train |                      126 h |   **260 h** |       264 h | **MORALE** |
+
+Energy floors at `9 × HOURS_PER_ENERGY[mode]`. Morale then needs 7 crossings of the global
+20-hour grid, which is **not** `7 × 20` past that point: at 81 h elapsed, `floor(81/20) = 4`, so
+the 7th crossing is at 220 h and not at 221. Health needs hunger ≥ 10 at 60 h, then 10 crossings
+of the 22-hour grid, which lands on **264 h and not 274**. Bus falls to 220 with truck and car
+rather than to 230 for the same reason: the extra 9 h of energy budget is absorbed inside one
+20-hour cell.
+
+**Three caveats the table cannot carry, all verified against `world-tick.ts`:**
+
+- **These are the walls at clock offset 0, and the corpus never starts there.** `spanPoints` reads
+  the absolute clock, so both walls move with `startHour`, which runs **5–11** across the 25
+  corpus scenarios. Health lands at **259 h at offset 5 and 275–280 h at offsets 6–11** (the jump
+  is `floor(5/6) = 0` against `floor(6/6) = 1`, one free hunger point); truck/car morale runs
+  209–215 h and train 249–255 h. Health is genuinely mode-INVARIANT — nothing in `healthCost` or
+  the hunger rate reads the mode — but it is not offset-invariant, and the earlier single figure
+  of 274 h is not any mode's wall at any corpus offset.
+- **Train's margin is thin but never a tie.** Train morale sits 4 h inside health's wall at offset
+  5 and 24–31 h inside it at offsets 6–11. The ordering never flips on train, and it never ties.
+- **The energy column is an UPPER bound.** `worldTick` charges energy as
+  `spanPoints(...) + (harsh ? 1 : 0)` — the harsh-weather point is a per-LEG extra outside
+  `spanPoints`, on any leg of 6 h or more in rain, wind or heat. So real runs floor energy sooner
+  than 81/90/126 h and reach the morale wall sooner. It is the one drain in the file that is not
+  purely a clock span, and every figure in this table ignores it.
+
+**"Morale STARTS AT 7, not 10, and that single number is why morale binds" holds at offset 0 and
+does NOT hold across the corpus.** Recomputed with a morale start of 10, health binds in **12 of
+the 28 mode × corpus-start-hour cells, not 28**: it flips for all four modes only at offset 5, for
+`train` at every offset, for `bus` at 10 and 11, and for truck and car **nowhere else at all** —
+at offset 8, morale-at-10 still walls at 272 h against health's 278 h. The counterfactual was
+measured at one point of a parameter the engine varies and reported as the whole space.
+
+**Measured, at 250,000 runs:** median S is **165 h for `gave_up` and 279 h for `collapsed`**.
+Morale kills early, health kills late:
+
+| S band (h) |      n | `gave_up` | `collapsed` |
+| ---------- | -----: | --------: | ----------: |
+| 0–160      | 52,875 |     99.9% |        0.1% |
+| 160–200    | 31,650 |     98.8% |        1.2% |
+| 200–240    | 20,673 |     84.0% |       16.0% |
+| 240–280    | 21,675 |     38.4% |       61.6% |
+| 280–320    | 16,096 |     20.5% |       79.5% |
+| 320+       |  3,753 |     10.8% |       89.2% |
+
+**The wear curve shortens the drain budget a route demands. Shortening a budget removes the LATE
+failures first — and the late failures are the collapses.** So the curve moves the wall TOWARD
+morale, the opposite of the direction the composition argument needs:
+
+| route | all failures today | under band 15% |
+| ----- | -----------------: | -------------: |
+| 20    |     63.9% gave\_up | 73.7% gave\_up |
+| 22    |     64.6% gave\_up | 74.8% gave\_up |
+| 19    |     67.6% gave\_up | 75.3% gave\_up |
+| 14    |     71.8% gave\_up | 75.6% gave\_up |
+
+**On every doomed route, under every candidate band, MORALE still binds — 64.6% to 75.6% of
+remaining failures.** The median survivor under the curve dies at 183–251 drain-hours, i.e. 183–262
+real travel hours, which is squarely the morale wall from the table above and nowhere near the
+health wall.
+
+**And health is not close on those runs.** A `gave_up` run has health `p10/p50/p90 = 2/6/8` at the
+moment it ends. Six health out of ten, unused. **A `look_after_yourself` row that restores health
+would do nothing for 45.4% of runs and 64–76% of the failures the curve leaves behind.** The
+composition argument was true of the pre-fix ending mix and is false of the measured one — say it
+plainly: **the graft is aimed at the wrong meter.**
+
+### What would change all of this — read before quoting any number above
+
+1. **The policies still do not bracket a player, and the spread across POLICIES is LARGER than
+   across ROUTES.** Mean within-route spread of KM p50 across the five policies is **84 h** (max
+   170); mean within-policy spread across the 25 routes is **65 h** (max 84). Marginal ranges:
+   policy 134 h, route 102 h. Those four figures are computed only over cells whose KM p50 is
+   DEFINED — a cell that completes over half its runs has no p50 below its censoring point — so
+   they are taken over the harder half of the grid and are a floor on the true spread rather than
+   an estimate of it. Under band 15% on route 20 the five policies read
+   `0.1 / 0.0 / 22.3 / 6.2 / 40.1` — an 800× spread whose pooled value is 13.8%. **Every pooled
+   per-route figure in this entry is itself an average over a population that disagrees more than
+   the routes do.** Same population error the brief warns about, one level down.
+2. **The bracket is INVERTED, and the cause is scale rather than sign.** Completion by policy:
+   `greedy-safe` 18.8%, `random` 21.3%, `risk-taker` 36.4%, `adversarial-worst-case` 64.7%,
+   `greedy-fast` 65.4%. `policy.ts` says `random` and `adversarial-worst-case` bound the range a
+   real player lives in; the intended LOWER bound is second-highest. **Cash at leg 25 (p50) is the
+   whole story, from `pnpm sim --pack=corpus --runs=2500 --policy=<p>`: `greedy-safe` 2,457 with
+   morale 3; `adversarial` 790 with morale 9.** `playerTotal`
+   is unweighted, cash moves in tens and the meters in ones, so `greedy-safe` maximises a cash
+   term and hoards, and `adversarial` minimises it and spends — on food and rest. Step 1 fixed the
+   SIGN and says so; the SCALE now decides the ordering. `greedy-fast` scores `-timeCost` only, so
+   its 65.4% is a fixed alphabetical tie-break, not a player model.
+   **FIXED 2026-08-13 — see the entry above this one. Every completion figure in this step-2 entry
+   was measured through the unweighted instrument and is stale by exactly that much.**
+3. **The model behind every "completion under the curve" figure is `P(S > worn(R))` with S taken
+   as invariant in drain-hours.** It is a LOWER bound: under the curve the same events fire at the
+   same legs but at lower drain-hours, so a run collects more recovery per drain-hour than measured
+   here. It is not a large correction at these hour counts, but it is signed, and it is why the
+   ceiling table above is quoted at tail = 0 rather than being extrapolated.
+4. **`docs/sim-baseline-corpus.md`'s per-route hour figures are STALE.** It lists the seven doomed
+   routes at 383/395/407/490/494/498/510 h; at HEAD they are 398/406/407/490/509/513/523. The
+   montage fixes (`eff33a8`, `71555d0`) changed `legKm` and therefore `legHours`. The brief's
+   `112 → 523` span is the HEAD one and is correct; that file's is not.
+5. **Hunger is pinned at 10 by leg 15 under all five policies** (median hunger at end = 10,
+   every policy). Food is not the differentiator between policies and is not what separates a
+   surviving run from a dying one. Morale is.
+
+### Next step — ONE task
+
+**Re-specify the wear curve against the knee, not the tail, and bring the proposal back with a
+morale target rather than a health one.** Concretely: hold the concave shape but sweep
+`FULL_UNTIL` over `{140, 160, 180, 200, 240}` with the 50% mid-rate, at 2,000 runs/cell on the
+full 25 × 5 grid, and report per-route completion and the `gave_up`/`collapsed` split at each.
+The measurement above says 143–178 h is where 30% completion lives on the doomed routes; confirm
+or refute that on the real engine rather than on `P(S > worn(R))`.
+
+**Do not land the `look_after_yourself` graft against the current ending mix** — it restores the
+meter that is at 6/10 when runs die. If a registry graft ships with the curve it wants to be a
+MORALE row, and the thing it has to beat is `HOURS_PER_MORALE` 20 against a pool of 7.
+
+**Before either, decide whether `playerTotal` gets a per-resource weight.** Finding 2 above means
+any constant tuned off a pooled completion figure is tuned off an ordering that is an artefact of
+cash being denominated in tens. That is a smaller job than the curve and it gates the curve's
+own measurement. **DONE 2026-08-13 — it does; see the entry above.**
+
+### DoD
+
+Measurement task; the only repo file edited is this one, at **+269 / −0 lines**. `pnpm
+format:check` clean for it. `typecheck` / `lint` / `test` / `content:lint` / `sim:diff` not run
+and not applicable — no TypeScript, content or engine file was touched, and no baseline was
+regenerated. HEAD is `970c021` and the tree was clean at the start of the task.
+
+---
+
 ## Montage legs exist — `leg-plan.ts` tested one of two regimes. **M3.12b is UNBLOCKED**
 
 **`RouteState.montageLegs` was `[]` on all 25 corpus routes and had been since M3.9.** ADR 0029
