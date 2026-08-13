@@ -88,34 +88,41 @@ raise beat fill with nothing changing for a player. With the guard, both are 25/
 It also guarantees the free set is non-empty whenever montage is, so the surplus always has
 somewhere to go — a guard that would otherwise need writing separately.
 
-## Decision 3 — montage bunches the structural beats, and invariant (b) drops the collisions
+## Decision 3 — the segments either side of a crossing are protected too
 
-Recorded rather than mitigated, because it is a real property of the shape and the fix for it is a
-calibration decision, not a bug fix.
+**A crossing is already safe from montage by its dullness, and that is not enough.** Montaging the
+stretch BETWEEN two crossings collapses it to one leg, the two slack-1 border windows land within
+a leg of each other, and ADR 0027 invariant (b) drops one. The crossing keeps its scene and loses
+its beat, and it reports as content starvation.
+
+`border_crossing` and `checkpoint` **leg counts are identical on all three trees** (119 and 114) —
+the crossings never moved type and were never candidates. What montage changed was their SPACING.
 
 Beat slots across the 25 corpus routes, same seed, same pairs:
 
-| type              | before |   after |
-| ----------------- | -----: | ------: |
-| `departure`       |     25 |  **25** |
-| `finale`          |     25 |  **25** |
-| `ferry_boarding`  |      8 |       8 |
-| `border_crossing` |     71 |  **58** |
-| `approach`        |     21 |      15 |
-| `midpoint_crisis` |     14 |      11 |
-| **total**         |    164 | **142** |
+| type              | pre-montage | anchors only | + adjacency |
+| ----------------- | ----------: | -----------: | ----------: |
+| `departure`       |          25 |           25 |      **25** |
+| `finale`          |          25 |           25 |      **25** |
+| `ferry_boarding`  |           8 |            8 |       **8** |
+| `border_crossing` |          71 |           58 |      **71** |
+| `midpoint_crisis` |          14 |           11 |      **13** |
+| `approach`        |          21 |           15 |          15 |
+| **total**         |         164 |          142 |     **157** |
 
-`border_crossing` and `checkpoint` **leg counts are identical** on both trees (119 and 114) — the
-crossings did not move type, and they were never montage candidates. What changed is their
-SPACING: montage collapses the dull stretches between them, so two crossings that were five legs
-apart become adjacent, their slack-1 windows overlap, and ADR 0027 invariant (b) drops one. Same
-mechanism costs 3 `midpoint_crisis` slots.
+**Every border slot comes back — 58 → 71, the exact pre-montage count** — and 2 of the 3
+`midpoint_crisis` slots with them. `approach` stays at 15 and is left there deliberately: it is
+**unfillable** in this corpus, so recovering it would only add to the fill-rate denominator, which
+is the metric-gaming ADR 0027 Decision 5 forbids in the other direction.
 
-**13 of the 71 border slots is 18% of one of only two fillable beat types in the corpus**, and it
-is why beat fill went DOWN rather than up despite 6 unfillable `approach` slots also leaving the
-denominator. If M3.12b wants those back, the lever is a rule against montaging a segment
-ADJACENT to a crossing, not a change to invariant (b) — but that trades montage coverage for beat
-coverage and wants measuring, not guessing.
+The guard is a NEIGHBOURHOOD, not a distance. What a border beat needs is legs between it and the
+next one, and the segment either side is where those legs come from.
+
+**It costs about a third of montage coverage**, which is the trade and it is worth stating in
+full: 157 montage legs → **106** across the corpus (17% of legs → 11%), and 48% of corpus km →
+**38%**. On a 123-route sweep, 15% of legs → 10% and routes with no montage at all go 34/123 →
+46/123. 106 legs is still an ample population for M3.12b to calibrate against, and buying back
+18% of one of only two fillable beat types is worth more than the coverage.
 
 ## Consequences, measured
 
@@ -129,15 +136,19 @@ golden digest or the fixture baseline.
 - Only `--pack=corpus` moves. At **20,000 runs** (10× the baseline sample, because
   `payoffRate`'s denominator is ~600 and a 2,000-run reading of it is noise):
 
-| metric              |  before |     after |      Δ |
-| ------------------- | ------: | --------: | -----: |
-| Completion          |   42.2% | **44.1%** | +1.9pp |
-| Long-range payoff   |   24.6% | **18.5%** | −6.1pp |
-| Beat fill           |   28.1% | **26.1%** | −2.0pp |
-| Unresolved threads  |     521 |   **452** |    −69 |
-| Checks resolved     | 205,612 |   196,382 |  −4.5% |
-| Median legs         |      25 |        25 |      — |
-| Median in-game days |      10 |        10 |      — |
+**The middle column is kept on purpose.** It is what montage costs without Decision 3, and it is
+the evidence that the guard is doing the thing it was added to do rather than moving a number by
+coincidence.
+
+| metric              | pre-montage | anchors only |   shipped |         Δ vs pre |
+| ------------------- | ----------: | -----------: | --------: | ---------------: |
+| Completion          |       42.2% |        44.1% | **43.2%** |           +1.0pp |
+| Long-range payoff   |       24.6% |        18.5% | **24.3%** |           −0.3pp |
+| Beat fill           |       28.1% |        26.1% | **27.5%** |           −0.6pp |
+| Unresolved threads  |         521 |          452 |   **525** |               +4 |
+| Checks resolved     |     205,612 |      196,382 |   198,606 |            −3.4% |
+| Median legs         |          25 |           25 |    **24** | survival, not km |
+| Median in-game days |          10 |           10 |    **10** |                — |
 
 **One mechanism explains all of it.** A montage leg replaces `k` ordinary legs over the same
 ground, and `legHours` charges the per-mode overhead **once instead of k times** — a 1,200 km car
@@ -146,26 +157,30 @@ five ordinary ones. Drift is denominated in hours (ADR 0035), so:
 
 1. **Completion up** — fewer hours over the same distance is less hunger, morale and health drain.
    This makes montage a **time discount nobody explicitly chose**, and it is the single most
-   important thing on this page for whoever tunes next. 44.1% is still mid-band.
-2. **Ordinary legs get scarcer.** `roadside` legs fall 311 → 279 while `wilderness` rises 69 → 86
-   and `city` 263 → 277. Generic queued payoffs live on ordinary intermediate legs, so they lose
-   windows — that is the payoff rate, and unresolved threads falling 69 at the same time confirms
-   it is fewer schedules reaching fewer eligible legs rather than more failures.
-3. **Structural beats bunch**, per Decision 3.
+   important thing on this page for whoever tunes next. Decision 3 halves it (+1.9pp → +1.0pp) as
+   a side effect of protecting fewer kilometres, but does not remove it. 43.2% is still mid-band.
+2. **Ordinary legs get scarcer**, so generic queued payoffs lose windows. Without Decision 3
+   `roadside` legs fell 311 → 279 and the payoff rate fell 6.1pp with them; **with it the payoff
+   rate returns to 24.3% against a 24.6% baseline and unresolved threads to 525 against 521**.
+   That the two recover together is what identifies the mechanism — it was fewer schedules
+   reaching fewer eligible legs, not more failures.
+3. **Structural beats bunch**, per Decision 3, and that is now bought back in full.
 
-Checks fall 4.5% while complication rate, repeat rate and universal-choice rates are all flat to
-within 0.2pp: the choice MIX shifted toward paying rather than rolling, which is what more cash
-and health buys. Median legs is unmoved, so this is not a shorter run.
+**`Median legs` 25 → 24 is a survival statistic, not a route-shape change.** Total route legs
+across the 25 corpus routes is **931 on all three trees** — identical. What moved is how far a
+run gets before it ends.
 
 ## What this hands to M3.12b
 
 ADR 0029 Decision 7 item 2 can now be computed. The class it is computed over:
 
-- **157 montage legs of 931** across the 25 corpus routes — **16.9% of legs**, inside
-  `MAX_MONTAGE_SHARE` by construction (max 33% on any single route).
-- **48% of corpus kilometres**, p50 35% and p90 73% per route; the worst single route summarises
-  73% of 17,521 km into 11 of its 48 legs.
+- **106 montage legs of 931** across the 25 corpus routes — **11.4% of legs**, inside
+  `MAX_MONTAGE_SHARE` by construction.
+- **38% of corpus kilometres**; on the 123-route sweep, p50 10% and p90 63% per route, with
+  46 of 123 routes carrying no montage at all.
 
 That km share is the number to argue about, and it is a design call rather than a defect: a
 17,000 km continental route SHOULD be mostly summary. It is stated here so M3.12b calibrates
-against a measured population instead of discovering it.
+against a measured population instead of discovering it. **The 46-of-123 figure is the one to
+watch** — a montage-quiet-ratio target computed over a route set where a third of routes have no
+montage legs is thinner than it looks.

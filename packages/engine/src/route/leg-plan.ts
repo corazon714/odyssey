@@ -256,6 +256,36 @@ function byDullness(a: LegSegment, b: LegSegment): number {
  * exact by construction rather than by a correction pass, and the remainder spreads instead of
  * clumping at the front.
  */
+/**
+ * Segment positions montage may not take, by POSITION rather than by dullness.
+ *
+ * Two rules, and both exist because ADR 0027's `admit` **drops** a beat it cannot place rather
+ * than moving it — so anything montage does to the shape of the route deletes beats silently.
+ *
+ * 1. **The first and last segments.** They own leg 0 and `legCount - 1`, the slack-0 anchors of
+ *    `departure` and `finale`; invariant (d) drops a beat whose window is montage. Measured
+ *    before this guard: 10 `finale` and 6 `departure` slots deleted across the 25 corpus routes.
+ *    It also guarantees the free set is non-empty whenever montage is.
+ * 2. **Either side of a crossing.** A crossing segment is already safe from montage by its
+ *    dullness, and that is not enough: montaging the stretch BETWEEN two crossings collapses it
+ *    to one leg, the two slack-1 border windows land within a leg of each other, and invariant
+ *    (b) drops one. The crossing kept its scene and lost its beat. Measured at ADR 0039:
+ *    71 border slots fell to 58, which is 18% of one of only two beat types the corpus can fill.
+ *
+ * Rule 2 is deliberately a NEIGHBOURHOOD and not a distance: what a border beat needs is legs
+ * between it and the next one, and the segment either side is where those legs come from.
+ */
+function protectedFromMontage(segments: readonly LegSegment[]): ReadonlySet<number> {
+  const out = new Set<number>([0, segments.length - 1]);
+  for (let i = 0; i < segments.length; i += 1) {
+    if (segments[i]?.viaCrossingNode !== true) continue;
+    out.add(i - 1);
+    out.add(i);
+    out.add(i + 1);
+  }
+  return out;
+}
+
 function splitExact(total: number, parts: number): number[] {
   if (parts <= 0) return [];
   const out = new Array<number>(parts);
@@ -300,22 +330,15 @@ export function planLegs(segments: readonly LegSegment[]): LegPlan {
   const montaged = new Set<number>();
   const expanding = target > segments.length;
   if (rawLegs > target && montageBudget > 0) {
-    // **The first and last segments are never candidates.** The first owns leg 0 and the last
-    // owns `legCount - 1`, which are the slack-0 anchors of `departure` and `finale`; invariant
-    // (d) in `beat-schedule.ts` DROPS a beat whose window is montage rather than moving it, so
-    // montaging either anchor deletes that beat outright. Measured on the corpus before this
-    // guard existed: 10 `finale` and 6 `departure` slots lost across 25 routes. Losing `finale`
-    // is the exact metric-gaming ADR 0027 Decision 5 forbids — it is unfillable today, so
-    // dropping it RAISES beat fill with nothing changing for a player.
-    //
-    // It also guarantees the free set is non-empty whenever montage is, so the surplus always
-    // has somewhere to go.
-    const order = segments.slice(1, -1).sort(byDullness);
+    // Position beats dullness: `protectedFromMontage` keeps the two anchors and the
+    // neighbourhood of every crossing, because `admit` DROPS a beat it cannot place.
+    const off = protectedFromMontage(segments);
+    const order = segments.filter((_, i) => !off.has(i)).sort(byDullness);
     let freeUnits = units.reduce((a, b) => a + b, 0);
     for (const segment of order) {
       if (montaged.size >= montageBudget) break;
       if (montageSatisfied(expanding, segments.length, montaged.size, freeUnits, target)) break;
-      if (segment.viaCrossingNode || segment.ferry) break; // sorted last; nothing duller remains
+      if (segment.ferry) break; // sorted last; nothing duller remains
       montaged.add(segment.edgeIdx);
       freeUnits -= rawUnits(segment);
     }

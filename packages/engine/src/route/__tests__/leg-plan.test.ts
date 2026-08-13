@@ -267,6 +267,47 @@ describe('montage selection is stable, and never eats a scene', () => {
     }
   });
 
+  it('protects the segments EITHER SIDE of a crossing, not just the crossing itself', () => {
+    // A crossing is safe from montage by its dullness, and that is not enough. Montaging the
+    // stretch BETWEEN two crossings collapses it to one leg, the two slack-1 border windows land
+    // within a leg of each other, and ADR 0027 invariant (b) drops one — the crossing keeps its
+    // scene and loses its beat. Measured on the 25 corpus routes: 71 border slots fell to 58,
+    // and this guard returns them to 71. ADR 0039 Decision 3.
+    //
+    // The four segments flanking the crossings are the DULLEST here on purpose: without the
+    // guard they are exactly what montage takes first, so this test goes red rather than
+    // passing by luck of the ordering.
+    const dull = (): LegSegment =>
+      segment({ distanceKm: 900, terrain: 'steppe', servicesCount: 0 });
+    const scenic = (): LegSegment =>
+      segment({ distanceKm: 900, terrain: 'coast', servicesCount: 5, scenic: 2 });
+    const crossing = (): LegSegment => segment({ distanceKm: 200, viaCrossingNode: true });
+
+    //             0         1         2       3           4       5         6       7           8       9         10
+    const segments = [
+      scenic(),
+      scenic(),
+      dull(),
+      crossing(),
+      dull(),
+      scenic(),
+      dull(),
+      crossing(),
+      dull(),
+      scenic(),
+      scenic(),
+    ];
+    const plan = planLegs(segments);
+    const montaged = new Set(plan.montageLegs);
+    // A montaged segment is exactly one leg, so its arrival leg IS its montage leg.
+    const isMontaged = (i: number): boolean => montaged.has(plan.arrivalLegOfEdge[i] ?? -1);
+
+    expect(plan.montageLegs.length).toBeGreaterThan(0);
+    for (const i of [2, 3, 4, 6, 7, 8]) {
+      expect({ segment: i, montaged: isMontaged(i) }).toEqual({ segment: i, montaged: false });
+    }
+  });
+
   it('caps montage at a third in the expansion regime too', () => {
     const plan = planLegs(evenRoute(10, 2000, 'mountain'));
     expect(plan.montageLegs.length).toBeGreaterThan(0);
