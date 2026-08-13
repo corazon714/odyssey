@@ -373,6 +373,13 @@ associative, so reordering changes `Math.round`, which changes the pick. `SCORIN
 declares it as data and a test folds over it. **`pickWeight >= 1` is the invariant** separating
 filtering from scoring: the product's lower bound is ~0.000125 and rounds to zero.
 
+**Two anti-repetition windows, both denominated in FIRED EVENTS** (`RECENCY_WINDOW` 6,
+`TAG_WINDOW` 8) — a leg the quiet-leg gate silenced is not a draw and consumes no slot in either.
+**`cooldownLegs` is the deliberate exception and counts WALL-CLOCK legs**, quiet ones included: it
+is authored content in a field named for its unit, and a montage stretch would otherwise freeze
+every cooldown across it. ADR 0029 addendum II carries both calls and the six-site sweep behind
+them.
+
 Relaxation ladder — 6 rungs, then filler (6), then `uneventful` (7):
 
 ```
@@ -402,6 +409,15 @@ lines Part I did not specify, each because it made a real bug visible:
 - **Flags written-but-never-read / read-but-never-written** — the second found `wanted`, a gate
   that can never open
 - **Dangling content references** — with the event each was found in
+
+Phase 3 M3.12a added three more: **Quiet legs (designed)** and **Forced-fire legs**, which keep
+designed silence and a content gap distinguishable (ADR 0029 D7 item 4), and **Near-repeat rate**,
+the less confounded of the report's two repetition lines — `Repeat-event rate` above it is a share
+of DRAWS and moves with the draw count alone. **Neither survives a change in how many events a
+route draws unaided**: sharing units removes the scaling confound, not sequence compression, and
+the near-repeat null at a 30% quiet share measures +7.6pp on the corpus and −5.7pp on the fixture
+with the director untouched. Subtract a null baseline before reading either (ADR 0029 addendum
+III).
 
 `pnpm sim:diff` compares against `docs/sim-baseline.md`, which is committed and Prettier-ignored
 so the fixed-width report is not reflowed.

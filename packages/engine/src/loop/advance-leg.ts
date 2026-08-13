@@ -1,8 +1,15 @@
 import { type ContentPack } from '../content/content-pack.ts';
-import { advanceBeatSchedule } from '../director/beat-slots.ts';
-import { selectEvent, type SelectionResult } from '../director/select-event.ts';
+import { advanceBeatSchedule, dueBeatSlot } from '../director/beat-slots.ts';
+import {
+  eventGate,
+  quietGateParams,
+  quietHistoryEntry,
+  QUIET_GATE_REASON_KEY,
+} from '../director/quiet-gate.ts';
+import { duePendingEvents, selectEvent, type SelectionResult } from '../director/select-event.ts';
 import { nextTension } from '../director/tension.ts';
 import { engineError, type EngineError } from '../errors/engine-error.ts';
+import { createPredicateContext } from '../predicate/predicate-context.ts';
 import { consumePending, expirePending } from '../queue/expire-pending.ts';
 import { type PendingDrop } from '../queue/pending-drop.ts';
 import { createRng } from '../rng/rng.ts';
@@ -81,7 +88,31 @@ export function advanceLeg(state: RunState, pack: ContentPack): AdvanceLegResult
   next = { ...next, pendingEvents: expired.pending };
   const queueDrops: PendingDrop[] = [...expired.dropped];
 
-  const selection = selectEvent(next, pack, rng);
+  // FORCED FIRE IS CHECKED FIRST (ADR 0029 D3). A due beat slot or a due queued event is never
+  // gated: both are promises the run has already made. `isSlotOpen` keeps a slid slot open
+  // across its whole window, so a real share of legs sit inside one and are unreachable by the
+  // gate — MEASURED at 2,000 runs as 29.0% of corpus SELECTIONS and 33.5% of fixture ones,
+  // essentially all of it beat-driven (the queue contributes 0.1%). The realised quiet share is
+  // therefore `(1 − P) × (1 − forcedShare)`, not `(1 − P)`. Selections, not legs: the sim's
+  // `legs` is a final leg INDEX and undercounts by one on a run that ends inside `resolveChoice`
+  // (ADR 0029 addendum III), which is the population this identity has to be stated over.
+  //
+  // The scope string matches the one `selectEvent` builds, so the `{chance: p}` gates inside a
+  // queued entry's `requires` answer identically at both call sites. They are cursor-free, so
+  // asking twice costs no randomness (ADR 0005 decision 2).
+  const gateCtx = createPredicateContext(next, pack.refs, `${next.route.id}:${String(legIndex)}`);
+  const forced =
+    dueBeatSlot(next.route, legIndex) !== null || duePendingEvents(next, pack, gateCtx).length > 0;
+
+  const gate = forced ? null : eventGate(next, legIndex);
+  const selection: SelectionResult =
+    gate === null || gate.fires
+      ? selectEvent(next, pack, rng)
+      : {
+          kind: 'quiet',
+          reasonKey: QUIET_GATE_REASON_KEY,
+          params: quietGateParams(gate, legIndex),
+        };
 
   // Dedupe at fire time (ADR 0001): the promise that fired leaves the queue, and its siblings
   // go with it. Without this the queue never shrinks on success, every kept promise shows up
@@ -106,6 +137,18 @@ export function advanceLeg(state: RunState, pack: ContentPack): AdvanceLegResult
     ...next,
     route: { ...next.route, beatSchedule: beats.beatSchedule },
     rngCursors: rng.cursors(),
+    // A QUIET LEG IS NOT A NO-OP. The clock has already advanced and the drift already applied
+    // (`worldTick` above), and this is the journal line — without it a gated leg would vanish
+    // from the run's own record and the journal would jump a day for no stated reason.
+    //
+    // It is written HERE because there is nowhere else it can be: `recordHistory` is reachable
+    // only from `resolveChoice`, and a quiet leg presents no event and therefore no choice to
+    // resolve. This is the first history entry `advanceLeg` has ever written — an `uneventful`
+    // leg still writes none, which is why no golden digest can move while the base is 1:0.
+    history:
+      selection.kind === 'quiet'
+        ? [...next.history, quietHistoryEntry(next, legIndex)]
+        : next.history,
     presentation:
       selection.kind === 'event'
         ? {
@@ -118,7 +161,12 @@ export function advanceLeg(state: RunState, pack: ContentPack): AdvanceLegResult
             // it — see the field's own docstring and ADR 0021.
             complicationId: selection.complication?.id ?? null,
           }
-        : { kind: 'uneventful', presentedAtLeg: legIndex, reasonKey: selection.reasonKey },
+        : // `Presentation` REUSES its `uneventful` arm for a quiet leg (ADR 0029 D4). The shape
+          // is byte-identical and `reasonKey` already carries the distinction, so there is no
+          // fifth arm and NO `SAVE_VERSION` 6 — the save schema is untouched by this milestone.
+          // `SelectionResult` splits them because it is an INSTRUMENT read by the sim; the
+          // presentation is a SCREEN, and both cases draw the same one.
+          { kind: 'uneventful', presentedAtLeg: legIndex, reasonKey: selection.reasonKey },
   };
 
   return {

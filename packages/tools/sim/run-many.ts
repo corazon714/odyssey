@@ -44,6 +44,20 @@ export type SimSummary = {
   readonly medianDays: number;
   readonly uneventfulRate: number;
   readonly fallbackRate: number;
+  /**
+   * Share of SELECTIONS the odds gate silenced. Designed silence — never a content gap.
+   *
+   * Denominated in selections rather than legs because the gate decides once per selection; see
+   * the denominator table in `summarise`.
+   */
+  readonly quietRate: number;
+  /**
+   * Share of SELECTIONS that skipped the gate because a beat slot or a queue entry was due.
+   *
+   * The ceiling on the gate's reach: the realised quiet share is `(1 − P) × (1 − this)`, so a
+   * base tuned against a wrong value for it misses the quiet-ratio target by that factor.
+   */
+  readonly forcedFireShare: number;
   readonly neverFired: readonly EventId[];
   readonly scheduled: number;
   readonly queueFires: number;
@@ -208,8 +222,11 @@ export function summarise(
   for (const run of usable) for (const id of run.firedEvents) fired.add(id);
 
   const totalLegs = usable.reduce((sum, r) => sum + Math.max(1, r.legs), 0);
+  const totalSelections = usable.reduce((sum, r) => sum + r.selections, 0);
   const uneventful = usable.reduce((sum, r) => sum + r.uneventfulLegs, 0);
   const fallback = usable.reduce((sum, r) => sum + r.fallbackLegs, 0);
+  const quiet = usable.reduce((sum, r) => sum + r.quietLegs, 0);
+  const forcedFire = usable.reduce((sum, r) => sum + r.forcedFireLegs, 0);
   const scheduled = usable.reduce((sum, r) => sum + r.scheduled, 0);
   const queueFires = usable.reduce((sum, r) => sum + r.queueFires, 0);
   const filled = usable.reduce((sum, r) => sum + r.beatsFilled, 0);
@@ -222,14 +239,83 @@ export function summarise(
   const picks = usable.reduce((sum, r) => sum + r.picks, 0);
   const universalPicked = usable.reduce((sum, r) => sum + r.universalPicked, 0);
 
+  /**
+   * FOUR DENOMINATORS, BECAUSE THERE ARE FOUR QUESTIONS (ADR 0029 D6 + its M3.12a addenda).
+   *
+   * Until the quiet-leg gate, every leg was either an `event` or an `uneventful`, so one
+   * denominator answered everything and the rates said what their labels said. A third kind
+   * breaks that silently — no test fails, no number looks wrong, and each rate quietly starts
+   * measuring a slightly different population than the line above it claims.
+   *
+   * | rate                | denominator                            | why                         |
+   * | ------------------- | -------------------------------------- | --------------------------- |
+   * | `fallbackRate`      | `attemptedLegs` = total − quiet         | only a leg that TRIED       |
+   * | `uneventfulRate`    | `attemptedLegs`                         | can come up empty           |
+   * | `complicationRate`  | `presentedLegs` = attempted − uneventful | needs an event to attach to |
+   * | `quietRate`         | `totalSelections`                       | the population the GATE saw |
+   * | `forcedFireShare`   | `totalSelections`                       | ditto — they must compose   |
+   *
+   * ## `totalLegs` IS NOT THE GATE-DECISION POPULATION, AND THE SPLIT IS DELIBERATE
+   *
+   * `totalLegs` sums `Math.max(1, r.legs)`, and `r.legs` is `state.route.legIndex` — a final
+   * INDEX. `quietLegs`, `forcedFireLegs` and `uneventfulLegs` are counted once per SELECTION.
+   * The two agree on the ordinary run, which is why this survived M3.12a: a run normally ends on
+   * an `advanceLeg` returning `selection === null`, so the final index contributes no selection.
+   * A run that ends inside `resolveChoice` does not, and yields `selections = legs + 1`.
+   * MEASURED at 2,000 runs: 20 of 2,000 fixture runs, 315 of 2,000 corpus runs — a 0.06% and
+   * 0.59% error in the denominator.
+   *
+   * **Only `quietRate` and `forcedFireShare` are moved onto `totalSelections`.** They are the
+   * two lines M3.12a ADDED, so they were never in a baseline and their values are not fenced,
+   * and they are the two the correction is load-bearing for: ADR 0029 D3's identity
+   * `realised quiet = (1 − P) × (1 − forcedFireShare)` is an identity only if both sides count
+   * the population the gate actually decided on. Over `totalLegs` it is off by the gap above.
+   *
+   * **`complicationRate`, `uneventfulRate` and `fallbackRate` STAY on `attemptedLegs` /
+   * `presentedLegs`, and this is the trap.** `complicationRate` is a PRE-EXISTING baseline
+   * number. Re-cutting its denominator to selections moves it ~0.59% on the corpus, which breaks
+   * the additive-only fence that is M3.12a's entire claim — a changed line is a `-` in the
+   * baseline diff. The question of which population those three belong over is real, SEPARABLE
+   * and PRE-EXISTING (it predates the gate: `legs`-vs-selections has been wrong since the sim
+   * had a `legs` field), and it is invisible today because `uneventful` and `fallback` both
+   * measure exactly 0 on both packs. It is recorded as an M3.12b deliverable in the ADR rather
+   * than fixed here, where fixing it would cost the fence and buy a third decimal place.
+   *
+   * `attemptedLegs` DIVERGES FROM DECISION 6'S WORDING, deliberately and on the human's call.
+   * The table there says `fallbackRate` takes the "same denominator" as `complicationRate`,
+   * which reads as `presentedLegs`. That is wrong in the one direction that matters: an
+   * `uneventful` leg IS the terminal fallback, so excluding it would delete the worst fallback
+   * from the measure of fallbacks, and the rate would FALL exactly as content got worse. The
+   * addendum records the correction.
+   *
+   * `uneventfulRate` was not specified by the ADR at all, and takes `attemptedLegs` for the
+   * same reason `fallbackRate` does: a quiet leg never ran the ladder, so it cannot have found
+   * it empty, and leaving it in the denominator would dilute a starvation signal by the quiet
+   * share — a content gap looking like it improved because the gate got quieter. It is NOT
+   * `presentedLegs`, which subtracts `uneventful` from its own denominator and would inflate
+   * the rate against a line that prints a `<2%` target. Keeping it equal to `fallbackRate`'s
+   * also keeps the report's `Empty-pool fallbacks` / `Uneventful legs` PAIR comparable to each
+   * other, which is the only reason the pair is an instrument rather than two numbers.
+   *
+   * AT `BASE_EVENT_ODDS = 1:0` ALL THREE PRE-EXISTING RATES ARE ARITHMETICALLY UNCHANGED:
+   * `quiet` is 0 by construction, so `attemptedLegs === totalLegs` and `presentedLegs ===
+   * totalLegs − uneventful`, which is exactly what these lines computed before. That is what
+   * makes M3.12a's "every pre-existing number identical" claim checkable rather than asserted,
+   * and it is unaffected by `totalSelections`, which no pre-existing rate divides by.
+   */
+  const attemptedLegs = totalLegs - quiet;
+  const presentedLegs = attemptedLegs - uneventful;
+
   return {
     runs,
     coverage: coverageOf(runs, grid),
     completionRate: rate(usable.filter((r) => r.completed).length, usable.length),
     medianLegs: median(usable.map((r) => r.legs)),
     medianDays: median(usable.map((r) => r.days)),
-    uneventfulRate: rate(uneventful, totalLegs),
-    fallbackRate: rate(fallback, totalLegs),
+    uneventfulRate: rate(uneventful, attemptedLegs),
+    fallbackRate: rate(fallback, attemptedLegs),
+    quietRate: rate(quiet, totalSelections),
+    forcedFireShare: rate(forcedFire, totalSelections),
     neverFired: pack.events.map((e) => e.id).filter((id) => !fired.has(id)),
     scheduled,
     queueFires,
@@ -241,7 +327,7 @@ export function summarise(
     beatsFilled: filled,
     beatsExpired: expiredBeats,
     beatFillRate: rate(filled, filled + expiredBeats),
-    complicationRate: rate(complicated, totalLegs - uneventful),
+    complicationRate: rate(complicated, presentedLegs),
     meanChipsPerCheck: checksRolled === 0 ? 0 : chipsTotal / checksRolled,
     checksRolled,
     checksUnderTwoChips: usable.reduce((sum, r) => sum + r.checksUnderTwoChips, 0),

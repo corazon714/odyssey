@@ -265,6 +265,26 @@ export {
   type SelectOptions,
   type SelectionResult,
 } from './director/select-event.ts';
+// The quiet-leg gate (ADR 0029). `BASE_EVENT_ODDS` and `EVENT_ODDS_MULTIPLIERS` are frozen
+// RECORDS, not arrays, which is why they can be exported here at all: the conformance sweep's
+// L2 classifies every array the barrel exports, and an odds pair is not a content vocabulary.
+export {
+  applyOddsFactors,
+  BASE_EVENT_ODDS,
+  EVENT_ODDS_MULTIPLIERS,
+  fireProbability,
+  type EventOdds,
+  type EventOddsFactor,
+} from './director/event-odds.ts';
+export {
+  eventGate,
+  legOddsFactors,
+  quietGateParams,
+  quietHistoryEntry,
+  QUIET_GATE_REASON_KEY,
+  QUIET_JOURNAL_KEY,
+  type QuietGateVerdict,
+} from './director/quiet-gate.ts';
 export * from './director/scoring-constants.ts';
 export {
   contextAffinity,

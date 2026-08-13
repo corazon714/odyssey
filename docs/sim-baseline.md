@@ -183,6 +183,116 @@
   reaches 3 of 3 routes but only 3 of 5 policies. Nothing reads it at that count, because the
   default of 100 covers this 15-cell grid six times over, but do not quote the property
   unconditionally off this file. docs/adr/0038's addendum has the enumeration.
+
+  M3.12a ADDED TWO REPORT LINES AND MOVED NOTHING ELSE (2026-08-13, ADR 0029).
+  `Quiet legs (designed)` and `Forced-fire legs` sit directly under `Uneventful legs`, because
+  Decision 7 item 4 requires designed silence and a content gap to stay distinguishable and
+  adjacency is what makes that readable. THE DIFF IS ADDITIVE ONLY: all 59 pre-existing lines
+  of this report were compared byte-for-byte against the pre-change run and every one is
+  identical. That is the fence rather than a courtesy — the quiet-leg gate ships at
+  BASE_EVENT_ODDS = 1:0, i.e. P = 1 exactly, so ANY moved number would mean it is not fenced.
+
+  THREE DENOMINATORS ALSO CHANGED, and are invisible here for the same reason. Empty-pool
+  fallbacks and Uneventful legs now divide by totalLegs minus quiet — only a leg that ATTEMPTED
+  selection can fall back or find the ladder empty — and Complication rate divides by
+  presentedLegs, totalLegs minus uneventful minus quiet. With quiet = 0 all three are
+  arithmetically exactly what they were. They diverge the moment M3.12b sets a real base. The
+  reasoning is the block comment in packages/tools/sim/run-many.ts and the ADR 0029 addendum;
+  note that Decision 6's own table is WRONG about the fallback denominator and the addendum
+  corrects it.
+
+  FORCED-FIRE SHARE, MEASURED FOR THE FIRST TIME AT 2,000 RUNS: 33.5% of fixture SELECTIONS
+  never reach the gate at all (the corpus baseline measures 29.0%). ADR 0029 Decision 3 estimated roughly
+  10-13 legs of a 24-leg route, i.e. ~42-54% OF LEGS, so it is materially HIGH: the gate reaches
+  MORE legs than the ADR assumed, and a base picked against that estimate overshoots the quiet
+  ratio by about 1.4x. The new Forced-fire legs line prints the resulting ceiling on the quiet
+  share on every run, so M3.12b does not have to rederive it.
+
+  MIND THE UNITS IN THAT COMPARISON: the ~42-54% estimate is denominated in LEGS and the 33.5%
+  measured here is denominated in SELECTIONS. The finding does not depend on the difference — this
+  pack reads 33.5% over legs too, the two populations differing by 20 of 2,000 runs — but do not
+  quote the pair as a like-for-like without saying so. The corpus, where the gap is visible, reads
+  29.2% over legs against 29.0% over selections. ADR 0029's 400-run table is LEGS-denominated and
+  its apparent agreement with the 2,000-run selections figures was withdrawn as a cross-unit
+  comparison; see that ADR before citing it.
+
+  IT IS DENOMINATED IN SELECTIONS, NOT LEGS, since the M3.12a follow-up. The sim's legs field is
+  state.route.legIndex, a final INDEX, while quietLegs, forcedFireLegs and uneventfulLegs are all
+  counted per SELECTION; a run that ends inside resolveChoice selects once more than its index
+  says. Measured: 20 of 2,000 fixture runs, 315 of 2,000 corpus runs — a 0.06% and 0.59%
+  denominator error. Only Quiet legs and Forced-fire legs were re-cut, because they are the two
+  lines M3.12a ADDED and so are not fenced, and because ADR 0029 D3's identity
+  realised quiet = (1 - P) x (1 - forcedFireShare) is an identity only over the population the
+  gate actually decided on. Complication rate, Uneventful legs and Empty-pool fallbacks stay on
+  their leg denominators DELIBERATELY: Complication rate is a pre-existing baseline number and
+  re-cutting it would move it (~0.59% on corpus) and break the additive-only fence. That question
+  is separable, pre-existing and invisible today (uneventful and fallback both measure 0), and it
+  is an M3.12b deliverable. On this pack the visible effect is nil: 33.5% either way.
+
+  THE ~0.59% IS THE VALUE AT 1:0 AND IT GROWS AT M3.12b, which is exactly where the deferral
+  lands. attemptedLegs and presentedLegs are MIXED-UNIT SUBTRACTIONS — a leg-INDEX sum (totalLegs)
+  minus per-SELECTION counts (quiet, uneventful) — so the absolute error is pinned at 315 corpus
+  selections while the remainder it sits in shrinks with the quiet share, and the relative error
+  concentrates:  q=0% 0.589%  q=10% 0.655%  q=20% 0.738%  q=30% 0.844%  q=40% 0.986%. That is
+  315 / (53,451 - q x 53,766), and it is a floor rather than the whole error, because uneventful
+  measures 0 today so only the totalLegs term is currently mismatched.
+
+  THE FIX IS TO COUNT THE SUBTRAHENDS AND THE MINUEND OVER ONE POPULATION, NOT TO "DIVIDE BY
+  SELECTIONS". Reading the paragraph above as "so at M3.12b, divide Complication rate by
+  totalSelections" is the wrong conclusion and a reader could easily reach it: that throws away the
+  subtraction these three rates exist to have — only a leg that ATTEMPTED selection can fall back,
+  only one that PRESENTED an event can carry a complication — and would move the number far more
+  than 0.6-1.0%. The defect is INSIDE the subtraction. attemptedLegs wants totalSelections - quiet,
+  and presentedLegs wants attemptedLegs - uneventful, so that minuend, subtrahends and numerators
+  are all per-selection. Lifting the minuend to selections or pushing the subtrahends down to legs
+  is M3.12b's call; leaving the two sides on different populations is not an option either way.
+
+  M3.12a FOLLOW-UP: ONE MORE REPORT LINE, AND NOTHING ELSE MOVED (2026-08-13, ADR 0029
+  addendum). Near-repeat rate sits directly under Repeat-event rate. THE DIFF IS ADDITIVE ONLY:
+  all 62 pre-existing lines of this report were compared line-for-line against the pre-change
+  run and every one is identical, apart from the two volatile wall-clock lines diff-report.ts
+  already ignores. Same fence as M3.12a and for the same reason: at BASE_EVENT_ODDS = 1:0 no leg
+  can be quiet, so a moved number would mean the gate is not fenced.
+
+  WHY A SECOND REPETITION LINE RATHER THAN A FIX TO THE FIRST. Repeat-event rate is
+  1 - unique/fired over a whole run, so it falls about 10pp at a 30% quiet share with the
+  DIRECTOR UNTOUCHED: the draws shrink while unique is capped by the event pool. It is not wrong
+  — the player really was shown that share of re-runs — it is LENGTH-SENSITIVE, and no
+  redefinition can be both unconfounded at a positive quiet share and arithmetically identical
+  at 1:0, which the fence requires. Those two properties are jointly unsatisfiable, so the line
+  is kept exactly and Near-repeat rate — a redraw inside recency's own window, denominated in
+  FIRED EVENTS on both sides — sits beside it as the BETTER of the two. It prints draws/run
+  beside itself so the scale of the confound sits next to the confounded figure.
+
+  RETRACTION (M3.12a follow-up, ADR 0029 addendum III). Near-repeat rate shipped advertised as
+  UNCONFOUNDED — "the quiet share cancels out of it", "diff THIS across a base change". THAT IS
+  FALSE and it was measured false with the DIRECTOR LITERALLY UNCHANGED, by deleting draws from
+  these very sequences with a non-periodic mask at a 30% quiet share, 2,000 runs, ten mask seeds:
+
+      FIXTURE  near-repeat 62.29% -> 56.63%   (-5.7pp;  Repeat-event rate moves -6.9pp)
+      CORPUS   near-repeat 25.99% -> 33.57%   (+7.6pp;  Repeat-event rate moves -9.1pp)
+
+  Comparable in magnitude to the confound it replaces, AND THE SIGN IS PACK-DEPENDENT. Sharing
+  units on both sides removes the SCALING confound (unique is pool-capped, fired is not); it does
+  NOT remove SEQUENCE COMPRESSION, which is what deleting draws is. Deleting draws both pulls
+  distant repeats INTO the 5-draw window (this pack's sparse case) and destroys near-repeat pairs
+  by deleting a member (its dense case); which dominates depends on baseline density.
+
+  SO M3.12b MUST SUBTRACT A NULL BASELINE BEFORE ATTRIBUTING ANY MOVEMENT TO THE DIRECTOR. Re-run
+  the compression against these 1:0 sequences at the realised quiet share and read the RESIDUAL.
+  On the fixture a FALL of up to ~6pp at a 30% quiet share is the null expectation, not a finding.
+  The line is kept — it moves less, and for a reason that is measurable and subtractable — but it
+  is sold as LESS CONFOUNDED, never as unconfounded.
+
+  ONE DIRECTOR WINDOW ALSO CHANGED UNIT, and is invisible here for the reason the three
+  denominators were. recency now counts DRAWS since an event last fired rather than legs, which
+  is the same number while quiet is 0 and uneventful measures exactly 0 — it does, on both packs
+  at 2,000 runs and in 9 of 9 golden runs. cooldownLegs deliberately stays WALL-CLOCK: it is
+  authored content in a field named for its unit, and a montage stretch is quiet by design, so a
+  draws unit would freeze every cooldown across it. golden-runs.json is byte-identical. Both
+  calls, and the four further leg-denominated sites that were swept and left alone, are in the
+  ADR 0029 addendum.
+
 -->
 
 # Sim Report — seed=base contentVersion=aee5a082 runs=2000
@@ -194,9 +304,12 @@ Median in-game days             8
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
+Quiet legs (designed)        0.0%   (odds gate — designed silence, NOT the two gaps above)
+Forced-fire legs            33.5%   (beat slot or queue due — never gated; caps quiet at 66.5%)
 Long-range payoff rate      85.3%   (target 80%)
 Beat fill rate              50.2%
 Repeat-event rate           67.8%
+Near-repeat rate            62.3%   (a redraw inside recency's own 6-event window; 15.58 draws/run — LESS confounded than the line above, NOT unconfounded: subtract a null baseline before reading it)
 Complication rate            0.0%   (target 60%)
 Modifier chips / check        0.3   (over 3682 checks; NO modifier registry in this pack)
 Checks under 2 chips         3682   (expected — there is no registry here, so this is not a finding)
@@ -205,8 +318,8 @@ Universal choices offered    0.0%   (share of choices shown)
 Universal choices picked     0.0%   (over ~30% means they are flattening the corpus)
 Unresolved threads              5
 
-Wall clock                 566 ms   (0.28 ms/run)
-Extrapolated to 20,000     5.7 s   (target <30 s)
+Wall clock                 607 ms   (0.30 ms/run)
+Extrapolated to 20,000     6.1 s   (target <30 s)
 
 ## Endings
   ending.arrival_hollow               40.1%

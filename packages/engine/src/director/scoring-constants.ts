@@ -35,7 +35,22 @@ export const TENSION_NEUTRAL = 1;
 /** novelty ∈ [0.20, 1.00] — 1, ½, ⅓, ¼, ⅕ … floored so a repeat is rare, never impossible. */
 export const NOVELTY_MIN = 0.2;
 
-/** recency ∈ [0.05, 1.00] — linear recovery over RECENCY_WINDOW legs. */
+/**
+ * BOTH ANTI-REPETITION WINDOWS ARE DENOMINATED IN FIRED EVENTS, and that is a decision.
+ *
+ * Until M3.12a this block said "over RECENCY_WINDOW **legs**" two lines above "over the last
+ * TAG_WINDOW **fired events**", and nothing recorded why one job was measured in two units.
+ * It was not a decision, it was an accident that could not show itself while every leg fired
+ * exactly one event. The quiet-leg gate (ADR 0029) separates the units, so it had to be settled:
+ * both count what the player was actually shown, because a leg that showed nothing does nothing
+ * to make a repeat feel further away.
+ *
+ * `cooldownLegs` is the deliberate exception and stays WALL-CLOCK. It is authored content in a
+ * field named `legs`, and it answers a world question ("this storm does not recur for ten legs
+ * of travel"), not a presentation one. `hard-filters.ts` carries the argument in full.
+ */
+
+/** recency ∈ [0.05, 1.00] — linear recovery over RECENCY_WINDOW fired events. */
 export const RECENCY_WINDOW = 6;
 export const RECENCY_MIN = 0.05;
 

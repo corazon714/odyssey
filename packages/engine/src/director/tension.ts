@@ -50,6 +50,26 @@ export function nextTension(state: RunState, pack: ContentPack): number {
  * field, so an author who widens a band automatically changes the pacing too — one number to
  * keep honest instead of two. An event missing from the pack (content changed under a save)
  * breaks the streak rather than throwing.
+ *
+ * A QUIET LEG BREAKS THE STREAK, and that is the decision, not a fall-through (ADR 0029
+ * addendum). The `eventId === null` line below was written for a case that could not happen —
+ * `advanceLeg` had never put an entry in `history`, so every entry carried an id — and the
+ * quiet-leg gate made it live without anyone choosing what it should mean.
+ *
+ * It should break, because THE BREATHER IS A REMEDY AND A QUIET LEG IS ALREADY THAT REMEDY.
+ * The mechanism exists against continuous crisis: two emergencies back to back, so push the
+ * third down. After `[high] [high] [nothing]` the player has had the leg off the mechanism was
+ * going to buy them, and easing the next leg as well spends the remedy twice — `high, high,
+ * nothing, low` is a pacing sag, not a breather. Making the quiet leg TRANSPARENT is worse the
+ * longer the silence runs: a streak from five legs back would still be suppressing tension now,
+ * and on a montage stretch (quiet by design, ADR 0026) it would suppress it for the whole
+ * stretch. Design pillar 3 wants the world to react to where the run IS, and after a quiet leg
+ * the run is not in continuous crisis.
+ *
+ * `select-event.ts`'s `claimedGroups` answers the same question the opposite way and is also
+ * right: it `continue`s past a null entry because an exclusive group is a fact about what fired
+ * THIS leg, and a leg that fired nothing claims nothing. One reads a streak, the other reads a
+ * set; a quiet leg ends the first and is invisible to the second.
  */
 export function consecutiveHighTension(state: RunState, pack: ContentPack): number {
   let streak = 0;
@@ -57,6 +77,7 @@ export function consecutiveHighTension(state: RunState, pack: ContentPack): numb
   for (let i = state.history.length - 1; i >= 0; i -= 1) {
     const entry = state.history[i];
     if (entry === undefined) break;
+    // Designed silence ends the streak — see the docstring. Not a guard, a rule.
     if (entry.eventId === null) break;
 
     const event = pack.byId.get(entry.eventId);

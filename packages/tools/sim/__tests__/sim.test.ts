@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { BASE_EVENT_ODDS, fireProbability } from '@odyssey/engine';
 import { loadFixturePack, loadFixtureScenarios } from '../load-pack.ts';
 import { parseArgs } from '../parse-args.ts';
 import { POLICY_NAMES } from '../policy.ts';
-import { runMany } from '../run-many.ts';
-import { runOne } from '../run-one.ts';
+import { runMany, summarise } from '../run-many.ts';
+import { runOne, type SimRun } from '../run-one.ts';
 
 const PACK = loadFixturePack();
 const SCENARIOS = loadFixtureScenarios();
@@ -160,3 +161,172 @@ describe('runMany — the M6 gate criteria', () => {
     ).not.toThrow();
   });
 });
+
+describe('the quiet-leg gate instruments (ADR 0029)', () => {
+  const summary = runMany(PACK, SCENARIOS, {
+    runs: 300,
+    seed: 'quiet-gate',
+    policies: [],
+    diff: false,
+    json: false,
+    pack: 'fixture',
+  });
+
+  it('is fenced: BASE_EVENT_ODDS is certainty, so nothing is quiet', () => {
+    // THE PREMISE, asserted rather than assumed. Every "unchanged" claim M3.12a makes rests on
+    // P = 1 exactly. When M3.12b sets a real base this is the line that goes red first, and it
+    // says why — which is the only useful thing a fence can do on the day it is removed.
+    expect(fireProbability(BASE_EVENT_ODDS)).toBe(1);
+
+    expect(summary.quietRate).toBe(0);
+    for (const run of summary.runs) expect(run.quietLegs).toBe(0);
+  });
+
+  it('measures a forced-fire share that is neither nothing nor everything', () => {
+    // Both bounds are real failure modes of the reconstruction, and both would still LOOK like
+    // a working instrument in the report: 0 means the beat check never sees an open slot, 1
+    // means it always does and the gate could never reach a single leg at any base.
+    expect(summary.forcedFireShare).toBeGreaterThan(0);
+    expect(summary.forcedFireShare).toBeLessThan(1);
+  });
+
+  it('never counts more forced legs than the run made SELECTIONS', () => {
+    // `selections` is the exact term `summarise` sums into `totalSelections`, so the numerator
+    // is bounded by its own denominator rather than by an invented ceiling. It used to be
+    // bounded by `Math.max(1, legs)`, which is a DIFFERENT population — see the test below.
+    for (const run of summary.runs) {
+      expect(run.forcedFireLegs).toBeLessThanOrEqual(run.selections);
+    }
+  });
+
+  it('counts selections per SELECTION, and legs as a final INDEX — they are not the same', () => {
+    // THE DEFECT, pinned on real runs. `legs` is `state.route.legIndex`; the per-selection
+    // counters are not. A run that ends inside `resolveChoice` never makes the final
+    // `advanceLeg` call that would have raised the index, so it selected once more than its
+    // index says. Anything else is a bug in the loop, not a denominator question.
+    for (const run of summary.runs) {
+      expect([run.legs, run.legs + 1]).toContain(run.selections);
+    }
+    // Anti-vacuous: if this sample never exercised the gap, the assertion above proves nothing
+    // and the whole correction would be untested. Measured at 2,000 runs it is 20 of 2,000 on
+    // the fixture and 315 of 2,000 on the corpus.
+    expect(summary.runs.some((run) => run.selections === run.legs + 1)).toBe(true);
+  });
+
+  it('accounts for every filled beat — the cross-check on the reconstruction', () => {
+    // A beat can only be filled on a leg with an OPEN slot, and an open slot is exactly what
+    // makes a leg forced. So `beatsFilled <= forcedFireLegs` on every run. This is the
+    // assertion that ties the new counter to a number the report already trusts: a
+    // reconstruction reading the POST-call beat schedule (the schedule `advanceLeg` leaves
+    // behind, after it has just marked a slot filled) fails here and passes everything else.
+    for (const run of summary.runs) {
+      expect(run.beatsFilled).toBeLessThanOrEqual(run.forcedFireLegs);
+    }
+  });
+});
+
+describe('the four denominators (ADR 0029 D6 and its M3.12a addenda)', () => {
+  /**
+   * A SYNTHETIC sample, deliberately.
+   *
+   * The leg-denominated rates are arithmetically identical while `quiet` is 0, which it is at
+   * `BASE_EVENT_ODDS = 1:0` by construction — that identity is the fence, and it also means no
+   * real run can distinguish a right denominator from a wrong one. Driving `summarise` directly
+   * is the only way to test the call the human actually made, one milestone before the base
+   * that would expose it.
+   *
+   * `SELECTIONS !== LEGS` here on purpose, and by more than a real run ever produces. The gap is
+   * 0.06% on the fixture and 0.59% on the corpus, which no assertion could tell from rounding;
+   * a wide synthetic gap makes the wrong denominator fail loudly instead of at the fourth
+   * decimal place.
+   */
+  const LEGS = 100;
+  const SELECTIONS = 120;
+  const QUIET = 30;
+  const UNEVENTFUL = 10;
+  const FALLBACK = 6;
+  const COMPLICATED = 12;
+  const FORCED = 25;
+  const ATTEMPTED = LEGS - QUIET;
+  const PRESENTED = ATTEMPTED - UNEVENTFUL;
+
+  // Templated off a REAL run rather than hand-built, so the fixture stays valid as `SimRun`
+  // grows and cannot drift into a shape `summarise` never sees in practice.
+  const template = runOne('denominators', scenarioZero(), PACK, 'random');
+  const synthetic: SimRun = {
+    ...template,
+    error: null,
+    legs: LEGS,
+    selections: SELECTIONS,
+    quietLegs: QUIET,
+    uneventfulLegs: UNEVENTFUL,
+    fallbackLegs: FALLBACK,
+    complicatedLegs: COMPLICATED,
+    forcedFireLegs: FORCED,
+  };
+  const summary = summarise([synthetic], PACK, { scenarios: 1, policies: 1 });
+
+  it('divides fallbacks by the legs that ATTEMPTED selection', () => {
+    expect(summary.fallbackRate).toBeCloseTo(FALLBACK / ATTEMPTED, 10);
+    // The two wrong answers, named. `LEGS` is what the code did before the gate existed and
+    // dilutes the rate by the quiet share; `PRESENTED` is what Decision 6's "same denominator"
+    // literally reads as, and it deletes the terminal fallback from the measure of fallbacks.
+    expect(summary.fallbackRate).not.toBeCloseTo(FALLBACK / LEGS, 10);
+    expect(summary.fallbackRate).not.toBeCloseTo(FALLBACK / PRESENTED, 10);
+  });
+
+  it('divides uneventful legs by the same denominator, so the pair stays comparable', () => {
+    expect(summary.uneventfulRate).toBeCloseTo(UNEVENTFUL / ATTEMPTED, 10);
+    expect(summary.uneventfulRate).not.toBeCloseTo(UNEVENTFUL / LEGS, 10);
+    expect(summary.uneventfulRate).not.toBeCloseTo(UNEVENTFUL / PRESENTED, 10);
+    // The two lines print against the same `<2%` target and are read against each other. A
+    // starvation signal measured over a different population than the fallback beside it is
+    // two numbers, not an instrument.
+    expect(summary.uneventfulRate / summary.fallbackRate).toBeCloseTo(UNEVENTFUL / FALLBACK, 10);
+  });
+
+  it('divides complications by PRESENTED legs — the only ones an event could attach to', () => {
+    expect(summary.complicationRate).toBeCloseTo(COMPLICATED / PRESENTED, 10);
+    // The pre-gate denominator. It is the one instrument validating ATTACH_PERCENT, and at a
+    // 30% quiet share it would read ~41% against a line printing `(target 60%)`.
+    expect(summary.complicationRate).not.toBeCloseTo(COMPLICATED / (LEGS - UNEVENTFUL), 10);
+  });
+
+  it('reports quiet and forced shares over SELECTIONS — the gate-decision population', () => {
+    // REGRESSION. Both divided by `totalLegs` until the M3.12a follow-up, and `totalLegs` sums
+    // `Math.max(1, legIndex)` — a final INDEX — while all three per-selection counters above it
+    // are counted once per selection. `realised quiet = (1 − P) × (1 − forcedFireShare)` is an
+    // identity only over the population the gate actually decided on.
+    expect(summary.quietRate).toBeCloseTo(QUIET / SELECTIONS, 10);
+    expect(summary.forcedFireShare).toBeCloseTo(FORCED / SELECTIONS, 10);
+    // The wrong answer, named — this is what the two lines printed before.
+    expect(summary.quietRate).not.toBeCloseTo(QUIET / LEGS, 10);
+    expect(summary.forcedFireShare).not.toBeCloseTo(FORCED / LEGS, 10);
+  });
+
+  it('leaves the three PRE-EXISTING rates on their leg denominators — the fence', () => {
+    // THE TRAP, pinned. `complicationRate` is a number in both committed baselines, so re-cutting
+    // its denominator to selections moves it (~0.59% on the corpus) and breaks the additive-only
+    // fence that is M3.12a's whole claim. The legs-vs-selections question is real for these three
+    // too — it is SEPARABLE, PRE-EXISTING, and invisible today because `uneventful` and
+    // `fallback` both measure exactly 0 — and it is an M3.12b deliverable, not a drive-by here.
+    //
+    // Without this test a later sweep "finishes the job" and the fence dies silently, which is
+    // exactly how the denominators got mixed in the first place.
+    expect(summary.complicationRate).toBeCloseTo(COMPLICATED / PRESENTED, 10);
+    expect(summary.complicationRate).not.toBeCloseTo(
+      COMPLICATED / (SELECTIONS - QUIET - UNEVENTFUL),
+      10,
+    );
+    expect(summary.fallbackRate).toBeCloseTo(FALLBACK / ATTEMPTED, 10);
+    expect(summary.fallbackRate).not.toBeCloseTo(FALLBACK / (SELECTIONS - QUIET), 10);
+    expect(summary.uneventfulRate).toBeCloseTo(UNEVENTFUL / ATTEMPTED, 10);
+    expect(summary.uneventfulRate).not.toBeCloseTo(UNEVENTFUL / (SELECTIONS - QUIET), 10);
+  });
+});
+
+function scenarioZero(): (typeof SCENARIOS)[number] {
+  const scenario = SCENARIOS[0];
+  if (scenario === undefined) throw new Error('no fixture scenarios');
+  return scenario;
+}

@@ -29,3 +29,9 @@ docs/sim-baseline.md
 docs/sim-baseline.md
 docs/sim-baseline-corpus.md
 packages/content/geo/*.gen.json
+
+# Git worktrees the agent harness creates. A separate checkout formats itself, and reaching into
+# one from here is actively wrong: every path above is ignored by its own path prefix, so the
+# worktree's copies of the two sim baselines and the geo artifacts stop being exempt and Prettier
+# reformats exactly the files this file exists to protect.
+.claude/worktrees/

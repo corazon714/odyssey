@@ -41,8 +41,23 @@ export type BeatScheduleUpdate = {
 /**
  * Advance every open slot after the director has chosen.
  *
- * `filledType` is the beat type of the event that fired, or null. Exactly one slot can be
- * filled per leg because exactly one event fires per leg.
+ * `filledType` is the beat type of the event that fired, or null. AT MOST ONE SLOT IS FILLED
+ * PER LEG — still true, but no longer for the reason this comment gave until M3.12.
+ *
+ * The old reason was "because exactly one event fires per leg", and ADR 0029's quiet-leg gate
+ * makes that false: a leg can now fire nothing at all. The invariant survives on two
+ * independent legs, neither of which is the old one.
+ *
+ *   1. A leg still presents AT MOST one selection, so `filledType` names at most one type. The
+ *      gate removed the floor of one event per leg; it did not raise the ceiling.
+ *   2. A leg with an open slot is FORCED-FIRE (ADR 0029 D3) — `advanceLeg` checks `dueBeatSlot`
+ *      before it draws the gate — so the gate can only silence a leg that had no slot to fill.
+ *      A quiet leg therefore reaches this function with `filledType: null` AND no open slot,
+ *      which means the map below is a no-op: nothing fills, nothing slides, nothing expires.
+ *
+ * That second point is the one worth holding onto. Without it the gate would quietly convert
+ * beat MISSES into beat EXPIRIES at whatever rate it silenced legs, and the beat-miss rate — a
+ * signal about content — would start measuring the odds instead.
  *
  * A slot that reaches the end of its slack without being filled is EXPIRED AND REPORTED. The
  * sim turns that into a beat-miss rate, which is a balance signal — content that cannot fill

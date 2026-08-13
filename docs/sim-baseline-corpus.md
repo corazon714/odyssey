@@ -477,29 +477,154 @@
   string "route" zero times — a pairing bug shipped, was baselined and was argued from, and the
   artifact everyone reads said nothing about which part of the space had been measured.
 
-  MONTAGE LEGS EXIST NOW, and that is the whole of this revision (docs/adr/0039). The gate in
-  leg-plan.ts asked `segments.length > target` where ADR 0026 Decision 4 says `rawLegs > target`.
-  Those are the same test only while a path edge is worth at most one leg; the median edge on
-  this slice is 378 km against densities of 120-450, so `rawLegs > target` held on 23 of these
-  25 routes while `segments.length > target` held on none. montageLegs was empty on every route
-  the generator could produce, and ADR 0029's montage calibration target was being computed over
-  a class with no members.
+  M3.12a ADDED TWO REPORT LINES AND MOVED NOTHING ELSE (2026-08-13, ADR 0029).
+  `Quiet legs (designed)` and `Forced-fire legs` sit directly under `Uneventful legs`, because
+  Decision 7 item 4 requires designed silence and a content gap to stay distinguishable and
+  adjacency is what makes that readable. THE DIFF IS ADDITIVE ONLY: all 115 pre-existing lines
+  of this report were compared byte-for-byte against the pre-change run and every one is
+  identical. That is the fence rather than a courtesy — the quiet-leg gate ships at
+  BASE_EVENT_ODDS = 1:0, i.e. P = 1 exactly, so ANY moved number would mean it is not fenced.
 
-  NO ENGINE CONSTANT MOVED and TOTAL ROUTE LEGS ARE 931 ON EVERY TREE BELOW. The 22-48 band,
-  minLegs/maxLegs and route length are untouched. What moved is which legs carry which
-  kilometres: 106 of 931 corpus legs (11.4%) are montage, carrying 38% of corpus km.
+  THREE DENOMINATORS ALSO CHANGED, and are invisible here for the same reason. Empty-pool
+  fallbacks and Uneventful legs now divide by totalLegs minus quiet — only a leg that ATTEMPTED
+  selection can fall back or find the ladder empty — and Complication rate divides by
+  presentedLegs, totalLegs minus uneventful minus quiet. With quiet = 0 all three are
+  arithmetically exactly what they were. They diverge the moment M3.12b sets a real base. The
+  reasoning is the block comment in packages/tools/sim/run-many.ts and the ADR 0029 addendum;
+  note that Decision 6's own table is WRONG about the fallback denominator and the addendum
+  corrects it.
 
-  THE FIXTURE BASELINE DID NOT MOVE, and that is structural rather than lucky: golden runs and
-  docs/sim-baseline.md both build from loadFixtureScenarios(), the hand-authored routes.json,
-  which never calls planLegs. A leg-plan.ts change cannot reach them. sim:diff on the fixture
-  pack reports "No change" and no golden digest moved.
+  FORCED-FIRE SHARE, MEASURED FOR THE FIRST TIME AT 2,000 RUNS: 29.0% of corpus SELECTIONS
+  never reach the gate at all (the fixture baseline measures 33.5%). ADR 0029 Decision 3 estimated roughly
+  10-13 legs of a 24-leg route, i.e. ~42-54% OF LEGS, so it is materially HIGH: the gate reaches
+  MORE legs than the ADR assumed, and a base picked against that estimate overshoots the quiet
+  ratio by about 1.4x. The new Forced-fire legs line prints the resulting ceiling on the quiet
+  share on every run, so M3.12b does not have to rederive it.
 
-  MONTAGE ALSO PROTECTS THE SEGMENTS EITHER SIDE OF A CROSSING, and the middle column below is
-  why. A crossing is safe from montage by its dullness; that is not enough. Montaging the stretch
-  BETWEEN two crossings collapses it to one leg, the two slack-1 border windows land within a leg
-  of each other, and ADR 0027 invariant (b) drops one — the crossing keeps its scene and loses its
-  beat, reported as content starvation. border_crossing and checkpoint LEG COUNTS are identical on
-  all three trees (119 and 114); it was their SPACING that changed.
+  MIND THE UNITS IN THAT COMPARISON, AND THIS IS THE PACK WHERE IT IS VISIBLE: the ~42-54%
+  estimate is denominated in LEGS and the 29.0% measured here is denominated in SELECTIONS. Over
+  legs this pack reads 29.2%, so the ~0.2pp gap is systematic, not noise — it is the 315-run
+  effect below. The finding survives either way (19pp against a 0.2pp unit difference), but do not
+  quote the pair as like-for-like without saying which is which. ADR 0029's 400-run table is
+  LEGS-denominated, and its apparent agreement with the 2,000-run selections figures was withdrawn
+  as a cross-unit comparison: 29.0% over legs at 400 runs against 29.0% over selections at 2,000 is
+  a rounding coincidence. Within one unit the shipped harness reads 29.2%/28.9% at 400 runs and
+  29.2%/29.0% at 2,000 (legs/selections).
+
+  IT IS DENOMINATED IN SELECTIONS, NOT LEGS, since the M3.12a follow-up, and on THIS pack that
+  moves the printed figure: 29.2% -> 29.0%, ceiling 70.8% -> 71.0%. The sim's legs field is
+  state.route.legIndex, a final INDEX, while quietLegs, forcedFireLegs and uneventfulLegs are all
+  counted per SELECTION; a run that ends inside resolveChoice selects once more than its index
+  says. Measured: 315 of 2,000 corpus runs, 20 of 2,000 fixture runs — a 0.59% and 0.06%
+  denominator error. Only Quiet legs and Forced-fire legs were re-cut, because they are the two
+  lines M3.12a ADDED and so are not fenced, and because ADR 0029 D3's identity
+  realised quiet = (1 - P) x (1 - forcedFireShare) is an identity only over the population the
+  gate actually decided on. Complication rate, Uneventful legs and Empty-pool fallbacks stay on
+  their leg denominators DELIBERATELY: Complication rate is a pre-existing baseline number and
+  re-cutting it would move it by ~0.59% here and break the additive-only fence that is M3.12a's
+  whole claim. That question is separable, pre-existing and invisible today (uneventful and
+  fallback both measure 0), and it is an M3.12b deliverable.
+
+  THE ~0.59% IS THE VALUE AT 1:0 AND IT GROWS AT M3.12b, which is exactly where the deferral
+  lands, and this is the pack that carries it. attemptedLegs and presentedLegs are MIXED-UNIT
+  SUBTRACTIONS — a leg-INDEX sum (totalLegs = 53,451) minus per-SELECTION counts (quiet,
+  uneventful; totalSelections = 53,766) — so the absolute error is pinned at 315 selections while
+  the remainder it sits in shrinks with the quiet share, and the relative error concentrates:
+
+      q=0%  0.589%    q=10%  0.655%    q=20%  0.738%    q=30%  0.844%    q=40%  0.986%
+
+  That is 315 / (53,451 - q x 53,766). It is a FLOOR rather than the whole error, because
+  uneventful measures exactly 0 today, so only the totalLegs term is currently mismatched; the
+  moment uneventful or fallback becomes non-zero they inherit the same denominator. By q=40% the
+  error has nearly doubled — a third-decimal problem, not a fourth.
+
+  THE FIX IS TO COUNT THE SUBTRAHENDS AND THE MINUEND OVER ONE POPULATION, NOT TO "DIVIDE BY
+  SELECTIONS". Reading the paragraph above as "so at M3.12b, divide Complication rate by
+  totalSelections" is the wrong conclusion and a reader could easily reach it: that throws away the
+  subtraction these three rates exist to have — only a leg that ATTEMPTED selection can fall back,
+  only one that PRESENTED an event can carry a complication — and would move the number far more
+  than 0.6-1.0%. The defect is INSIDE the subtraction. attemptedLegs wants totalSelections - quiet,
+  and presentedLegs wants attemptedLegs - uneventful, so that minuend, subtrahends and numerators
+  (complicated, fallback and uneventful are all counted per selection) share one population.
+  Lifting the minuend to selections or pushing the subtrahends down to legs is M3.12b's call;
+  leaving the two sides on different populations is not an option either way.
+
+  M3.12a FOLLOW-UP: ONE MORE REPORT LINE, AND NOTHING ELSE MOVED (2026-08-13, ADR 0029
+  addendum). Near-repeat rate sits directly under Repeat-event rate. THE DIFF IS ADDITIVE ONLY:
+  all 118 pre-existing lines of this report were compared line-for-line against the pre-change
+  run and every one is identical, apart from the two volatile wall-clock lines diff-report.ts
+  already ignores. Same fence as M3.12a and for the same reason: at BASE_EVENT_ODDS = 1:0 no leg
+  can be quiet, so a moved number would mean the gate is not fenced.
+
+  WHY A SECOND REPETITION LINE RATHER THAN A FIX TO THE FIRST. Repeat-event rate is
+  1 - unique/fired over a whole run, so it falls about 10pp at a 30% quiet share with the
+  DIRECTOR UNTOUCHED: the draws shrink while unique is capped by the event pool. It is not wrong
+  — the player really was shown that share of re-runs — it is LENGTH-SENSITIVE, and no
+  redefinition can be both unconfounded at a positive quiet share and arithmetically identical
+  at 1:0, which the fence requires. Those two properties are jointly unsatisfiable, so the line
+  is kept exactly and Near-repeat rate — a redraw inside recency's own window, denominated in
+  FIRED EVENTS on both sides — sits beside it as the BETTER of the two. It prints draws/run
+  beside itself so the scale of the confound sits next to the confounded figure.
+
+  RETRACTION (M3.12a follow-up, ADR 0029 addendum III). Near-repeat rate shipped advertised as
+  UNCONFOUNDED — "the quiet share cancels out of it", "diff THIS across a base change". THAT IS
+  FALSE and it was measured false with the DIRECTOR LITERALLY UNCHANGED, by deleting draws from
+  these very sequences with a non-periodic mask at a 30% quiet share, 2,000 runs, ten mask seeds:
+
+      CORPUS   near-repeat 25.99% -> 33.57%   (+7.6pp;  Repeat-event rate moves -9.1pp)
+      FIXTURE  near-repeat 62.29% -> 56.63%   (-5.7pp;  Repeat-event rate moves -6.9pp)
+
+  Comparable in magnitude to the confound it replaces, AND THE SIGN IS PACK-DEPENDENT. Sharing
+  units on both sides removes the SCALING confound (unique is pool-capped, fired is not); it does
+  NOT remove SEQUENCE COMPRESSION, which is what deleting draws is. On THIS pack repeats are
+  sparse — 13 events over 26.88 draws — so most repeat pairs sit outside the 5-draw window,
+  compression pulls them IN, and the rate RISES. On the fixture, where 62% of draws are already
+  near-repeats, deleting a member destroys the pair and it FALLS.
+
+  SO M3.12b MUST SUBTRACT A NULL BASELINE BEFORE ATTRIBUTING ANY MOVEMENT TO THE DIRECTOR. Re-run
+  the compression against these 1:0 sequences at the realised quiet share and read the RESIDUAL.
+  On this pack a RISE of up to ~8pp at a 30% quiet share is the null expectation, not a finding —
+  and the ADR's own "a rise is the real finding" row said the opposite until this addendum. The
+  line is kept — it moves less, and for a reason that is measurable and subtractable — but it is
+  sold as LESS CONFOUNDED, never as unconfounded.
+
+  ONE DIRECTOR WINDOW ALSO CHANGED UNIT, and is invisible here for the reason the three
+  denominators were. recency now counts DRAWS since an event last fired rather than legs, which
+  is the same number while quiet is 0 and uneventful measures exactly 0 — it does, on both packs
+  at 2,000 runs and in 9 of 9 golden runs. cooldownLegs deliberately stays WALL-CLOCK: it is
+  authored content in a field named for its unit, and a montage stretch is quiet by design, so a
+  draws unit would freeze every cooldown across it. golden-runs.json is byte-identical. Both
+  calls, and the four further leg-denominated sites that were swept and left alone, are in the
+  ADR 0029 addendum.
+
+  MONTAGE LEGS EXIST NOW (docs/adr/0039), AND M3.12a's FENCE IS WHY THIS NOTE CAN BE SHORT. The
+  leg-plan gate asked `segments.length > target` where ADR 0026 Decision 4 says
+  `rawLegs > target`. Those agree only while a path edge is worth at most one leg; the median
+  edge on this slice is 378 km against densities of 120-450, so `rawLegs > target` held on 23 of
+  these 25 routes and `segments.length > target` on none. montageLegs was empty on every route
+  the generator could produce, and ADR 0029 Decision 7 item 2 was being computed over a class
+  with no members. 106 of 931 corpus legs (11.4%) are montage now, carrying 38% of corpus km.
+
+  MEASURED ON THIS TREE, BEFORE AND AFTER, AT 20,000 RUNS — and it reproduced the pre-merge
+  measurement digit for digit, which is the evidence that M3.12a at 1:0 is behaviour-neutral:
+
+                        pre-montage   anchors only   shipped
+    Completion                42.2%          44.1%     43.2%   montage is a TIME DISCOUNT
+    Long-range payoff         24.6%          18.5%     24.3%   recovered with the border slots
+    Beat fill                 28.1%          26.1%     27.5%
+    Unresolved threads          521            452       525
+    Checks                  205,612        196,382   198,606
+    Median legs                  25             25        24   survival, not route length
+
+  `Quiet legs (designed)` reads 0.0% throughout, so none of this is the odds gate: the fence held
+  while an unrelated engine change landed underneath it, which is what the fence was for.
+
+  THE MIDDLE COLUMN IS THE ADJACENCY GUARD'S RECEIPT. A crossing is safe from montage by its
+  dullness and that is NOT enough: montaging the stretch BETWEEN two crossings collapses it to
+  one leg, the two slack-1 border windows land within a leg of each other, and ADR 0027 invariant
+  (b) drops one — the crossing keeps its scene and loses its beat, reported as content
+  starvation. border_crossing and checkpoint LEG COUNTS are identical on all three trees (119 and
+  114); it was their SPACING that changed.
 
     beat slots, 25 corpus routes   pre-montage   anchors only   shipped
       border_crossing                       71             58        71
@@ -510,36 +635,19 @@
 
   Every border slot comes back. `approach` is left dropped on purpose: no corpus event can fill
   it, so recovering it would only pad the fill-rate denominator. The guard costs about a third of
-  montage coverage — 157 montage legs -> 106, 48% of km -> 38% — and buying back 18% of one of
-  only two fillable beat types is worth more than the coverage.
+  montage coverage (157 montage legs -> 106, 48% of km -> 38%) and buying back 18% of one of only
+  two fillable beat types is worth more. THAT PAYOFF AND UNRESOLVED THREADS RECOVER TOGETHER is
+  what identifies the mechanism: without the guard, ordinary roadside legs fell 311 -> 279 and
+  generic queued payoffs lost the windows they fire in.
 
-  WHAT MOVED HERE, one mechanism behind all of it: a montage leg replaces k ordinary legs over
-  the same ground, and legHours charges the per-mode overhead ONCE instead of k times. A 1,200 km
-  car segment is 21 hours as one montage leg against 35 as five ordinary ones. Drift is per-hour
-  (docs/adr/0035), so fewer hours over the same distance is less drain.
+  THE FIXTURE BASELINE DID NOT MOVE, structurally rather than luckily: golden runs and
+  docs/sim-baseline.md both build from loadFixtureScenarios(), the hand-authored routes.json,
+  which carries montageLegs: [] and never calls planLegs. A leg-plan.ts change cannot reach them.
 
-                        pre-montage   anchors only   shipped
-    Completion                42.2%          44.1%     43.2%   montage is a TIME DISCOUNT
-    Long-range payoff         24.6%          18.5%     24.3%   recovered with the border slots
-    Beat fill                 28.1%          26.1%     27.5%
-    Unresolved threads          521            452       525
-    Checks                  205,612        196,382   198,606
-    Median legs                  25             25        24   survival, not route length
+  STILL OPEN: montage is an UNPRICED TIME DISCOUNT — completion is +1.0pp with no constant
+  changed, and no ADR chose that. And on a 123-route sweep 46 of 123 routes carry NO montage leg
+  at all, so a montage quiet-ratio target is computed over a thinner population than it looks.
 
-  Those are quoted at 20,000 runs, not at the 2,000 this file is generated at, because
-  payoffRate's denominator is only ~600 and a 2,000-run reading of it is noise. The body below is
-  the 2,000-run report and its payoff line should be read as a sample.
-
-  THAT PAYOFF AND UNRESOLVED-THREADS RECOVER TOGETHER IS WHAT IDENTIFIES THE MECHANISM. Without
-  the adjacency guard, ordinary roadside legs fell 311 -> 279 and generic queued payoffs lost the
-  windows they fire in; restoring the segments beside each crossing restores both numbers to
-  within 0.3pp and 4 threads of the pre-montage tree. It was fewer schedules reaching fewer
-  eligible legs, not more failures.
-
-  STILL OPEN, and it is a design call rather than a defect: montage is an UNPRICED TIME DISCOUNT.
-  Completion is +1.0pp over the pre-montage tree with no constant changed. And on a 123-route
-  sweep, 46 of 123 routes now carry NO montage leg at all — a montage-quiet-ratio target computed
-  over that population is thinner than it looks.
 -->
 
 # Sim Report — seed=base contentVersion=c10af194 runs=2000
@@ -551,9 +659,12 @@ Median in-game days            10
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
+Quiet legs (designed)        0.0%   (odds gate — designed silence, NOT the two gaps above)
+Forced-fire legs            29.1%   (beat slot or queue due — never gated; caps quiet at 70.9%)
 Long-range payoff rate      25.7%   (target 80%)
 Beat fill rate              27.2%
 Repeat-event rate           66.5%
+Near-repeat rate            26.6%   (a redraw inside recency's own 6-event window; 26.08 draws/run — LESS confounded than the line above, NOT unconfounded: subtract a null baseline before reading it)
 Complication rate           59.9%   (target 60%)
 Modifier chips / check        6.4   (target 3-7, over 19810 checks)
 Checks under 2 chips            0   (each one draws nothing the registry exists for)
@@ -562,8 +673,8 @@ Universal choices offered   37.6%   (share of choices shown)
 Universal choices picked    38.6%   (over ~30% means they are flattening the corpus)
 Unresolved threads             48
 
-Wall clock                 1774 ms   (0.89 ms/run)
-Extrapolated to 20,000     17.7 s   (target <30 s)
+Wall clock                 1838 ms   (0.92 ms/run)
+Extrapolated to 20,000     18.4 s   (target <30 s)
 
 ## Endings
   ending.arrival_quiet                43.5%

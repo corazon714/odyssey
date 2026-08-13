@@ -128,7 +128,7 @@ packages/engine/            Pure TS game engine                      ✅
   src/predicate/            requires-DSL, 28 kinds + reason trace     ✅
   src/effects/              effect-DSL applier, 15 ops               ✅
   src/content/              GameEvent, ContentPack, the 2 registries ✅ ADR 0021/0022
-  src/director/             filters, scoring, ladder, beats, tension ✅
+  src/director/             filters · scoring · ladder · beats · tension · quiet gate ✅ ADR 0029
   src/{queue,loop,migrate}/ consequence queue · advanceLeg/resolveChoice/replayRun · saves  ✅
   src/modifiers/            check tags, registry, resolution pipeline ✅ ADR 0015
   src/route/                graph · Dijkstra · Yen · legs · beats · gen ✅ 0025/0026/0027

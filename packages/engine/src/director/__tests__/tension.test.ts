@@ -7,6 +7,8 @@ import { createRunInit } from '../../state/run-init.ts';
 import { type RunState } from '../../state/run-state.ts';
 import { makeRoute } from '../../state/__tests__/support/make-route.ts';
 import { loadMiniPack } from '../../__tests__/support/load-fixtures.ts';
+import { QUIET_JOURNAL_KEY } from '../quiet-gate.ts';
+import { TENSION_BREATHER } from '../scoring-constants.ts';
 import { consecutiveHighTension, nextTension } from '../tension.ts';
 
 const { events, registries } = loadMiniPack();
@@ -31,6 +33,19 @@ function historyOf(count: number, id = HIGH_TENSION_EVENT): RunState['history'] 
     params: {},
     tags: [],
   }));
+}
+
+/** What `advanceLeg` appends on a gated leg — the shape `quietHistoryEntry` produces. */
+function quietEntry(legIndex: number): RunState['history'][number] {
+  return {
+    legIndex,
+    day: 0,
+    eventId: null,
+    choiceId: null,
+    textKey: QUIET_JOURNAL_KEY,
+    params: { leg: legIndex },
+    tags: [],
+  };
 }
 
 describe('nextTension', () => {
@@ -112,5 +127,30 @@ describe('consecutiveHighTension', () => {
 
   it('is zero with no history', () => {
     expect(consecutiveHighTension(makeState(), PACK)).toBe(0);
+  });
+
+  it('breaks on a QUIET leg — designed silence ends a streak (ADR 0029 addendum)', () => {
+    // The line `if (entry.eventId === null) break` was written for a case that could not
+    // happen: until the quiet-leg gate, `advanceLeg` never wrote a history entry and every
+    // entry carried an id. Nothing constructed one against this function, so its behaviour was
+    // an accident of a dead guard. It is now a decision, and this is the test that makes it one.
+    const history = [...historyOf(2), quietEntry(2)];
+    expect(consecutiveHighTension(makeState({ history }), PACK)).toBe(0);
+  });
+
+  it('so the breather is never spent twice on the same crisis', () => {
+    // THE REASON `break` IS RIGHT, measured rather than asserted. The breather exists against
+    // continuous crisis; a quiet leg IS the leg off it was going to buy. Easing the next leg as
+    // well gives `high, high, nothing, low` — a pacing sag, not a breather. Design pillar 3
+    // wants the world to react to where the run IS, and after a quiet leg it is not in crisis.
+    const strained = { ...createResources(), health: 4, morale: 4, heat: 6, hunger: 6 };
+    const eased = nextTension(makeState({ resources: strained, history: historyOf(2) }), PACK);
+    const afterQuiet = nextTension(
+      makeState({ resources: strained, history: [...historyOf(2), quietEntry(2)] }),
+      PACK,
+    );
+
+    expect(afterQuiet).toBeGreaterThan(eased);
+    expect(afterQuiet - eased).toBeCloseTo(TENSION_BREATHER, 5);
   });
 });
