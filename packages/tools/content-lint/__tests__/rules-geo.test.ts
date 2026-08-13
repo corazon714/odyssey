@@ -15,7 +15,13 @@ import {
 import { type GeoBundle, type GeoNodeRecord } from '@odyssey/content';
 import { MIN_LANDMASS_NODES } from '../../geo-build/connectivity.ts';
 import { nodesDigest } from '../../geo-build/write-artifacts.ts';
-import { geoGraph, geoNameFieldMisplaced, geoOsmSource, geoPlaceBehaviour } from '../rules-geo.ts';
+import {
+  UNDECLARED_BRANCH_BUDGET,
+  geoGraph,
+  geoNameFieldMisplaced,
+  geoOsmSource,
+  geoPlaceBehaviour,
+} from '../rules-geo.ts';
 import { type ContentBundle } from '../load-content.ts';
 import { runLint } from '../run-lint.ts';
 import { findWorkspaceRoot } from '../../shared/workspace-root.ts';
@@ -301,12 +307,22 @@ describe('GEO_OVERLAY_STALE', () => {
 });
 
 describe('GEO_UNDECLARED_BRIDGE', () => {
-  /** A hub with `spokes` chains of 10 hanging off it: one lifeline edge per chain. */
-  function star(spokes: number): { nodes: GeoNodeRecord[]; edges: GeoEdge[] } {
-    const nodes = [node('n.city.hub')];
-    const edges: GeoEdge[] = [];
+  /**
+   * `spokes` chains of ten hanging off the landmass ring: one lifeline edge per chain, each
+   * stranding exactly ten nodes, and nothing else in the fixture is a bridge at all.
+   *
+   * **Built on the ring rather than on a bare hub, so the fixture is valid at ANY budget.** The
+   * budget is MEASURED against the shipped slice and is 0 today; a bare star degenerates there —
+   * `star(0)` is one orphan node, and the quiet assertion would pass because there is no graph
+   * rather than because there is no lifeline. The ring also keeps the node count above 20, which
+   * matters because a stranded side is `min(subtree, n - subtree)`: hang ten nodes off a
+   * ten-node graph and the "stranded" side is the other one.
+   */
+  function spokesOnLandmass(spokes: number): { nodes: GeoNodeRecord[]; edges: GeoEdge[] } {
+    const nodes = [...LANDMASS.nodes];
+    const edges = [...LANDMASS.edges];
     for (let s = 0; s < spokes; s += 1) {
-      let previous = 'n.city.hub';
+      let previous = 'n.city.c0';
       for (let i = 0; i < 10; i += 1) {
         const id = `n.city.s${String(s)}_${String(i)}`;
         nodes.push(node(id));
@@ -317,25 +333,29 @@ describe('GEO_UNDECLARED_BRIDGE', () => {
     return { nodes, edges };
   }
 
+  // Sized from the constant, never from a literal beside it: the budget moves whenever the slice
+  // does, and a test that hardcoded 13 would have gone green against a map that no longer exists.
+  const OVER = UNDECLARED_BRANCH_BUDGET + 1;
+
   it('stays quiet at the budget', () => {
-    const { nodes, edges } = star(13);
+    const { nodes, edges } = spokesOnLandmass(UNDECLARED_BRANCH_BUDGET);
     expect(rulesIn(geoGraph(bundleOf(geoOf(nodes, edges))))).not.toContain('GEO_UNDECLARED_BRIDGE');
   });
 
   it('warns — never errors — once the budget is exceeded', () => {
-    const { nodes, edges } = star(14);
+    const { nodes, edges } = spokesOnLandmass(OVER);
     const found = geoGraph(bundleOf(geoOf(nodes, edges))).find(
       (i) => i.rule === 'GEO_UNDECLARED_BRIDGE',
     );
-    // A warning with a budget, never a per-edge error (`connectivity.ts`): 35 bridges on the
-    // real slice would otherwise be 35 findings nobody reads.
+    // A warning with a budget, never a per-edge error (`connectivity.ts`): 32 bridges on the
+    // real slice would otherwise be 32 findings nobody reads.
     expect(found?.severity).toBe('warn');
-    expect(found?.message).toContain('14 undeclared lifeline edges');
+    expect(found?.message).toContain(`${String(OVER)} undeclared lifeline edges`);
   });
 
   it('is silenced by declaring the branches in criticalEdges', () => {
-    const { nodes, edges } = star(14);
-    const declared = Array.from({ length: 14 }, (_, s) => ({
+    const { nodes, edges } = spokesOnLandmass(OVER);
+    const declared = Array.from({ length: OVER }, (_, s) => ({
       edge: edgeId(`e.s${String(s)}_0`),
       reason: 'the only road onto this spur',
     }));

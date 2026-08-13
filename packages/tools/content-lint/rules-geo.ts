@@ -38,17 +38,26 @@ import { type ContentBundle } from './load-content.ts';
 const SIGNIFICANT_BRANCH = 10;
 
 /**
- * MEASURED at the 263-node slice, 2026-08-12: 35 bridges, of which 13 strand 10+ nodes.
+ * MEASURED at the 692-node Afro-Eurasia slice (`--bbox=-18,-35,180,72`), 2026-08-12: 1,215
+ * edges, 32 bridges, of which **ZERO strand 10+ nodes**. The largest stranded side in the whole
+ * graph is 4 nodes; the distribution is 19 bridges stranding 1, ten stranding 2, two stranding 3
+ * and one stranding 4. Nothing is grandfathered, so the budget is zero.
  *
- * A budget rather than zero because the shipped graph legitimately has 13 and hand-declaring
- * them is not M3.6's job; a budget rather than "no rule" because the number GROWING is the
- * signal — a new lifeline means a new way for a route to be forced through one edge.
+ * It replaces 13, measured at the 263-node Europe-and-Maghreb slice, where 35 bridges included
+ * 13 that stranded 10+ nodes. ADR 0033 Decision 6 required a re-measurement rather than an
+ * extrapolation, and said that growing faster than the node count would be a finding about the
+ * selector. **It went the other way, and that is the finding**: 2.6x the nodes, 3.0x the edges,
+ * and three FEWER bridges. Average degree rose from 3.07 to 3.51, and the stranded sides
+ * collapsed with it — the old 10+ branches were Mediterranean islands and Iberian spurs reached
+ * by one edge, and on a continental graph those same places have neighbours in more directions.
+ * The 263-node slice was the stringy one.
  *
- * **M3.11 scales the slice to ~1,200 nodes and this number will move.** Raising it then is a
- * decision to take with the new measurement in hand, not a formality: if it grows faster than
- * the node count, the selector is producing a stringier graph and that is worth knowing.
+ * Zero is therefore the honest calibration and not a tightening: any undeclared lifeline
+ * stranding 10+ nodes is now genuinely new, and there is 2.5x of headroom before one can appear
+ * (worst stranded side 4, `SIGNIFICANT_BRANCH` 10). Re-measure whenever the bbox or the quotas
+ * move; a budget carried across a slice change is a number about a map that no longer exists.
  */
-const UNDECLARED_BRANCH_BUDGET = 13;
+export const UNDECLARED_BRANCH_BUDGET = 0;
 
 const NODES_FILE = 'geo/nodes.gen.json';
 const EDGES_FILE = 'geo/edges.gen.json';

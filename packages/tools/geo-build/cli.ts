@@ -88,8 +88,7 @@ function main(argv: readonly string[]): number {
     );
     const { byName, nameOf } = readNames(nodesJson, graph);
     process.stdout.write(formatVerification(graph, byName, nameOf));
-    const timings = benchmark(graph, 200);
-    process.stdout.write(`${formatBenchmark(graph, timings.length, timings)}\n`);
+    process.stdout.write(`${formatBenchmark(graph, benchmark(graph, 200))}\n`);
     return 0;
   }
 

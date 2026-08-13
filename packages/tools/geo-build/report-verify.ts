@@ -1,4 +1,4 @@
-import { ROUTE_PROFILES, selectPaths, type GeoGraph } from '@odyssey/engine';
+import { ROUTE_PROFILES, costFor, selectPaths, shortestPath, type GeoGraph } from '@odyssey/engine';
 
 import { DIVERSITY_PASS_THRESHOLD } from './audit-diversity.ts';
 import { verifyPair, type NameLookup, type PairReport } from './verify-routes.ts';
@@ -6,46 +6,91 @@ import { verifyPair, type NameLookup, type PairReport } from './verify-routes.ts
 /**
  * The Phase 3 verification report.
  *
- * **Columns that do not exist are absent, not estimated.** Legs, montage legs, in-game days,
- * cash, risk band, events fired, memory chains and completion rate all belong to M3.7 through
- * M3.10; six of the modules that would produce them are not on disk. The header says so once so
- * no table below has to.
+ * **This report stops at the graph, and since M3.11 that is a boundary rather than a gap.** The
+ * six modules the original header named as "not on disk" — `leg-plan`, `leg-locations`,
+ * `beat-schedule`, `route-preview`, `materialise-route`, `generate-routes` — all shipped in M3.7
+ * through M3.10, and `sim/load-pack.ts` now builds the corpus scenarios by calling
+ * `generateRoutes` (ADR 0034). So legs, days, cash, events fired and completion rate ARE
+ * measurable now; they are simply not measurable HERE, because every one of them is a function
+ * of the content pack as well as of the route. `pnpm sim --pack=corpus` is where they live, and
+ * a second copy computed off a different code path is a balance report that drifts from the one
+ * anybody acts on.
+ *
+ * What this file measures is what a route is before any content touches it: distance, hops,
+ * crossings, ferries, tolls, how many distinct routes a pair yields and how far apart they are.
  */
 
 /**
- * The ten pairs, chosen to hit the categories asked for rather than sampled.
+ * Ten pairs, picked under a CONSTRAINT rather than by ranking anything.
  *
- * `noRoute` is deliberately absent and that absence is a RESULT: `--stage=all` refuses to write a
- * graph with more than one connected component, so on the shipped slice no pair is unreachable.
- * The nearest real thing is a profile-level refusal, which the `refused` column reports.
+ * The previous list was chosen for the 263-node Europe-and-Maghreb slice and did not survive
+ * M3.11. Five of its ten pairs named nodes the selector no longer keeps, and one that survived
+ * — Barcelona-Zaragoza, a SINGLE HOP — printed a section 2 FAIL that measured nothing, because
+ * one edge has nothing to diversify.
+ *
+ * ## The constraint, three clauses, all checked before the list was written
+ *
+ * 1. **Twenty distinct endpoints.** No node appears twice. This is the clause that stops ten
+ *    rows collapsing into one measurement repeated: `CORPUS_PAIRS` failed exactly that way at
+ *    2e38375, where four rows shared one destination.
+ * 2. **One pair per distance band**, bands disjoint and spanning the slice's achievable range:
+ *    250-500, 500-1k, 1k-2k, 2k-3k, 3k-4.5k, 4.5k-6k, 6k-8k, 8k-10k, 10k-13k, 13k+. A pair is
+ *    admitted for the band it FILLS, never for being the longest — which is how the same list
+ *    failed AGAIN at 04f0f38, where ranking longest-first returned five routes all sitting on
+ *    the 48-leg cap.
+ * 3. **At least three hops** on the first returned route. Below that the section 2 overlap
+ *    number is not measuring a property of the filter.
+ *
+ * Within a band the pick is the first admissible pair scanning the alphabetical settlement list
+ * from that band's own offset, `floor(band * 411 / 10)`, wrapping — the fixed-stride, RNG-free
+ * spreading `benchmark` and `auditDiversity` already use. Plain alphabetical-first was tried and
+ * rejected: it put nine of ten `from` cities under "A", a shape the tie-break invented. Bands
+ * fill longest-first, because the long bands have the fewest admissible pairs and would
+ * otherwise find their endpoints already taken.
+ *
+ * **The 48-leg cap is exercised, not saturated, and that is measured rather than hoped for.**
+ * `planLegs` over the first route of each row gives 15, 20, 22, 22, 23, 30, 32, 45, 48, 48 —
+ * two rows at the cap, both in the top two bands, which is where a cap is supposed to bite.
+ *
+ * `noRoute` is deliberately absent and that absence is a RESULT: `--stage=all` refuses to write
+ * a fragment, so on the shipped slice no pair is unreachable. The nearest real thing is a
+ * profile-level refusal, which the `refused` column reports.
  */
 export const NAMED_PAIRS: readonly (readonly [string, string, string])[] = [
-  ['short domestic', 'Barcelona', 'Zaragoza'],
-  ['short domestic', 'Hamburg', 'Bremen'],
-  ['medium, one border', 'Vienna', 'Budapest'],
-  ['long continental', 'Vigo', 'Vilnius'],
-  ['long continental', 'Lisbon', 'Warsaw'],
-  ['ferry required', 'Barcelona', 'Palermo'],
-  ['ferry required', 'Algiers', 'Rome'],
-  ['many borders', 'Amsterdam', 'Athens'],
-  ['many borders', 'Copenhagen', 'Belgrade'],
-  ['island to island', 'Palma', 'Cagliari'],
+  ['250-500 km', 'Marand', 'Mosul'],
+  ['500 km - 1,000', 'Belgrade', 'Burgas'],
+  ['1,000 km - 2,000', 'Chongjin', 'Jeju City'],
+  ['2,000 km - 3,000', 'Guangyuan', 'Monywa'],
+  ['3,000 km - 4,500', 'Kampala', 'Kinshasa'],
+  ['4,500 km - 6,000', 'Lampang', 'Mianwali'],
+  ['6,000 km - 8,000', 'Molde', 'Montana'],
+  ['8,000 km - 10,000', 'Palermo', 'Riyadh'],
+  ['10,000 km - 13,000', 'Sambalpur', 'Slavonski Brod'],
+  ['13,000 km and up', 'Tianshui', 'Toulouse'],
 ];
 
-/** Twelve pairs spanning the slice's achievable range, shortest to longest. */
+/**
+ * Twelve pairs spanning the slice's achievable range, shortest to longest.
+ *
+ * Same constraint as `NAMED_PAIRS` at a finer grain — twelve disjoint bands, one pair each —
+ * with two differences that follow from what this section is for. **Its twenty-four endpoints
+ * are disjoint from the named ten's twenty**, so the sweep is a second sample of the graph
+ * rather than the same one re-sorted; and the three-hop floor drops to two, because a sweep
+ * reports distance and hop count without gating diversity.
+ */
 export const SWEEP_PAIRS: readonly (readonly [string, string])[] = [
-  ['Tunis', 'Aryanah'],
-  ['Hamburg', 'Bremen'],
-  ['Vienna', 'Budapest'],
-  ['Milan', 'Turin'],
-  ['Barcelona', 'Zaragoza'],
-  ['Rome', 'Naples'],
-  ['Paris', 'Amsterdam'],
-  ['Berlin', 'Warsaw'],
-  ['Madrid', 'Paris'],
-  ['Amsterdam', 'Athens'],
-  ['Lisbon', 'Warsaw'],
-  ['Vigo', 'Vilnius'],
+  ['A Coruna', 'Porto'],
+  ['Barcelona', 'Bordeaux'],
+  ['Caen', 'Duesseldorf'],
+  ['Emden', 'Ferrara'],
+  ['Huambo', 'Kolwezi'],
+  ['Kasulu', 'Luanda'],
+  ['Lausanne', 'Moscow'],
+  ['Melitopol', 'Merida'],
+  ['Nasiriyah', 'OErnskoeldsvik'],
+  ['Proddatur', 'Pskov'],
+  ['Shostka', 'Singida'],
+  ['Tromso', 'Ubon Ratchathani'],
 ];
 
 function pad(text: string, width: number): string {
@@ -66,11 +111,14 @@ export function formatVerification(
 ): string {
   const lines: string[] = ['', '# Phase 3 route verification', ''];
 
-  lines.push('Measured from `selectPaths` against the committed artifacts. Legs, montage legs,');
-  lines.push('in-game days, cash, risk band, events fired, memory chains and completion rate are');
-  lines.push('NOT here: leg-plan, leg-locations, beat-schedule, route-preview, materialise-route');
-  lines.push('and generate-routes do not exist, and `RouteState` has no `legKm`. Estimating them');
-  lines.push('would be inventing them.');
+  lines.push('Measured from `selectPaths` against the committed artifacts, on the Afro-Eurasia');
+  lines.push('slice. Legs, in-game days, cash, events fired and completion rate are NOT here and');
+  lines.push('that is a boundary, not a gap: since M3.10 they are all a function of the CONTENT');
+  lines.push('PACK as well as of the route, and `pnpm sim --pack=corpus` measures them off the');
+  lines.push('code path the game runs. A second copy computed here would drift from it.');
+  lines.push('');
+  lines.push('The pair lists are picked under a stated constraint — one pair per distance band,');
+  lines.push('every endpoint distinct, three hops minimum — never by ranking. See NAMED_PAIRS.');
   lines.push('');
 
   // ── 1 + 2 ────────────────────────────────────────────────────────────────────────────────
@@ -89,7 +137,7 @@ export function formatVerification(
   lines.push('## 1. Ten pairs');
   lines.push('');
   lines.push(
-    `  ${pad('pair', 26)}${pad('category', 20)}${'km'.padStart(6)}${'hops'.padStart(5)}` +
+    `  ${pad('pair', 32)}${pad('band', 20)}${'km'.padStart(6)}${'hops'.padStart(5)}` +
       `${'brdr'.padStart(5)}${'fry'.padStart(4)}${'toll'.padStart(5)}${'rts'.padStart(4)}` +
       `${'ovlp'.padStart(6)}${'rung'.padStart(5)}  refused at rung 0`,
   );
@@ -97,7 +145,7 @@ export function formatVerification(
     const best = report.routes[0];
     if (best === undefined) continue;
     lines.push(
-      `  ${pad(`${report.from}-${report.to}`, 26)}${pad(report.label, 20)}` +
+      `  ${pad(`${report.from}-${report.to}`, 32)}${pad(report.label, 20)}` +
         `${num(best.km, 6)}${num(best.hops, 5)}${num(best.borders, 5)}${num(best.ferryHops, 4)}` +
         `${num(best.tolledHops, 5)}${num(report.routes.length, 4)}` +
         `${`${String(report.maxOverlap)}%`.padStart(6)}${num(report.rungReached, 5)}  ` +
@@ -143,28 +191,40 @@ export function formatVerification(
       `worst seen ${String(worst)}%.`,
   );
   lines.push('');
-  lines.push('  NOT the ladder relaxing — every failure above resolved at rung 0 or 1, where the');
-  lines.push('  threshold is still 70. Two different causes, both measured:');
+  lines.push('  NOT the ladder relaxing — the breach below resolved at rung 1, and rungs 0 and 1');
+  lines.push('  both cap overlap at 70 (`DIVERSITY_RUNGS`). Two causes, both re-measured on the');
+  lines.push('  692-node slice:');
   lines.push('');
-  lines.push('  ONE: THE GUARANTEE IS DIRECTIONAL. `acceptByDiversity` tests each NEW candidate');
-  lines.push('  against the union of what is already accepted, normalised by the CANDIDATE’s');
-  lines.push('  length, and never re-tests an earlier route against a later one. On');
-  lines.push('  Barcelona-Palermo, `safest` (3,496 km) is 69% inside `fastest` (3,051 km) and was');
-  lines.push('  accepted on that number — while `fastest` is 79% inside `safest`, which nothing');
-  lines.push('  ever looked at. Algiers-Rome is the same shape at 63% accepted, 74% reverse.');
+  lines.push('  ONE: THE GUARANTEE IS DIRECTIONAL, and it survived the slice change intact.');
+  lines.push('  `acceptByDiversity` tests each NEW candidate against the union of what is already');
+  lines.push('  accepted, normalised by the CANDIDATE’s length, and never re-tests an earlier');
+  lines.push('  route against a later one. Chongjin-Jeju City accepts, in order, `fastest`');
+  lines.push('  (1,391 km), `safest` (1,724) and three Yen backfills at 2,573, 2,690 and 9,068.');
+  lines.push(
+    '  `safest` is 80% inside the 2,573 km backfill — but the backfill was accepted AFTER',
+  );
+  lines.push(
+    '  it, so the only number ever measured between the two is the backfill’s 53% against',
+  );
+  lines.push('  `safest`. The 80% was never looked at by anything.');
   lines.push('  The candidate-normalisation is deliberate (ADR 0025 Decision 5 uses it to reject');
-  lines.push('  truncations) but its consequence — a one-way guarantee — is not written down.');
+  lines.push(
+    '  truncations) but its consequence — a one-way guarantee — is still not written down.',
+  );
   lines.push('');
-  lines.push('  TWO: YEN BACKFILL OFFERS ROUTES NOBODY WOULD DRIVE. Vienna-Budapest is 297 km');
-  lines.push('  direct, and the pool also contains 866, 1,186 and 1,352 km alternatives; the 72%');
-  lines.push('  is between two of those detours, not between anything a player would weigh.');
-  lines.push('  `kShortestPaths` has no length ceiling relative to the shortest path. Section 4');
-  lines.push('  measures how far this goes.');
+  lines.push(
+    '  TWO: YEN BACKFILL OFFERS ROUTES NOBODY WOULD DRIVE, and the bigger slice made this',
+  );
+  lines.push('  worse rather than better. Chongjin-Jeju City is 1,391 km direct and the pool also');
+  lines.push('  holds a 9,068 km route — 6.5x the shortest, offered as a choice. Marand-Mosul is');
+  lines.push('  466 km direct against a 1,401 km backfill, 3.0x. `kShortestPaths` has no length');
+  lines.push('  ceiling relative to the shortest path, and on a continental graph there is far');
+  lines.push('  more room to stray. Section 4 measures how far this goes across the whole graph.');
   lines.push('');
   lines.push(
     '  So a per-pair 70% guarantee is not something this system currently makes. ADR 0025',
   );
-  lines.push('  gates the MEDIAN over many pairs, which is 59% and passes.');
+  lines.push('  gates the MEDIAN over many pairs, which `pnpm geo:diversity` reports and passes.');
   lines.push('');
 
   // ── 3 ────────────────────────────────────────────────────────────────────────────────────
@@ -198,9 +258,12 @@ export function formatVerification(
   }
   for (const entry of [...sweep].sort((x, y) => x.km - y.km)) lines.push(entry.line);
   lines.push('');
-  lines.push('  The requested 300 km - 13,000 km span is NOT achievable here. This slice is one');
-  lines.push('  bbox of Europe and the Maghreb; the longest route it contains is the last row.');
-  lines.push('  13,000 km needs the M3.11 scale-up to ~1,200 nodes across continents.');
+  lines.push(
+    '  The 300 km - 13,000 km span the brief asked for IS achievable on this slice, which',
+  );
+  lines.push('  it was not before M3.11 — the 263-node Europe-and-Maghreb bbox topped out at');
+  lines.push('  5,294 km. The widest great-circle separation the slice contains is 15,552 km');
+  lines.push('  (Cape Town to Magadan); the longest row above is 14,753 km of road.');
   lines.push('');
 
   // ── 4 ────────────────────────────────────────────────────────────────────────────────────
@@ -293,6 +356,25 @@ export function formatVerification(
   return lines.join('\n');
 }
 
+/** Total `selectPaths` cost per pair, and the five raw Dijkstras inside it, same pairs. */
+export type BenchmarkSample = {
+  readonly total: readonly number[];
+  readonly dijkstra: readonly number[];
+};
+
+/** The phone multiplier. An ASSUMPTION with a stated basis — see the report text. */
+const DEVICE_MULTIPLIER = 6;
+
+/**
+ * The budget, in milliseconds of estimated phone time, for one `selectPaths` call.
+ *
+ * **DELIBERATELY NOT RAISED at M3.11.** The number is a statement about what a player will sit
+ * through between tapping a destination and seeing routes, and nothing about that changed when
+ * the map grew. Passing today would take roughly five times this — a number chosen to match the
+ * measurement, which is recording the regression as the requirement.
+ */
+const BUDGET_MS = 150;
+
 /**
  * Wall-clock for `selectPaths`, which is the whole cost of route generation today: five
  * Dijkstras plus Yen backfill plus the diversity filter.
@@ -300,25 +382,46 @@ export function formatVerification(
  * Reported in Node on this machine, with the phone multiplier stated rather than applied
  * silently. ADR 0012 records that Hermes is untested here, so the multiplier is an assumption
  * and is labelled as one.
+ *
+ * **Split into Dijkstra and everything-else since M3.11**, because a single total said the
+ * budget was missed without saying by what, and the two halves scale with completely different
+ * things. See the report text for the measurement.
  */
-export function formatBenchmark(graph: GeoGraph, samples: number, elapsedMs: number[]): string {
-  const sorted = [...elapsedMs].sort((a, b) => a - b);
-  const at = (q: number): number =>
-    sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))] ?? 0;
-  const mean = sorted.reduce((s, v) => s + v, 0) / Math.max(1, sorted.length);
-  const lines: string[] = ['## 5. Route generation benchmark', ''];
+export function formatBenchmark(graph: GeoGraph, sample: BenchmarkSample): string {
+  const quantiles = (values: readonly number[]): { mean: number; at: (q: number) => number } => {
+    const sorted = [...values].sort((a, b) => a - b);
+    return {
+      mean: sorted.reduce((s, v) => s + v, 0) / Math.max(1, sorted.length),
+      at: (q: number): number =>
+        sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))] ?? 0,
+    };
+  };
+  const total = quantiles(sample.total);
+  const dijkstra = quantiles(sample.dijkstra);
+  const rest = quantiles(sample.total.map((v, i) => v - (sample.dijkstra[i] ?? 0)));
+  const phone = (ms: number): string => (ms * DEVICE_MULTIPLIER).toFixed(1);
+  const lines: string[] = ['', '## 5. Route generation benchmark', ''];
 
   lines.push(
     `  graph            ${String(graph.nodes.length)} nodes, ${String(graph.edges.length)} edges`,
   );
-  lines.push(`  pairs measured   ${String(samples)}`);
+  lines.push(`  pairs measured   ${String(sample.total.length)}`);
   lines.push('');
   lines.push(
-    `  Node/V8 per call   mean ${mean.toFixed(2)} ms   p50 ${at(0.5).toFixed(2)}   ` +
-      `p90 ${at(0.9).toFixed(2)}   max ${at(1).toFixed(2)}`,
+    `  Node/V8 per call   ${'mean'.padStart(8)}${'p50'.padStart(9)}${'p90'.padStart(9)}${'max'.padStart(9)}`,
   );
+  for (const [label, q] of [
+    ['selectPaths  total', total],
+    ['  5x Dijkstra', dijkstra],
+    ['  Yen + filter', rest],
+  ] as const) {
+    lines.push(
+      `  ${label.padEnd(19)}${q.mean.toFixed(2).padStart(8)}${q.at(0.5).toFixed(2).padStart(9)}` +
+        `${q.at(0.9).toFixed(2).padStart(9)}${q.at(1).toFixed(2).padStart(9)}`,
+    );
+  }
   lines.push('');
-  lines.push('  DEVICE MULTIPLIER: 6x, assumed, not measured.');
+  lines.push(`  DEVICE MULTIPLIER: ${String(DEVICE_MULTIPLIER)}x, assumed, not measured.`);
   lines.push('  A mid-range phone under Hermes runs this kind of allocation-light integer work');
   lines.push(
     '  roughly 4-8x slower than desktop V8. 6x is the middle of that and the number every',
@@ -327,32 +430,56 @@ export function formatBenchmark(graph: GeoGraph, samples: number, elapsedMs: num
   lines.push('  so this is an assumption with a stated basis, not a measurement.');
   lines.push('');
   lines.push(
-    `  Phone estimate     mean ${(mean * 6).toFixed(1)} ms   p90 ${(at(0.9) * 6).toFixed(1)}   ` +
-      `max ${(at(1) * 6).toFixed(1)}`,
+    `  Phone estimate     mean ${phone(total.mean)} ms   p50 ${phone(total.at(0.5))}   ` +
+      `p90 ${phone(total.at(0.9))}   max ${phone(total.at(1))}`,
   );
   lines.push(
-    `  VERDICT vs 150 ms budget: ${at(1) * 6 <= 150 ? 'PASS' : 'FAIL'} at the measured maximum.`,
+    `  VERDICT vs ${String(BUDGET_MS)} ms budget: ` +
+      `${total.at(1) * DEVICE_MULTIPLIER <= BUDGET_MS ? 'PASS' : 'FAIL'} at the measured maximum, ` +
+      `${total.at(0.9) * DEVICE_MULTIPLIER <= BUDGET_MS ? 'PASS' : 'FAIL'} at p90, ` +
+      `${total.at(0.5) * DEVICE_MULTIPLIER <= BUDGET_MS ? 'PASS' : 'FAIL'} at p50.`,
   );
   lines.push('');
-  lines.push('  Caveat worth more than the number: this is the 263-node slice. Dijkstra is');
-  lines.push('  O(E log V), so ~1,200 nodes and ~2,900 edges is roughly 8x the work, and the');
-  lines.push('  budget must be re-measured at M3.11 rather than extrapolated from here.');
+  lines.push('  RE-MEASURED AT M3.11, AND THE EXTRAPOLATION IT REPLACES WAS WRONG IN ITS MODEL,');
+  lines.push('  not just in its number. The old caveat said Dijkstra is O(E log V) so ~8x the');
+  lines.push('  graph is ~8x the work. Dijkstra is not where the time goes: five of them cost');
+  lines.push(
+    `  ${dijkstra.mean.toFixed(2)} ms mean and ${dijkstra.at(1).toFixed(2)} ms at the worst pair, ` +
+      `which is ${((dijkstra.mean / Math.max(total.mean, 1e-9)) * 100).toFixed(0)}% of the call.`,
+  );
+  lines.push('  The other ~95% is Yen backfill, and `kShortestPaths` runs a Dijkstra per spur');
+  lines.push('  node ALONG THE PATH — so its cost scales with HOP COUNT, which is what the');
+  lines.push('  continental slice actually changed: longest path 19 hops before, 59 now.');
+  lines.push('');
+  lines.push(
+    `  THE BUDGET IS NOT RAISED. ${String(BUDGET_MS)} ms is a claim about how long a player will`,
+  );
+  lines.push('  wait, and the map growing is not an argument about players. The fix is the');
+  lines.push('  ceiling section 2 and section 4 both already ask for: `kShortestPaths` may stray');
+  lines.push('  arbitrarily far from the shortest path, and the pairs that blow the budget are');
+  lines.push('  exactly the pairs where it strays furthest. Bounding the stray ratio buys the');
+  lines.push('  headroom back and deletes routes nobody would drive. It is not M3.11 work.');
   return lines.join('\n');
 }
 
-export function benchmark(graph: GeoGraph, samples: number): number[] {
+export function benchmark(graph: GeoGraph, samples: number): BenchmarkSample {
   const count = graph.nodes.length;
   const stride = Math.max(1, Math.floor(count / 7) + 1);
-  const timings: number[] = [];
-  for (let i = 0; i < count && timings.length < samples; i += 1) {
+  const total: number[] = [];
+  const dijkstra: number[] = [];
+  for (let i = 0; i < count && total.length < samples; i += 1) {
     const from = i;
     const to = (i * stride + 1 + Math.floor(count / 2)) % count;
     if (from === to) continue;
     // The one sanctioned wall-clock read outside the app's clock adapter: a build-time tool
     // measuring the harness, never the run.
-    const started = performance.now();
+    let started = performance.now();
+    for (const profile of ROUTE_PROFILES) shortestPath(graph, from, to, costFor(profile));
+    dijkstra.push(performance.now() - started);
+
+    started = performance.now();
     selectPaths(graph, from, to);
-    timings.push(performance.now() - started);
+    total.push(performance.now() - started);
   }
-  return timings;
+  return { total, dijkstra };
 }
