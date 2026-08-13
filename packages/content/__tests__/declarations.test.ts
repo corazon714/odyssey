@@ -6,6 +6,8 @@ import { REGISTRY_FILES } from '../schema/declarations.ts';
 import { declaredIds, loadDeclarations, loadModifiers } from '../loader/load-declarations.ts';
 import { formatIssue } from '../loader/locate.ts';
 import { loadEvents } from '../loader/load-events.ts';
+import { loadUniversalChoices } from '../loader/load-universal-choices.ts';
+import { loadComplications } from '../loader/load-complications.ts';
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -25,8 +27,19 @@ const events = loadEvents(join(PACKAGE_ROOT, 'events'), PACKAGE_ROOT);
  * both `collectFlagUsage` and `collectRefs`. This is the test catching up with the tool, not a
  * relaxation — a flag a modifier reads is read, and the anti-pattern these guard against is a
  * declaration NOTHING consumes.
+ *
+ * **THE SAME OMISSION, TWO REGISTRIES OVER, corrected 2026-08-13 — and this time the tool had
+ * it too.** `universal-choices.yaml` and `complications.yaml` both carry `requires` predicates
+ * and effect lists, so both read and write flags, and neither was walked here or in
+ * `rules-references.ts`. It had never fired because every flag either registry touches is also
+ * touched by an event — a property of a 13-event corpus, not of the rule. The first flag that
+ * lives only in a universal row reads as declared-but-unused here, and the mirror case (a flag
+ * a MODIFIER reads and a universal row writes) is `FLAG_READ_NEVER_WRITTEN`, which is an
+ * ERROR: correct content would have failed CI.
  */
 const modifiers = loadModifiers(PACKAGE_ROOT).modifiers;
+const universalChoices = loadUniversalChoices(PACKAGE_ROOT).universalChoices;
+const complications = loadComplications(PACKAGE_ROOT).complications;
 
 describe('declaration registries', () => {
   it('all five load without an issue', () => {
@@ -67,7 +80,7 @@ describe('declaration registries', () => {
  */
 describe('references resolve against the declarations', () => {
   const declared = declaredIds(loaded.declarations);
-  const usage = collectFlagUsage(events.events, modifiers);
+  const usage = collectFlagUsage(events.events, modifiers, universalChoices, complications);
   const refs = collectRefs(events.events, modifiers);
 
   it('loaded the events it is checking', () => {

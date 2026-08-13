@@ -64,6 +64,24 @@ function corpusChoice(eventId: string, id: string): Choice {
   return choice;
 }
 
+/**
+ * A UNIVERSAL row wherever the splice put it, which is NOT the same lookup as the one above.
+ *
+ * `corpusChoice` names an (event, choice) pair, and for a universal row that pair is decided
+ * by `priority`, the family cap and the 3-per-event limit — none of which this file has an
+ * opinion about. Pinning one made a POLICY test fail when a registry priority moved and a row
+ * landed on a different filler event: a true statement about scoring, reported as a missing
+ * choice. The row's effects are identical wherever it lands, so find it by id and assert the
+ * thing the test is actually about.
+ */
+function universalChoice(id: string): Choice {
+  for (const event of CORPUS.events) {
+    const choice = event.choices.find((c) => String(c.id) === id);
+    if (choice !== undefined) return choice;
+  }
+  throw new Error(`universal row ${id} is not injected into any corpus event`);
+}
+
 describe('policy scoring reads a resource by its effect on the player', () => {
   /**
    * THE MEASURED CASE, on the corpus rows that measured it.
@@ -74,7 +92,7 @@ describe('policy scoring reads a resource by its effect on the player', () => {
    */
   it('prefers buying a meal to sharing one, on the real corpus rows', () => {
     const meal = corpusChoice('encounter.the_other_traveller', 'buy_a_meal_from_them');
-    const share = corpusChoice('filler.the_hours_between', 'u:share_what_you_have');
+    const share = universalChoice('u:share_what_you_have');
 
     // The rows still say what the finding said. If content moves these, this test should fail
     // loudly here rather than quietly stop testing anything.

@@ -143,6 +143,9 @@ const NOT_CONTENT: Readonly<Record<string, string>> = {
   ENGINE_ERROR_CODES: 'engine output, never authored',
   PENDING_DROP_REASONS: 'engine output, never authored',
   RELAXATION_RUNGS: 'director configuration, not content',
+  WEAR_BANDS:
+    'drain-economy balance, never authored — an event keyed on how tired the curve thinks ' +
+    'you are would couple content to a constant the sweep is about to move',
   DIVERSITY_RUNGS: 'route-generation configuration, not content — the sibling of RELAXATION_RUNGS',
   SCORING_FACTORS: 'director configuration, not content',
   MIGRATIONS: 'save-schema ladder, not content',

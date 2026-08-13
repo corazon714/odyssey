@@ -389,6 +389,25 @@ export { runSkillCheck } from './loop/run-skill-check.ts';
 export { searchCheck } from './loop/search-check.ts';
 export { checkRunEnd, type RunEndVerdict } from './loop/check-run-end.ts';
 export { worldTick } from './loop/world-tick.ts';
+// The wear curve. `FULL_UNTIL` is exported because it is the dial the sweep turns, and it must
+// be ONE named constant rather than three call sites for that to be a one-line change.
+export {
+  FULL_UNTIL,
+  MID_SPAN,
+  wearBandAt,
+  wearHistoryEntry,
+  wearRatePercent,
+  worn,
+} from './loop/wear-curve.ts';
+export {
+  createWear,
+  isWearNote,
+  WEAR_BANDS,
+  wearChipKey,
+  wearJournalKey,
+  type WearBand,
+  type WearState,
+} from './state/wear-state.ts';
 export { locationAtLeg } from './state/route-state.ts';
 
 export {

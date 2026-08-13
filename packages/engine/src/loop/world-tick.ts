@@ -5,7 +5,9 @@ import { eventId } from '../ids/content-ids.ts';
 import { type Rng } from '../rng/rng.ts';
 import { type RunState } from '../state/run-state.ts';
 import { type TransportMode } from '../state/transport-state.ts';
+import { wearChipKey } from '../state/wear-state.ts';
 import { legHours } from './leg-hours.ts';
+import { wearBandAt, wearHistoryEntry, worn } from './wear-curve.ts';
 
 /**
  * What a leg costs whether or not anything happens.
@@ -33,8 +35,14 @@ import { legHours } from './leg-hours.ts';
  *      peckish cost, so every run crossed the threshold together and died together.
  *
  * Hours spent INSIDE an event are the event's business and content pays for them explicitly.
- * The drift covers travel only, which is why it reads `hours` here rather than the clock —
- * there is no hidden accumulator, and the tick stays a pure function of (state, hours).
+ * The drift covers travel only, which is why it reads `hours` here rather than the clock.
+ *
+ * **There IS an accumulator now, and it is `state.wear.hours`** — this file's header used to
+ * claim there was none. The wear curve (`wear-curve.ts`) makes the drain non-stationary, and
+ * a non-stationary rate needs to know how far along the run is in TRAVEL hours, which no other
+ * field carries. What has not changed is the PHASE: every `spanPoints` call below still bases
+ * on the wall clock, and only the span LENGTH is compressed. Below the knee that compression
+ * is the identity, so a short route is bit-identical to the pre-curve engine.
  */
 
 /**
@@ -208,11 +216,23 @@ export function worldTick(state: RunState, rng: Rng): RunState {
   const hours = Math.max(1, base + rng.nextInt(LEG_JITTER_MIN, LEG_JITTER_MAX, 'worldTick'));
 
   const elapsed = elapsedHours(state);
+
+  // THE WEAR CURVE, and the whole of its arithmetic. `span` is the effective drain length of
+  // this leg: full `hours` below the knee, compressed above it. It is what every drain below
+  // charges, while `hours` itself still drives the clock and the jitter — the curve buys the
+  // player TIME, it does not slow the calendar down.
+  const travel = state.wear.hours;
+  const span = worn(travel + hours) - worn(travel);
+  const crossed = wearBandAt(travel + hours);
+  const bandChanged = crossed !== wearBandAt(travel);
+
   const harsh = HARSH_WEATHER.includes(state.weather) && hours >= HARSH_WEATHER_HOURS;
-  const hunger = spanPoints(elapsed, hours, HOURS_PER_HUNGER);
-  const hygiene = spanPoints(elapsed, hours, HOURS_PER_HYGIENE);
+  const hunger = spanPoints(elapsed, span, HOURS_PER_HUNGER);
+  const hygiene = spanPoints(elapsed, span, HOURS_PER_HYGIENE);
+  // The `+ 1` is charged per LEG and stays OUTSIDE the curve on purpose: it is the one drain in
+  // this file that is not a rate over time, so compressing it would be compressing a headcount.
   const energy =
-    spanPoints(elapsed, hours, HOURS_PER_ENERGY[state.transport.mode]) + (harsh ? 1 : 0);
+    spanPoints(elapsed, span, HOURS_PER_ENERGY[state.transport.mode]) + (harsh ? 1 : 0);
 
   const effects: Effect[] = [
     { op: 'advanceTime', hours },
@@ -229,33 +249,64 @@ export function worldTick(state: RunState, rng: Rng): RunState {
 
   // Graded, not a cliff. A flat penalty at one threshold makes the whole population cross
   // together and collapse together, which is what made the old curve's p10/p50/p90 identical.
-  const health = healthCost(state.resources.hunger, elapsed, hours);
+  const health = healthCost(state.resources.hunger, elapsed, span);
   if (health > 0) effects.push({ op: 'resource', key: 'health', delta: -health });
 
-  const morale = moraleCost(state.resources.energy, elapsed, hours);
+  const morale = moraleCost(state.resources.energy, elapsed, span);
   if (morale > 0) effects.push({ op: 'resource', key: 'morale', delta: -morale });
 
-  // Weather changes roughly one leg in four.
+  // The travel clock advances by REAL hours, never by the compressed span — `worn` is applied
+  // at the point of drain so that the sweep can move `FULL_UNTIL` without every old save
+  // carrying a figure baked against the previous value.
+  const wear = {
+    hours: travel + hours,
+    chipKey: bandChanged ? wearChipKey(crossed) : null,
+  };
+
+  // Weather changes roughly one leg in four. The two draws and their arguments are UNCHANGED —
+  // only the early `return` around them went, because the tick now has a tail to run.
+  let weather = state.weather;
   if (rng.nextInt(0, 3, 'worldTick') === 0) {
     const next = rng.pick(WEATHERS, 'worldTick');
-    if (next !== null && next !== state.weather) {
-      // Weather is not an Effect op — it is world state the director reads, not something
-      // content mutates — so it is set directly here rather than through the applier.
-      return applyEffects({ ...state, weather: next }, effects, createEffectContext(TICK_SOURCE))
-        .state;
-    }
+    // Weather is not an Effect op — it is world state the director reads, not something
+    // content mutates — so it is set directly here rather than through the applier.
+    if (next !== null && next !== state.weather) weather = next;
   }
 
-  return applyEffects(state, effects, createEffectContext(TICK_SOURCE)).state;
+  const applied = applyEffects(
+    { ...state, wear, weather },
+    effects,
+    createEffectContext(TICK_SOURCE),
+  ).state;
+
+  if (!bandChanged) return applied;
+
+  // The journal line, written on the POST-effects state so its `day` is the day the leg ended
+  // on. It is written here rather than in `advanceLeg` because this is the function that owns
+  // the accumulator, and the crossing is not observable anywhere else.
+  return {
+    ...applied,
+    history: [...applied.history, wearHistoryEntry(applied, applied.route.legIndex, crossed)],
+  };
 }
 
-/** Hours the run has been going. The clock is the only accumulator the drift needs. */
+/**
+ * Hours the run has been going, WALL time — the PHASE every drain is charged against.
+ *
+ * It used to say "the clock is the only accumulator the drift needs", which the wear curve made
+ * false: `state.wear.hours` is the second one. The two answer different questions and neither
+ * substitutes for the other — this one places a span on the drain axis, that one says how tired
+ * the road has made you.
+ */
 function elapsedHours(state: RunState): number {
   return state.clock.day * 24 + state.clock.hour;
 }
 
 /**
- * Points accrued by travelling `hours` from `before` hours elapsed, one point per `per` hours.
+ * Points accrued by a span of `hours` from `before` hours elapsed, one point per `per` hours.
+ *
+ * **`hours` is the WORN span, not the leg's real duration**, since the wear curve landed. The
+ * two are equal below the knee and diverge above it; `before` is the wall clock either way.
  *
  * Exported so a test can prove the property that matters: summed over a contiguous sequence
  * of spans, the total equals `floor(total / per)` exactly, with no drift. A per-leg
@@ -276,9 +327,9 @@ export function spanPoints(before: number, hours: number, per: number): number {
  * reached at genuinely different times. Compare `ENERGY_TIRED`, which is deliberately not
  * graded for the opposite reason.
  */
-export function healthCost(hunger: number, before: number, hours: number): number {
-  if (hunger >= HUNGER_STARVING) return spanPoints(before, hours, HOURS_PER_STARVING_DAMAGE);
-  if (hunger >= HUNGER_HURTS) return spanPoints(before, hours, HOURS_PER_HUNGER_DAMAGE);
+export function healthCost(hunger: number, before: number, span: number): number {
+  if (hunger >= HUNGER_STARVING) return spanPoints(before, span, HOURS_PER_STARVING_DAMAGE);
+  if (hunger >= HUNGER_HURTS) return spanPoints(before, span, HOURS_PER_HUNGER_DAMAGE);
   return 0;
 }
 
@@ -287,6 +338,6 @@ export function healthCost(hunger: number, before: number, hours: number): numbe
  * `ENERGY_TIRED` — and charged per hour since M3.10b, which is a rate change rather than a
  * grading. Exported for tests.
  */
-export function moraleCost(energy: number, before: number, hours: number): number {
-  return energy <= ENERGY_TIRED ? spanPoints(before, hours, HOURS_PER_MORALE) : 0;
+export function moraleCost(energy: number, before: number, span: number): number {
+  return energy <= ENERGY_TIRED ? spanPoints(before, span, HOURS_PER_MORALE) : 0;
 }

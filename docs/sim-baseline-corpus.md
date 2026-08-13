@@ -734,39 +734,71 @@
   It is not a content accident this time: the fixture events separate their choices by cash
   sums far larger than any meter term even at heat's weight of 40, so weighting cannot reorder
   them. The control being immune is the control working.
+
+  M3.12b REBASELINED FOR THE WEAR CURVE'S CHOSEN KNEE AND ONE NEW REGISTRY ROW. `FULL_UNTIL`
+  was swept over {140, 160, 180, 200, 240} plus a no-curve control at 2,000 runs/cell on the
+  full 25 x 5 grid and landed on **200**, not the 160 that was placed unswept. Completion
+  43.1% (was 36.0%), and the line that matters is PER ROUTE rather than pooled: the seven
+  routes that completed 0.0-0.1% now complete 4.3-14.9%, so NO ROUTE IS BELOW 3%, measured at
+  4,000 runs/route off-report. That is the whole acceptance measure — the Kendall-tau clause it
+  used to carry was proven unreachable,
+  because `worn` has strictly positive slope and is therefore a monotone reparametrisation of
+  the hour axis, which no knee can make rank-uncorrelated.
+
+  `failure_collapsed` 12.3% -> 7.1% and `failure_gave_up` 51.6% -> 49.7%: the curve buys hours
+  and does not redirect the failure, exactly as ADR 0040 predicted. Morale still binds, and by
+  a wider margin than before — shortening a drain budget removes the LATE failures first, and
+  the late failures are the collapses.
+
+  THE FIXTURE BASELINE DID NOT MOVE, and this time it is provable rather than lucky: all three
+  fixture routes total 54-187 travel hours, every one under the 200-hour knee, so `worn` is the
+  identity across the whole pack and `sim:diff --pack=fixture` prints no line at all. The nine
+  golden digests DID move, and only the digests — no history key, leg count or ending changed —
+  because `RunState` gained `wear`. The cost of that, stated: at 160 three goldens crossed into
+  the `mid` band and exercised the bend; at 200 none do, so the golden set now proves the
+  identity claim and no longer proves the bend. `wear-curve.test.ts` and this corpus carry it.
+
+  `stop_and_rest` IS IN THE REGISTRY AND DOES NO MEASURABLE WORK HERE, deliberately. Every
+  configuration that reached the empty legs where morale actually dies had to evict
+  `share_what_you_have` from a two-slot filler event, and that row is this corpus's only
+  always-available morale option there; measured, taking its slot costs route 23 2.8pp and puts
+  it back under the 3% floor. Scoped to `cat:rest` it preserves the acceptance and moves pooled
+  completion by 0.01pp. It is sized for a corpus with more than 13 events, and the number to
+  watch as the corpus grows is `Universal choices picked`, at 27.4% against a ~30% ceiling.
+
 -->
 
-# Sim Report — seed=base contentVersion=c10af194 runs=2000
+# Sim Report — seed=base contentVersion=1ed866f8 runs=2000
 
 Grid cells sampled            125   (of 125 — 25/25 routes x 5/5 policies)
-Completion rate             36.0%   (target band 30-50%)
-Median legs                    22
+Completion rate             43.1%   (target band 30-50%)
+Median legs                    23
 Median in-game days             9
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
 Quiet legs (designed)        0.0%   (odds gate — designed silence, NOT the two gaps above)
-Forced-fire legs            29.0%   (beat slot or queue due — never gated; caps quiet at 71.0%)
-Long-range payoff rate      19.9%   (target 80%)
-Beat fill rate              27.1%
-Repeat-event rate           64.9%
-Near-repeat rate            26.4%   (a redraw inside recency's own 6-event window; 24.13 draws/run — LESS confounded than the line above, NOT unconfounded: subtract a null baseline before reading it)
+Forced-fire legs            28.6%   (beat slot or queue due — never gated; caps quiet at 71.4%)
+Long-range payoff rate      18.6%   (target 80%)
+Beat fill rate              27.2%
+Repeat-event rate           66.6%
+Near-repeat rate            27.1%   (a redraw inside recency's own 6-event window; 25.50 draws/run — LESS confounded than the line above, NOT unconfounded: subtract a null baseline before reading it)
 Complication rate           60.0%   (target 60%)
-Modifier chips / check        6.3   (target 3-7, over 18487 checks)
+Modifier chips / check        6.3   (target 3-7, over 19503 checks)
 Checks under 2 chips            0   (each one draws nothing the registry exists for)
 Checks over 7 chips             0   (0.0% of checks; worst pulls 7)
-Universal choices offered   37.2%   (share of choices shown)
-Universal choices picked    26.9%   (over ~30% means they are flattening the corpus)
-Unresolved threads             98
+Universal choices offered   36.9%   (share of choices shown)
+Universal choices picked    27.4%   (over ~30% means they are flattening the corpus)
+Unresolved threads            104
 
-Wall clock                 2448 ms   (1.22 ms/run)
-Extrapolated to 20,000     24.5 s   (target <30 s)
+Wall clock                 1808 ms   (0.90 ms/run)
+Extrapolated to 20,000     18.1 s   (target <30 s)
 
 ## Endings
-  ending.failure_gave_up              51.6%
-  ending.arrival_quiet                36.0%
-  ending.failure_collapsed            12.3%
-  ending.detained_at_border            0.1%
+  ending.failure_gave_up              49.7%
+  ending.arrival_quiet                43.1%
+  ending.failure_collapsed             7.1%
+  ending.detained_at_border            0.0%
 
 ## Never-fired events
   (none)
@@ -792,22 +824,22 @@ Extrapolated to 20,000     24.5 s   (target <30 s)
   authority.the_file_catches_up/stand_your_ground      0.0%
   authority.the_file_catches_up/u:bribe                0.0%
   road.the_hitchhiker/u:let_the_companion_handle_it    0.0%
-  authority.the_file_catches_up/u:run                  0.0%
   weather.the_storm_you_cannot_drive_through/push_on_through_it   0.0%
+  authority.the_file_catches_up/u:run                  0.0%
   road.the_hitchhiker/leave_them_at_the_junction       0.0%
+  rest.the_shared_room/u:stop_and_rest                 0.0%
   city.the_address_that_moved/u:let_the_companion_handle_it   0.0%
   weather.the_storm_you_cannot_drive_through/u:ask_for_help   0.0%
-  rest.the_shared_room/u:create_a_distraction          0.1%
   rest.the_shared_room/sleep_on_your_bag               0.1%
+  rest.the_shared_room/u:create_a_distraction          0.1%
   encounter.the_other_traveller/u:let_the_companion_handle_it   0.1%
-  rest.the_shared_room/u:threaten                      0.1%
-  weather.the_storm_you_cannot_drive_through/see_to_the_damage   0.1%
-  border.night_crossing/offer_something                0.1%
   border.night_crossing/u:offer_to_work_for_it         0.1%
   breakdown.the_roadside_repair/u:pay_the_asking_price   0.1%
+  border.night_crossing/offer_something                0.1%
+  weather.the_storm_you_cannot_drive_through/see_to_the_damage   0.1%
   transit.the_wrong_carriage/u:offer_to_work_for_it    0.2%
-  transit.the_wrong_carriage/u:lie_about_destination   0.2%
   city.the_address_that_moved/u:plead_ignorance        0.2%
+  transit.the_wrong_carriage/u:lie_about_destination   0.2%
   crime.the_offer/u:create_a_distraction               0.2%
   crime.the_offer/u:offer_to_work_for_it               0.2%
   opportunity.work_for_a_day/u:walk_away               0.3%
@@ -815,37 +847,38 @@ Extrapolated to 20,000     24.5 s   (target <30 s)
   weather.the_storm_you_cannot_drive_through/shelter_and_lose_the_day   0.3%
   opportunity.work_for_a_day/take_the_day_rate         0.3%
   filler.the_long_quiet_stretch/listen_to_the_engine   0.3%
-  rest.the_shared_room/u:pay_the_asking_price          0.4%
+  rest.the_shared_room/u:threaten                      0.4%
   authority.the_file_catches_up/answer_the_questions   0.4%
-  weather.the_storm_you_cannot_drive_through/u:run     0.4%
+  weather.the_storm_you_cannot_drive_through/u:run     0.5%
   rest.the_shared_room/see_to_your_feet                0.5%
-  encounter.the_other_traveller/u:walk_away            0.6%
+  encounter.the_other_traveller/u:walk_away            0.5%
   filler.the_long_quiet_stretch/u:wait_it_out          0.7%
   border.night_crossing/present_papers                 0.7%
-  border.night_crossing/u:bluff_with_documents         0.8%
-  crime.the_offer/u:bribe                              1.2%
+  border.night_crossing/u:bluff_with_documents         0.7%
+  crime.the_offer/u:bribe                              1.1%
   road.the_hitchhiker/u:run                            1.2%
-  transit.the_wrong_carriage/u:pay_the_asking_price    1.3%
+  transit.the_wrong_carriage/u:pay_the_asking_price    1.2%
   transit.the_wrong_carriage/talk_your_way_through     1.3%
   rest.the_shared_room/pay_for_a_private_room          1.4%
-  encounter.the_other_traveller/share_what_you_have    1.6%
-  transit.the_wrong_carriage/pay_the_difference        1.6%
-  city.the_address_that_moved/u:pay_the_asking_price   1.6%
+  encounter.the_other_traveller/share_what_you_have    1.5%
+  transit.the_wrong_carriage/pay_the_difference        1.5%
+  city.the_address_that_moved/u:pay_the_asking_price   1.5%
   crime.the_offer/say_no                               1.6%
-  city.the_address_that_moved/ask_in_the_shop          1.6%
-  road.the_hitchhiker/pull_over                        1.6%
+  city.the_address_that_moved/ask_in_the_shop          1.7%
+  transit.the_wrong_carriage/move_before_they_reach_you   1.7%
   border.night_crossing/u:bribe                        1.7%
-  transit.the_wrong_carriage/move_before_they_reach_you   1.8%
+  road.the_hitchhiker/pull_over                        1.7%
+  encounter.the_other_traveller/look_at_their_leg      1.9%
 
 ## Flags
-  written: 20   read: 5
+  written: 21   read: 6
   written but NEVER READ:   bribe_on_record, burned_a_bridge, companion_local, detained, helped_a_stranger, made_a_scene, owed_a_favour, paid_a_local, papers_lost, papers_questioned, smuggler_contact, stash_used, ticket_purchased, took_the_long_way, travelling_light
   read but NEVER WRITTEN:   (none)   <- gate can never open
 
 ## Resource trajectories (p10/p50/p90 by leg)
-  cash     leg5: 1140/2154/4264   leg15: 936/1854/3958   leg25: 1163/1976/2864
+  cash     leg5: 1140/2154/4264   leg15: 956/1864/4021   leg25: 1192/2041/3680
   health   leg5: 9/10/10   leg15: 4/7/9   leg25: 2/5/7
-  morale   leg5: 5/7/10   leg15: 1/5/9   leg25: 2/6/9
+  morale   leg5: 5/7/10   leg15: 2/5/9   leg25: 2/6/9
   energy   leg5: 0/1/6   leg15: 0/0/1   leg25: 0/0/0
   hunger   leg5: 6/9/10   leg15: 9/10/10   leg25: 8/10/10
   hygiene  leg5: 0/1/3   leg15: 0/0/0   leg25: 0/0/0

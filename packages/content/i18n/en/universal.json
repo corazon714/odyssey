@@ -53,5 +53,9 @@
   "universal.create_a_distraction.out.everyone_looked_at_you": "Something falls over and everybody turns, and what they are all looking at, unmistakably, is you.",
 
   "universal.use_an_item.label": "Use what you brought",
-  "universal.use_an_item.out.had_the_right_thing": "You have exactly the right thing in the bag, and using it uses it up. Worth it, and you will want it again in a week."
+  "universal.use_an_item.out.had_the_right_thing": "You have exactly the right thing in the bag, and using it uses it up. Worth it, and you will want it again in a week.",
+
+  "universal.stop_and_rest.label": "Stop and rest properly",
+  "universal.stop_and_rest.out.slept_and_ate": "A room with a bed in it, food that was cooked rather than carried, and eight hours in a row. Somebody else's radio through the wall. In the morning the road is the same road and you are not the same.",
+  "universal.stop_and_rest.out.the_night_was_worse_than_the_road": "The bed is worse than the seat you left. There is somebody in the room who talks, and later somebody who does not, which is worse. You lie there doing arithmetic about the distance left."
 }

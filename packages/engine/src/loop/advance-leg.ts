@@ -68,6 +68,10 @@ export function advanceLeg(state: RunState, pack: ContentPack): AdvanceLegResult
     status: 'travelling',
     route: { ...state.route, legIndex },
     presentation: { kind: 'none' },
+    // Cleared here for the same reason `presentation` is, and it has to be HERE rather than in
+    // `worldTick`: the arrival check below can end the run before the tick runs, and an ended
+    // state carrying last leg's band-change chip would draw it over the ending screen.
+    wear: { ...state.wear, chipKey: null },
   };
 
   const arrival = checkRunEnd(next);

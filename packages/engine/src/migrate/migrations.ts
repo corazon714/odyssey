@@ -206,9 +206,43 @@ const migrate_4_to_5: Migration = {
   },
 };
 
+/**
+ * v5 -> v6: the run records its TRAVEL clock, which the wear curve charges against.
+ *
+ * IT WRITES ZERO, AND ZERO IS THE HONEST VALUE RATHER THAN A PLACEHOLDER — which is the
+ * opposite call from `migrate_4_to_5`, so the reasoning has to be stated rather than assumed.
+ *
+ * There is no correct value to recover. A leg's duration is
+ * `legHours(legKm[i], mode, montage) + jitter`: the mode at each PAST leg is not in the save
+ * (only the current one is, and a `transport` effect can change it mid-run) and the per-leg
+ * jitter is an RNG draw sharing the `worldTick` cursor with the weather reroll. `uniformSplit`
+ * could reconstruct v4's distances because the old engine's rule was a closed form; there is
+ * no closed form here.
+ *
+ * So the choice is between values that are all guesses, and zero is the only one that cannot
+ * make a live run HARSHER than the build it was saved from. A v5 save was produced by an
+ * engine with no curve at all — `worn` was the identity everywhere, i.e. full rate forever —
+ * so a migrated run continues at exactly the rate it has had, and the curve simply begins from
+ * the upgrade. Seeding the wall clock instead (`day * 24 + hour`, roughly twice travel) would
+ * drop a mid-journey run straight into the tail band and hand it a subsidy it never earned.
+ *
+ * `chipKey` is null because no leg of a v5 save crossed a band that did not exist. It is
+ * WRITTEN rather than omitted, for the reason `migrate_3_to_4` had to learn: `isRunStateShape`
+ * would accept an absent key, and `chipKey` would then read `undefined`, which compares
+ * `!== null` at every guard site and would render a chip whose label is the string "undefined".
+ */
+const migrate_5_to_6: Migration = {
+  from: 5,
+  describe: 'v5->v6: the run records its travel clock, which the wear curve charges against',
+  migrate(save) {
+    return { ...save, wear: { hours: 0, chipKey: null } };
+  },
+};
+
 export const MIGRATIONS: readonly Migration[] = [
   migrate_1_to_2,
   migrate_2_to_3,
   migrate_3_to_4,
   migrate_4_to_5,
+  migrate_5_to_6,
 ];

@@ -11,9 +11,10 @@ import { type RunState } from './run-state.ts';
 import { clampSkills, createSkills } from './skills.ts';
 import { createTransport } from './transport-state.ts';
 import { validateRoute } from './validate-route.ts';
+import { createWear } from './wear-state.ts';
 
 /** The save schema version this build writes. Bumping it requires a migration and a fixture. */
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export type CreateRunStateResult =
   | { readonly ok: true; readonly state: RunState; readonly clamps: readonly ClampEvent[] }
@@ -42,6 +43,10 @@ export function createRunState(init: RunInit): CreateRunStateResult {
     rngCursors: createRngCursors(),
 
     clock: createClock(init.startWeekday ?? 0, init.startHour ?? 8),
+    // Not a caller input, deliberately. A run starts with zero travel hours behind it however
+    // the preparation screen was configured, and letting `RunInit` seed the travel clock would
+    // be a way to start a run already past the knee.
+    wear: createWear(),
     weather: init.weather ?? 'clear',
 
     route: {
