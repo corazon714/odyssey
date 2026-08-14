@@ -15,6 +15,7 @@ const SUMMARY = runMany(PACK, SCENARIOS, {
   policies: [],
   diff: false,
   json: false,
+  byRoute: false,
   pack: 'fixture',
 });
 const REPORT = formatReport(SUMMARY, PACK, { seed: 'report', runs: 200, elapsedMs: 42 });
@@ -299,6 +300,7 @@ describe('the report says which part of the grid it measured', () => {
       policies: [],
       diff: false,
       json: false,
+      byRoute: false,
       pack: 'fixture',
     });
     const report = formatReport(thin, PACK, { seed: 'thin', runs: 1, elapsedMs: 1 });
@@ -326,6 +328,7 @@ describe('the report says which part of the grid it measured', () => {
       policies: [],
       diff: false,
       json: false,
+      byRoute: false,
       pack: 'fixture',
     });
     const report = formatReport(short, PACK, { seed: 'one-short', runs, elapsedMs: 1 });

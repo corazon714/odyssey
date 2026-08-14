@@ -389,6 +389,11 @@ export { runSkillCheck } from './loop/run-skill-check.ts';
 export { searchCheck } from './loop/search-check.ts';
 export { checkRunEnd, type RunEndVerdict } from './loop/check-run-end.ts';
 export { worldTick } from './loop/world-tick.ts';
+// `legHours` is the ONE definition of what a leg costs in time. Exported so the sim's
+// `--by-route` mode can state a route's hour content from the same function the tick bills
+// from, rather than keeping a second copy of the overhead and speed tables — the failure
+// `route-preview.ts` describes at length for the jitter distribution, one file over.
+export { legHours } from './loop/leg-hours.ts';
 // The wear curve. `FULL_UNTIL` is exported because it is the dial the sweep turns, and it must
 // be ONE named constant rather than three call sites for that to be a one-line change.
 export {

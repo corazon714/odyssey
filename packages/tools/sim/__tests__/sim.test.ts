@@ -24,6 +24,7 @@ describe('parseArgs', () => {
       policies: ['random', 'risk-taker'],
       diff: false,
       json: false,
+      byRoute: false,
       // Defaults to the fixture pack so `sim:diff` keeps comparing like with like.
       pack: 'fixture',
     });
@@ -105,6 +106,7 @@ describe('runMany — the M6 gate criteria', () => {
     policies: [],
     diff: false,
     json: false,
+    byRoute: false,
     pack: 'fixture',
   });
 
@@ -156,6 +158,7 @@ describe('runMany — the M6 gate criteria', () => {
         policies: [],
         diff: false,
         json: false,
+        byRoute: false,
         pack: 'fixture',
       }),
     ).not.toThrow();
@@ -169,6 +172,7 @@ describe('the quiet-leg gate instruments (ADR 0029)', () => {
     policies: [],
     diff: false,
     json: false,
+    byRoute: false,
     pack: 'fixture',
   });
 

@@ -38,9 +38,13 @@ The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 > against a structural ceiling of 100% rather than 28.2% against 55.8%. **Step 2 routes on real
 > geography** (ADR 0033) and its diversity gate exits 0 at median 54% — **but the median is not
 > the finding**: p90 is 88% and two named pairs breach the ceiling, one of them a genuine filter
-> defect. Generation is COMPLETE and **the corpus sim runs on generated routes** (ADR 0034); the
-> APP still supplies `RunInit.route`. Steps 1, 3 and 4 do not exist. Three of §9's registries
-> are live.
+> defect. Generation is COMPLETE and **the corpus sim runs on generated routes** (ADR 0034) —
+> six endpoint pairs, five profiles (ADR 0043); the APP still supplies `RunInit.route`. Steps 1,
+> 3 and 4 do not exist. Three of §9's registries are live.
+>
+> **Every one of `docs/phase-3-dod.md`'s nine gates can now be RUN**, gate 9 included, since
+> `--by-route` shipped (ADR 0042). **Gate 9 does not PASS.** Being able to measure a gate and
+> clearing it are different things, and PROGRESS is where the current reading lives.
 >
 > **`docs/PROGRESS.md` is the authority on current state and this paragraph is not.**
 > `docs/engine-spec.md` Part II is the authority on what the engine does, written from the code.
@@ -238,6 +242,7 @@ pnpm content:stats            # counts by category/tag/check-tag + a 4-axis cove
 pnpm sim -- --runs=20000      # headless balance simulation (fixture pack)                 ✅
 pnpm sim -- --pack=corpus     # sim against packages/content/ — the REAL registries         ✅
 pnpm sim -- --json            # per-run TRACE (fired events + picks in order) not the report ✅
+pnpm sim -- --by-route        # per-route completion + SE — phase-3-dod gate 9. Writes nothing ✅
 pnpm sim:diff -- --runs=2000  # vs the pack's baseline. REFUSES another count — see DoD 6  ✅
 pnpm golden:update            # regenerate golden-runs.json from the engine — REVIEW the diff ✅
 pnpm geo:audit [-- --real]    # candidate pool vs the ADR 0024 budget; writes nothing        ✅
@@ -251,6 +256,11 @@ pnpm i18n:{check,pseudo}      # key coverage, length audit, pseudo-localization 
 
 If a command in this list does not exist yet, that means the corresponding phase has not shipped.
 Do not invent an alternative — say so.
+
+> **`--json`, `--by-route` and the default report are THREE MUTUALLY EXCLUSIVE output modes**, and
+> `parse-args.ts` refuses the combinations rather than silently ranking them. `--by-route` returns
+> before `formatReport` is called, so it cannot write `reports/` and cannot move either baseline —
+> which is the whole reason it is a mode and not a report section (`docs/adr/0042`).
 
 ---
 
@@ -340,7 +350,7 @@ An **Outcome** = `{ weight, requires?, textKey|textVariants[], effects[], schedu
 **Diversity is combinatorial, not authored.** Four registries multiply a small corpus into a
 large play space, declared once rather than per event: **`modifiers.yaml`** ✅ 137 (check
 modifiers, injected by check tag) · **`complications.yaml`** ✅ 25 (situational layers on a
-selected event) · **`universal-choices.yaml`** ✅ 15 (choices injected by tag match) ·
+selected event) · **`universal-choices.yaml`** ✅ 16 (choices injected by tag match) ·
 `quirks.yaml` **(planned)** (NPC traits that register as modifiers).
 
 Writing a modifier or complication into one event's YAML, when it belongs in a registry, is the

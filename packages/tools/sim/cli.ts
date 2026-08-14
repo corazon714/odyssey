@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findWorkspaceRoot } from '../shared/workspace-root.ts';
+import { formatByRoute } from './by-route.ts';
 import { diffReports, runCountOf } from './diff-report.ts';
 import { formatReport } from './format-report.ts';
 import {
@@ -30,7 +31,7 @@ const parsed = parseArgs(process.argv.slice(2));
 if (!parsed.ok) {
   console.error(`sim: ${parsed.message}`);
   console.error(
-    'usage: pnpm sim -- --runs=1000 [--seed=base] [--policy=random ...] [--pack=fixture|corpus] [--diff] [--json]',
+    'usage: pnpm sim -- --runs=1000 [--seed=base] [--policy=random ...] [--pack=fixture|corpus] [--diff] [--json] [--by-route]',
   );
   process.exit(1);
 }
@@ -81,6 +82,27 @@ const scenarios = corpusRoutes === null ? loadFixtureScenarios() : corpusRoutes.
 const startedAt = performance.now();
 const summary = runMany(pack, scenarios, parsed.options);
 const elapsedMs = Math.round(performance.now() - startedAt);
+
+// GATE 9's MEASUREMENT, and it returns BEFORE `formatReport` is ever called.
+//
+// That ordering is the point rather than an optimisation: this mode cannot touch the standard
+// report, cannot write `reports/sim-latest-<pack>.md`, and therefore cannot move either
+// baseline. `diff-report.ts` compares by line index, so a per-route section appended to the
+// report would offset every line under it and force both baselines to regenerate for what is
+// only a formatting change — the false positive ADR 0032 exists to prevent, which is why
+// `docs/phase-3-dod.md` gate 9 specifies the `--json` precedent by name.
+if (parsed.options.byRoute) {
+  // eslint-disable-next-line no-console -- the table IS this command's output.
+  console.log(
+    formatByRoute(summary, scenarios, {
+      seed: parsed.options.seed,
+      runs: parsed.options.runs,
+      pack: parsed.options.pack,
+      elapsedMs,
+    }),
+  );
+  process.exit(summary.errors.length > 0 || summary.turnCapHits > 0 ? 1 : 0);
+}
 
 const report = formatReport(summary, pack, {
   seed: parsed.options.seed,

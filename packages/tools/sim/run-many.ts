@@ -10,6 +10,8 @@ export type SimOptions = {
   readonly policies: readonly PolicyName[];
   readonly diff: boolean;
   readonly json: boolean;
+  /** The per-route completion table — gate 9's measurement. A separate mode; see `by-route.ts`. */
+  readonly byRoute: boolean;
   readonly pack: PackName;
 };
 

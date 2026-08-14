@@ -340,6 +340,7 @@ describe('runMany — the stride, end to end', () => {
       policies,
       diff: false,
       json: false,
+      byRoute: false,
       pack: 'fixture',
     });
 
@@ -358,6 +359,7 @@ describe('runMany — the stride, end to end', () => {
       policies: [],
       diff: false,
       json: false,
+      byRoute: false,
       pack: 'fixture',
     });
     expect(new Set(summary.runs.map((run) => run.seed)).size).toBe(summary.runs.length);
@@ -383,6 +385,7 @@ describe('runMany — the stride, end to end', () => {
       policies,
       diff: false,
       json: false,
+      byRoute: false,
       pack: 'fixture',
     });
 
