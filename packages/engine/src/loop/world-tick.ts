@@ -71,8 +71,15 @@ export const HOURS_PER_HUNGER = 6;
  * Grading a DRAIN is not what `ENERGY_TIRED` warns against. That rule is about a THRESHOLD
  * penalty keyed on a floored meter — energy sits at 0 for most of a run, so a second rung there
  * lands on the whole population at once. Hygiene is the meter being drained, not the trigger.
+ *
+ * **Exported so its test can derive a span from it**, for the reason `HOURS_PER_MORALE` gives
+ * and one instance later. `world-tick.test.ts` asserted that ONE car leg lowers hygiene, which
+ * was true only because the fixture's 5-hour leg plus a `+1` jitter draw reached exactly 6 —
+ * so the property was really being pinned by a realised random draw, and C1's symmetric jitter
+ * exposed it by making that leg span 4, 5 or 6. Fourth instance in this file of assuming a leg
+ * count where the constant should be read.
  */
-const HOURS_PER_HYGIENE = 6;
+export const HOURS_PER_HYGIENE = 6;
 
 /**
  * Travel hours per point of energy, by how much of the work is yours. A passenger dozes; a
@@ -170,23 +177,24 @@ export const HOURS_PER_MORALE = 20;
  * The per-leg travel-time jitter, INCLUSIVE AT BOTH ENDS — `Rng.nextInt`'s contract.
  *
  * Named and exported so `route-preview.ts` can state the expected duration of a route from the
- * same numbers the tick draws from, instead of keeping a second copy of this distribution. The
- * preview understated every route by `legCount / 2` hours for as long as it summed the static
- * `legHours` alone.
+ * same numbers the tick draws from, instead of keeping a second copy of this distribution.
  *
- * **These values are under review and the constant does not endorse them.** `nextInt` is
- * inclusive at both ends, so `(-1, 2)` draws from {-1, 0, 1, 2} with a mean of **+0.5 hours per
- * leg**, while `docs/adr/0014` ("the ±1 hour jitter on travel time") and `docs/adr/0026`
- * ("±1 hour on a 5-hour leg is texture") both describe the intent as symmetric ±1. If the ADRs
- * are right the upper bound is an off-by-one from an exclusive-max assumption, and correcting it
- * moves every downstream RNG draw and therefore every golden run — which is why it is recorded
- * here rather than changed here.
+ * **Symmetric since C1, and the asymmetry that preceded it was a defect.** The bounds were
+ * `(-1, 2)`, which — `nextInt` being inclusive at both ends — draws from {-1, 0, 1, 2} with a
+ * mean of **+0.5 hours per leg**, against `docs/adr/0014` ("the ±1 hour jitter on travel time")
+ * and `docs/adr/0026` ("±1 hour on a 5-hour leg is texture"), both of which specify a symmetric
+ * ±1. It was an off-by-one from an exclusive-max assumption, and it made every route in the game
+ * run ~5% longer than designed — 11 hours on a 22-leg route, 24 on a 48-leg one. Correcting it
+ * moved every downstream RNG draw and therefore every golden run and both sim baselines, which
+ * is why it shipped alone.
  *
- * Whichever way that lands, the preview is correct without a further edit: at {-1, 0, 1} the
- * expectation below is zero and the static sum becomes the honest answer on its own.
+ * The mean of this draw is now zero, so `route-preview.ts`'s correction term evaluates to zero
+ * and the static `legHours` sum is the honest answer on its own. That happened without an edit
+ * there, which is the property to preserve: the preview reads THESE constants rather than
+ * carrying a copy of the distribution, so it stays correct if the bounds ever move again.
  */
 export const LEG_JITTER_MIN = -1;
-export const LEG_JITTER_MAX = 2;
+export const LEG_JITTER_MAX = 1;
 
 export const WEATHERS = ['clear', 'rain', 'fog', 'wind', 'heat'] as const;
 

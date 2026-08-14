@@ -1,6 +1,7 @@
 # 0014 — The world-tick drift curve
 
-- **Status:** Accepted
+- **Status:** Accepted. **Conformance restored at C1, 2026-08-14** — the "±1 hour jitter" this
+  document describes below was never what shipped, and now is. See the C1 addendum at the end.
 - **Date:** 2026-08-08
 - **Supersedes:** the placeholder constants shipped with M6
 - **Closes:** `docs/PROGRESS.md` open question 1, ADR 0012 §3
@@ -203,3 +204,57 @@ The lever is not the drain rate. Both models floor the meter; the drain rate onl
 What decides whether hygiene matters is the RESTORE economy — `rest.the_shared_room` is the only
 event that gives any back (+1 and +2) — and the `dishevelled` threshold, which at ≤3 on a meter
 that reaches 0 by mid-run is effectively "always, eventually".
+
+---
+
+## Addendum — C1, 2026-08-14: the ±1 jitter was a ±1/+2 jitter for six milestones
+
+Context §4 above calls the travel-time jitter "the ±1 hour jitter on travel time". The code
+implemented it as `rng.nextInt(-1, 2, 'worldTick')`. **`Rng.nextInt` is inclusive at BOTH ends**
+(`rng.ts:50`, and its own signature names the arguments `minInclusive` / `maxInclusive`), so the
+realised draw was over `{-1, 0, 1, 2}` — four values, not three, with a mean of **+0.5 hours per
+leg** rather than 0.
+
+It was an off-by-one from an exclusive-max assumption, and it was invisible for the usual reason:
+nothing downstream ever compared the distribution against the intent, and a jitter is the one
+quantity nobody double-checks because being random is the whole point.
+
+**Every route in the game was ~5% longer than designed** — `legCount / 2` hours, so 11 on the
+22-leg corpus route and 24 on each of the 48-leg ones. That is a systematic bias in the only
+quantity this ADR's entire drain economy is denominated in.
+
+`LEG_JITTER_MIN` / `LEG_JITTER_MAX` are now `-1` / `1`. The fix is one constant; the verification
+is not, and is worth naming because the obvious test would have missed the original bug:
+
+- **`LEG_JITTER_MIN + LEG_JITTER_MAX === 0` is very nearly a tautology.** It restates the two
+  constants in terms of each other, and the bug was never in the arithmetic — it was in a belief
+  about `nextInt`'s contract. A test carrying the same belief agrees with it.
+- So `world-tick.test.ts` asserts the **realised draw set**, measured through `worldTick` itself
+  across three seeds × 400 cursors, against a hardcoded `[-1, 0, 1]`, plus a coverage case
+  proving all three values are reached. Verified failing at the old bound:
+  `expected [ -1, +0, 1, 2 ] to deeply equal [ -1, +0, 1 ]`.
+- Sampled independently of the test, over 100,000 drained draws and 20,000 distinct cursors on
+  every one of the eight substreams: support exactly `{-1, 0, 1}`, uniform to 33.1–33.8%, mean
+  −0.005.
+
+### What moved
+
+Both sim baselines, and the golden runs. Fixture completion 74.0% → 77.0%, corpus 43.1% → 45.6%
+(still inside the 30–50% band). The systematic part is `-legCount / 2` travel hours per route,
+a lighter drain; **everything else in those diffs is re-randomisation**, because correcting the
+draw moves every drawn value and every run therefore walks a different path through the same
+streams.
+
+Two of the nine goldens moved, in OPPOSITE directions, and one of them got SHORTER on a lighter
+drain — which looks like a defect and is not. `fixture.scenic:random` fires identical events with
+identical outcomes on legs 0–10 under both bounds; only the wall-clock PHASE at which each span
+is charged differs. `spanPoints` counts `HOURS_PER_MORALE` boundaries inside a travel-length span
+laid on the WALL clock, and event hours advance that clock without any span being charged against
+them, so the spans do not tile it and the per-leg point count is a phase lottery. Holding the OLD
+bounds and sweeping `startHour` over all 24 values, that run alone finishes anywhere from 11 to 16
+legs and `fixture.illicit:random` from 12 to 24; both C1 values sit inside the old bounds' own
+range, and the seven phase-stable runs did not move at all.
+
+**No drain constant was re-derived here.** `HOURS_PER_HUNGER_DAMAGE`, `HOURS_PER_MORALE` and
+`FULL_UNTIL` are hour-denominated against a route set that keeps moving; re-deriving them against
+a moving target is how this file came to record three successive re-tunings of the same constant.

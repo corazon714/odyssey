@@ -3,7 +3,9 @@
 - **Status:** Accepted; Decisions 2–3 implemented at **M3.7** and Decision 6's hours table at
   **M3.8a**, both 2026-08-12 — see the two addenda at the end. Montage SELECTION and leg SIZING
   (Decision 4) remain design-only until M3.9. **Decision 6's incoherence is live and open**: it
-  moved the fixture baseline at M3.8a and still has no owner.
+  moved the fixture baseline at M3.8a and still has no owner. **The jitter literal in Decision 6
+  is corrected as of C1, 2026-08-14** — this document's "±1 hour on a 5-hour leg is texture" is
+  now what the code does; it was not. See the C1 addendum at the end.
 - **Date:** 2026-08-09
 - **Relates to:** ADR 0006 (run-state shape), ADR 0014 (world-tick drift), ADR 0016/0017 (the two prior save bumps)
 - **Bumps:** `SAVE_VERSION` 4 → 5
@@ -185,6 +187,11 @@ days` moves on `--pack=fixture`, the calibration is wrong — that is a spec bug
 Jitter stays absolute (`nextInt(-1, 2, 'worldTick')`, one call per leg, draw count unchanged, cursor
 unmoved): ±1 hour on a 5-hour leg is texture, ±20% on a 30-hour montage is noise that would make two
 identical montages read as different mechanics.
+
+> **The literal in that sentence contradicts the rest of it, and the sentence was right.**
+> `nextInt` is inclusive at both ends, so `(-1, 2)` is not ±1 — it draws `{-1, 0, 1, 2}`. Corrected
+> to `nextInt(-1, 1, 'worldTick')` at C1; the "one call per leg, draw count unchanged, cursor
+> unmoved" clause still holds, since only the bound moved. See the C1 addendum at the end.
 
 A 600 km car montage is 13 hours against a 90 km leg's 5. Clock, `progressKm`, hunger, energy and
 health all scale **with no new code** — that is the argument for the hours model over a montage
@@ -386,3 +393,42 @@ p10 9 → 8. Making walking expensive should move exactly those and nothing else
 **Decision 6 still needs a phase.** What this milestone adds is evidence: the incoherence is not a
 tail case, it is reachable by one shipped event on one of three fixture routes, and it is worth
 3.2pp of the failure distribution when it fires.
+
+---
+
+## Addendum — C1, 2026-08-14: the jitter is now the ±1 this document specified
+
+Decision 6 above states the design intent in words — _"±1 hour on a 5-hour leg is texture"_ — and
+then writes the call as `nextInt(-1, 2, 'worldTick')` in the same sentence. Those are not the same
+distribution. `Rng.nextInt` is inclusive at both ends, so the shipped draw ran over `{-1, 0, 1, 2}`
+with a mean of **+0.5 hours per leg**, and `docs/adr/0014` carries the identical claim ("the ±1
+hour jitter on travel time") against the identical code.
+
+Two documents specifying ±1, one implementation drawing four values, and neither ever compared:
+that is the whole failure. `LEG_JITTER_MAX` is now `1`, the realised draw set is exactly
+`{-1, 0, 1}`, and `world-tick.test.ts` pins the realised SET rather than the constants' sum — the
+sum being a restatement of the constants that would have agreed with the original bug. The full
+account, including the verification that the new test fails at the old bound, is the C1 addendum
+to `docs/adr/0014`.
+
+### What it cost this ADR's own numbers
+
+Decision 6's hours table calibrates `legHours` so that _"the fixture baseline must move by nothing
+at this step"_. That calibration was sound; the jitter sitting underneath it was not, and it
+inflated every route uniformly by `legCount / 2` hours — 11 on the 22-leg corpus route, 24 on each
+of the 48-leg ones, measured across all 25 corpus routes.
+
+**Measured drop in `preview.travelHours`, HEAD → C1, on the full corpus route set:** exactly
+`ceil(legCount / 2)` on all 25 routes, with zero violations. The prediction under test was the
+cleaner `legCount / 2`, and it held on the 16 even-leg routes and deviated by exactly +0.5 h on the
+9 odd-leg ones. That deviation is not in the tick — the tick's mean really does fall by exactly
+0.5 h per leg — it is `route-preview.ts`'s `mulDivRound` rounding half AWAY FROM ZERO into an
+INTEGER `travelHours` field, which under the old asymmetric bounds could not represent the
+half-hour that an odd leg count implies. At symmetric bounds the correction term is exactly 0 for
+every leg count, odd or even, so the field is now exact and the artefact cannot recur.
+
+`route-preview.ts` needed no edit to follow the fix, and that is the property Decision 6 was
+written to buy: the preview derives its correction from `LEG_JITTER_MIN + LEG_JITTER_MAX` rather
+than carrying a copy of the distribution, so `MIN + MAX` became 0 and the term went to zero on its
+own. **Do not now replace that call with the constant `0`** — a zero-valued expression that derives
+its zero is not the same object as a zero, and the next person to move a bound will find out which.

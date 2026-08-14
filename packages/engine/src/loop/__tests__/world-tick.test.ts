@@ -7,9 +7,11 @@ import { createTransport } from '../../state/transport-state.ts';
 import { type RunState } from '../../state/run-state.ts';
 import { type TransportMode } from '../../state/transport-state.ts';
 import { loadFixtureRouteEntries } from '../../__tests__/support/load-fixtures.ts';
+import { legHours } from '../leg-hours.ts';
 import {
   healthCost,
   HOURS_PER_HUNGER_DAMAGE,
+  HOURS_PER_HYGIENE,
   HOURS_PER_MORALE,
   moraleCost,
   spanPoints,
@@ -200,15 +202,104 @@ describe('worldTick', () => {
   });
 });
 
+/**
+ * THE JITTER REGRESSION (C1).
+ *
+ * `LEG_JITTER_MAX` was 2. `Rng.nextInt` is inclusive at BOTH ends, so the per-leg draw ran over
+ * {-1, 0, 1, 2} with a mean of **+0.5 hours per leg** — against `docs/adr/0014` ("the ±1 hour
+ * jitter on travel time") and `docs/adr/0026` ("±1 hour on a 5-hour leg is texture"), both of
+ * which specify a symmetric ±1. Every route in the game ran ~5% long: 11 extra hours on a 22-leg
+ * route, 24 on a 48-leg one.
+ *
+ * ## Why this asserts the REALISED SET and not `LEG_JITTER_MIN + LEG_JITTER_MAX === 0`
+ *
+ * That sum is the obvious assertion and it is very nearly a tautology: it restates the two
+ * constants in terms of each other, so it can only fail if someone edits a constant, which is
+ * the one circumstance in which they would also read this test. It would NOT have caught the
+ * original bug, because the bug was never in the arithmetic — it was in the belief that
+ * `nextInt`'s upper bound is exclusive. A test that shares that belief agrees with it.
+ *
+ * So this measures what the tick actually BILLS, through `worldTick` itself, and compares the
+ * observed values against a hardcoded `[-1, 0, 1]`. If `nextInt`'s contract ever changed, or a
+ * bound moved, or the draw were replaced by something with a different support, this fails —
+ * and it fails naming the offending value.
+ */
+describe('the per-leg travel-time jitter is symmetric ±1 (ADR 0014 / ADR 0026)', () => {
+  /** Realised jitter on one leg: what the tick billed, minus what the leg statically costs. */
+  function realisedJitter(seed: string, cursor: number): number {
+    const before = stateWith('car');
+    const generator = createRng(seed, { ...createRngCursors(), worldTick: cursor });
+    const after = worldTick(before, generator);
+
+    const leg = before.route.legIndex;
+    const km = before.route.legKm[leg] ?? 0;
+    const base = legHours(km, before.transport.mode, before.route.montageLegs.includes(leg));
+
+    // ANTI-VACUITY. `worldTick` floors the billed duration at `max(1, ...)`, so on a leg whose
+    // static cost is 1 hour a -1 draw is unobservable and the measured set would be missing its
+    // lower end for a reason that has nothing to do with the bounds. Assert we are clear of it.
+    expect(base, 'fixture leg is too short to observe a -1 draw').toBeGreaterThanOrEqual(2);
+
+    // `wear.hours` accumulates the REAL billed duration (never the worn span), so this is the
+    // leg's `hours` exactly. Read from there rather than the clock because `advanceClock`
+    // floors, and a floor is one more thing between the draw and the assertion.
+    return after.wear.hours - before.wear.hours - base;
+  }
+
+  it('draws from exactly {-1, 0, 1} — never the +2 that made every route 5% long', () => {
+    const observed = new Set<number>();
+    // Many cursors AND several stream keys: one seed exercises one keyed sequence, and a draw
+    // set is a property of the distribution rather than of any single walk through it.
+    for (const seed of ['jitter-a', 'jitter-b', 'jitter-c']) {
+      for (let cursor = 0; cursor < 400; cursor += 1) observed.add(realisedJitter(seed, cursor));
+    }
+
+    expect([...observed].sort((a, b) => a - b)).toEqual([-1, 0, 1]);
+  });
+
+  it('reaches both ends, so the set above is not narrow by luck', () => {
+    // Without this, a draw that had collapsed to a constant 0 would satisfy a subset check. The
+    // set assertion above is an equality and already excludes that, but stating the coverage
+    // separately is what makes a failure legible: "never drew -1" and "drew a 2" are different
+    // defects and should not share one error message.
+    const counts = new Map<number, number>();
+    for (let cursor = 0; cursor < 600; cursor += 1) {
+      const value = realisedJitter('jitter-coverage', cursor);
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+    for (const value of [-1, 0, 1]) {
+      expect(counts.get(value) ?? 0, `jitter never drew ${String(value)}`).toBeGreaterThan(0);
+    }
+    expect(counts.size, `unexpected jitter values: ${[...counts.keys()].join(',')}`).toBe(3);
+  });
+});
+
 describe('hygiene is graded, and was the last cliff in the file (M3.8b)', () => {
   it('accrues against the clock span rather than a per-leg threshold', () => {
     // The old rule was `hours >= 6 ? -1 : 0`. Under it a 5-hour leg cost nothing and a 6-hour
     // leg cost a point, so hygiene was a step function of a continuous quantity — and under a
     // flat HOURS_PER_LEG it fired for truck and for nobody else, which made rule 3 of this
     // file's header ("penalties are GRADED, not cliffs") false about this one meter.
+    //
+    // The stopping condition is DERIVED, like the starvation test above and for the same
+    // reason. This asserted a drop after exactly ONE car leg, which held only because the
+    // fixture's 5-hour leg plus a `+1` jitter draw landed on 6 — so a property about SPANS was
+    // being pinned by a realised random value, and C1's symmetric ±1 exposed it by making that
+    // leg span 4, 5 or 6. Travel until the clock has covered one full hygiene rung, whatever
+    // that constant is: THAT is the claim, and it holds for any leg length.
     const before = stateWith('car');
-    const after = worldTick(before, rng());
-    expect(after.resources.hygiene).toBeLessThan(before.resources.hygiene);
+    const elapsed = (s: RunState): number => s.clock.day * 24 + s.clock.hour;
+    const start = elapsed(before);
+
+    let state = before;
+    const generator = rng();
+    // Bounded so a zero-hour leg cannot hang the suite rather than fail it.
+    for (let leg = 0; leg < 200 && elapsed(state) - start < HOURS_PER_HYGIENE; leg += 1) {
+      state = worldTick(state, generator);
+    }
+
+    expect(elapsed(state) - start).toBeGreaterThanOrEqual(HOURS_PER_HYGIENE);
+    expect(state.resources.hygiene).toBeLessThan(before.resources.hygiene);
   });
 
   it('loses nothing to rounding across a contiguous sequence, like hunger', () => {

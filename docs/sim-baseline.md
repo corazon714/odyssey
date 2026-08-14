@@ -336,39 +336,96 @@
   control that is immune by accident tells you nothing when the accident changes; a control that
   is immune because its numbers are two orders of magnitude apart is one you can rely on. Both
   regenerated at 2,000 runs and this body came back byte-identical.
+
+  C1 MOVED THIS BASELINE. `LEG_JITTER_MAX` 2 -> 1. `rng.nextInt` is inclusive at BOTH ends, so
+  the old `(-1, 2)` drew from {-1, 0, 1, 2} with a mean of +0.5 hours per leg, against the
+  symmetric ±1 that docs/adr/0014 and docs/adr/0026 both specify. Every route in the game was
+  ~5% longer than designed and now is not. The realised draw set was re-measured through
+  `worldTick` itself, not read off the constants: exactly {-1, 0, 1}, uniform, mean 0.
+
+  DECOMPOSE BEFORE READING ANY LINE BELOW. The systematic part of this change is
+  `-legCount / 2` travel hours per route — a lighter drain, so completion must rise. Everything
+  else is RE-RANDOMISATION: correcting the draw moves every drawn value, so every run walks a
+  different path through the same streams. Sub-0.5pp line movements are noise, not results.
+
+    Completion rate     74.0% -> 77.0%   (+3.0pp, systematic)
+    Median legs            15 -> 16      (systematic)
+    Long-range payoff   85.3% -> 97.2%   (+11.9pp — runs get further, so scheduled threads land)
+    Unresolved threads      5 -> 1       (the same effect counted the other way round)
+    failure_gave_up     25.9% -> 22.9%   (-3.0pp — the completion rise, conserved)
+    arrival_triumphant  17.6% -> 20.4%   (+2.8pp)
+    Beat fill rate      50.2% -> 49.8%   (-0.4pp — NOISE)
+    Repeat-event rate   67.8% -> 67.7%   (-0.1pp — NOISE)
+    Near-repeat rate    62.3% -> 62.4%   (+0.1pp — NOISE)
+
+  THIS PACK IS STILL OUT OF BAND AT 77.0% AND THAT IS STILL NOT WHAT IT MEASURES. It is the
+  empty-registry CONTROL the golden runs are built on (ADR 0022, ADR 0032) — complication rate
+  0.0%, no universal choices, 3,790 checks pulling 0.3 chips — so its completion rate is a
+  determinism reference, not a balance target, and its own header has said since M3.10b that an
+  engine change necessarily moves it. The balance measurement is the corpus, which went
+  43.1% -> 45.6% and stayed inside the 30-50% band.
+
+  THE GOLDENS MOVED, and the diff was reviewed run by run rather than by digest. Seven of the
+  nine are unchanged in leg count and ending. The two that moved are the two `random`-policy
+  runs on the long routes, and they moved in OPPOSITE directions:
+
+    fixture.illicit:random   13 -> 15 legs   (58.3% -> 66.6% of the route, same ending)
+    fixture.scenic:random    13 -> 11 legs   (87.5% -> 75.0% of the route, same ending)
+
+  Total legs across the nine runs is 136 either way. One further run keeps its 24 legs and its
+  arrival but changes flavour, `arrival_triumphant` -> `arrival_hollow`.
+
+  A RUN THAT GOT SHORTER ON A LIGHTER DRAIN LOOKS LIKE A DEFECT. IT IS NOT ONE HERE, AND THE
+  REASON IS WORTH RECORDING BECAUSE IT WILL RECUR IN C2 AND C3. `fixture.scenic:random` fires
+  the IDENTICAL events with the IDENTICAL outcomes on legs 0-10 under both bounds — its new
+  choice list is literally the old one truncated — so this is not the event stream diverging.
+  What differs is the wall-clock PHASE at which each span is charged. `spanPoints` counts
+  `HOURS_PER_MORALE` boundaries inside a travel-length span laid on the WALL clock, and event
+  hours advance that clock without any span being charged against them, so the spans do not tile
+  the axis and the points-per-leg count is a phase lottery. Measured: holding the bounds at the
+  old value and shifting `startHour` across all 24 values, that one run finishes anywhere from
+  11 to 16 legs, and `fixture.illicit:random` anywhere from 12 to 24. Both C1 values sit inside
+  the old bounds' OWN phase range. Every run whose leg count is phase-stable — the other seven —
+  did not move at all.
+
+  ONE THING THE INTERRUPTED FIRST ATTEMPT AT C1 GOT WRONG, fixed here: it regenerated
+  golden-runs.json and left it in `JSON.stringify(…, null, 2)` form, which is not Prettier's,
+  so `pnpm format:check` would have failed. `regenerate-goldens.ts` warns about exactly this.
+  The data was correct; only the reflow was missing.
+
 -->
 
 # Sim Report — seed=base contentVersion=aee5a082 runs=2000
 
 Grid cells sampled             15   (of 15 — 3/3 routes x 5/5 policies)
-Completion rate             74.0%   (target band 30-50%)
-Median legs                    15
+Completion rate             77.0%   (target band 30-50%)
+Median legs                    16
 Median in-game days             8
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
 Quiet legs (designed)        0.0%   (odds gate — designed silence, NOT the two gaps above)
-Forced-fire legs            33.5%   (beat slot or queue due — never gated; caps quiet at 66.5%)
-Long-range payoff rate      85.3%   (target 80%)
-Beat fill rate              50.2%
-Repeat-event rate           67.8%
-Near-repeat rate            62.3%   (a redraw inside recency's own 6-event window; 15.58 draws/run — LESS confounded than the line above, NOT unconfounded: subtract a null baseline before reading it)
+Forced-fire legs            33.9%   (beat slot or queue due — never gated; caps quiet at 66.1%)
+Long-range payoff rate      97.2%   (target 80%)
+Beat fill rate              49.8%
+Repeat-event rate           67.7%
+Near-repeat rate            62.4%   (a redraw inside recency's own 6-event window; 15.76 draws/run — LESS confounded than the line above, NOT unconfounded: subtract a null baseline before reading it)
 Complication rate            0.0%   (target 60%)
-Modifier chips / check        0.3   (over 3682 checks; NO modifier registry in this pack)
-Checks under 2 chips         3682   (expected — there is no registry here, so this is not a finding)
+Modifier chips / check        0.3   (over 3790 checks; NO modifier registry in this pack)
+Checks under 2 chips         3790   (expected — there is no registry here, so this is not a finding)
 Checks over 7 chips             0   (no registry in this pack)
 Universal choices offered    0.0%   (share of choices shown)
 Universal choices picked     0.0%   (over ~30% means they are flattening the corpus)
-Unresolved threads              5
+Unresolved threads              1
 
-Wall clock                 874 ms   (0.44 ms/run)
-Extrapolated to 20,000     8.7 s   (target <30 s)
+Wall clock                 585 ms   (0.29 ms/run)
+Extrapolated to 20,000     5.8 s   (target <30 s)
 
 ## Endings
-  ending.arrival_hollow               40.1%
-  ending.failure_gave_up              25.9%
-  ending.arrival_triumphant           17.6%
-  ending.arrival_quiet                16.4%
+  ending.arrival_hollow               38.7%
+  ending.failure_gave_up              22.9%
+  ending.arrival_triumphant           20.4%
+  ending.arrival_quiet                17.9%
   ending.failure_collapsed             0.1%
 
 ## Never-fired events
@@ -378,11 +435,11 @@ Extrapolated to 20,000     8.7 s   (target <30 s)
   border.bribe_attempt/present_documents               0.0%   <- never picked
   border.bribe_attempt/turn_back                       0.0%   <- never picked
   border.guard_remembers/acknowledge                   0.1%
-  border.bribe_attempt/offer_bribe                     0.2%
-  border.bribe_attempt/hide_the_cash                   0.4%
+  border.bribe_attempt/offer_bribe                     0.3%
+  border.bribe_attempt/hide_the_cash                   0.7%
   transit.bus_ejection/get_off                         1.1%
   crisis.breakdown/find_help                           1.3%
-  transit.bus_ejection/plead_with_driver               1.4%
+  transit.bus_ejection/plead_with_driver               1.3%
 
 ## Flags
   written: 5   read: 2
@@ -390,12 +447,12 @@ Extrapolated to 20,000     8.7 s   (target <30 s)
   read but NEVER WRITTEN:   (none)   <- gate can never open
 
 ## Resource trajectories (p10/p50/p90 by leg)
-  cash     leg5: 220/280/500   leg15: 180/440/500   leg25: —
-  health   leg5: 9/10/10   leg15: 3/7/9   leg25: —
-  morale   leg5: 5/6/7   leg15: 1/3/5   leg25: —
-  energy   leg5: 0/2/8   leg15: 0/0/3   leg25: —
-  hunger   leg5: 5/8/10   leg15: 10/10/10   leg25: —
-  hygiene  leg5: 0/2/3   leg15: 0/0/0   leg25: —
+  cash     leg5: 220/280/500   leg15: 180/420/500   leg25: —
+  health   leg5: 9/10/10   leg15: 4/7/9   leg25: —
+  morale   leg5: 5/7/7   leg15: 1/3/5   leg25: —
+  energy   leg5: 0/3/9   leg15: 0/0/4   leg25: —
+  hunger   leg5: 5/7/10   leg15: 10/10/10   leg25: —
+  hygiene  leg5: 0/2/4   leg15: 0/0/0   leg25: —
 
 ## Beat types no event can fill
   A slot for one of these can only expire, so the fill rate above is bounded below 100%.

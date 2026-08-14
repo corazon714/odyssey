@@ -52,7 +52,9 @@ import { wearJournalKey, type WearBand } from '../state/wear-state.ts';
 /**
  * The KNEE, in travel hours — and the only dial the sweep turns.
  *
- * **SWEPT AND CHOSEN AT M3.12b: 200.** Measured on the real engine over
+ * **SWEPT AND CHOSEN AT THE KNEE SWEEP: 200.** That milestone is un-numbered and is **not
+ * M3.12b** — ADR 0029 reserved that label on 2026-08-09 for the quiet-leg ODDS sweep, which has
+ * not run (ADR 0041's own header says so). Measured on the real engine over
  * `{140, 160, 180, 200, 240}` plus a no-curve control, 2,000 runs per cell on the full 25 × 5
  * corpus grid, scored on the surviving acceptance — NO ROUTE BELOW 3% completion, a run
  * nobody can finish being design pillar 4's dead end:
@@ -96,12 +98,13 @@ import { wearJournalKey, type WearBand } from '../state/wear-state.ts';
  * A route's STATIC hour total (`sum(legHours(legKm[i], startMode, montage))`) is 50 / 80 / 144
  * for short / scenic / illicit, which is where the ≤144 h reading comes from. What a run
  * actually accumulates is a different number, because `legHours` is a function of the mode the
- * run is in WHEN THE LEG IS TRAVELLED, and a `transport` effect can change it mid-run — plus
- * `LEG_JITTER` adds a mean +0.5 h a leg. Measured over the nine golden runs:
+ * run is in WHEN THE LEG IS TRAVELLED, and a `transport` effect can change it mid-run. Measured
+ * over the nine golden runs (re-measured at C1, when the jitter became symmetric — it previously
+ * added a mean +0.5 h a leg and every figure here was that much higher):
  *
- *   fixture.short    54 / 54 / 55 h    → `full` throughout
- *   fixture.illicit  83 / 155 / 155 h  → `full` throughout
- *   fixture.scenic  161 / 181 / 187 h  → `full` throughout AT 200; crossed into `mid` at 160
+ *   fixture.short    48 / 50 / 51 h    → `full` throughout
+ *   fixture.illicit  98 / 145 / 145 h  → `full` throughout
+ *   fixture.scenic  127 / 169 / 179 h  → `full` throughout AT 200; crossed into `mid` at 160
  *
  * **At the chosen knee ALL NINE goldens are below it, and that is a stated cost of choosing
  * 200 rather than a happy accident.** At 160 the scenic runs crossed into `mid` and three of

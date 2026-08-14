@@ -46,8 +46,9 @@ export type RoutePreview = {
    *
    * **Expected, not static.** It is the `legHours` sum PLUS the mean of `worldTick`'s per-leg
    * jitter — see `legJitterHours`, which is also where the argument for reporting a mean rather
-   * than a floor lives. The first version of this field summed `legHours` alone and understated
-   * every route by `legCount / 2` hours.
+   * than a floor lives. That mean is ZERO since C1 made the jitter symmetric, so the two
+   * quantities agree numerically today; they are not the same claim, and the sum alone was wrong
+   * by `legCount / 2` hours for as long as the jitter was not.
    *
    * The number was already computed here — `rationsNeeded` divides by it — and thrown away.
    * Exposing it is design pillar 4's honest answer on its own: a 523-hour route is a different
@@ -138,45 +139,63 @@ export function startingMode(profile: RouteProfile, mix: readonly TransportMode[
 /**
  * Hours `worldTick`'s per-leg jitter is EXPECTED to add across a whole route.
  *
- * ## The defect this fixes
+ * **It evaluates to ZERO today, and the derivation is kept anyway.** That is the whole point of
+ * the function: it is not a correction that was needed once and is now dead code, it is the
+ * preview's only link to the tick's distribution, and it is what makes the preview self-correct
+ * if the bounds ever move again.
  *
- * `travelHours` shipped as the static `legHours` sum, and that is not what a route costs.
+ * ## The defect this fixed, and why it is now history
+ *
+ * `travelHours` shipped as the static `legHours` sum, which was not what a route cost.
  * `worldTick` bills `max(1, legHours + rng.nextInt(LEG_JITTER_MIN, LEG_JITTER_MAX))` per leg, and
- * `nextInt` is inclusive at both ends — so the draw is over {-1, 0, 1, 2}, whose mean is **+0.5,
- * not 0**. The preview was therefore low by `legCount / 2` on every route in the same direction:
- * 11 hours on a 22-leg route, 24 on a 48-leg one, and measured at R = H + legs/2 on all 18 corpus
- * routes with enough arrivals, max deviation 1.0 h.
+ * `nextInt` is inclusive at both ends — so with bounds of `(-1, 2)` the draw ran over
+ * {-1, 0, 1, 2}, whose mean is **+0.5, not 0**. The preview was low by `legCount / 2` on every
+ * route in the same direction: 11 hours on a 22-leg route, 24 on a 48-leg one, measured at
+ * R = H + legs/2 on all 18 corpus routes with enough arrivals, max deviation 1.0 h.
  *
- * ## Expected value, not the static floor
- *
- * The alternative was to leave the sum alone and document it as a floor. Rejected: a number
- * labelled a floor that is beaten by essentially every run is not a floor a player can plan
- * against, and a preview systematically 5% low in a CONSISTENT direction is worse than a noisy
- * one — it is a bias, and the player who learns to add 5% has been made to do the engine's
- * arithmetic. The preview's whole purpose is to let the route be judged before it is committed to.
+ * Adding the mean here was the right fix for the PREVIEW and the wrong fix for the GAME. The
+ * asymmetry was itself the bug — ADR 0014 and ADR 0026 both specify a symmetric ±1 — so C1 set
+ * `LEG_JITTER_MAX` to 1 and every route got ~5% shorter. This function needed no edit to follow:
+ * `MIN + MAX` became 0 and the term went to zero on its own, which is exactly the behaviour the
+ * next paragraph was written to buy.
  *
  * ## Derived from the tick's own bounds, never hardcoded as `legCount / 2`
  *
- * A literal `+ legCount / 2` would be a second, silent copy of a distribution that lives in
- * `world-tick.ts`, and it would be WRONG the moment those bounds move — including in the specific
- * way they are currently under review (see `LEG_JITTER_MIN`). Reading the bounds means the
- * correction is zero automatically if the jitter becomes symmetric, with no second edit and no
- * stale comment.
+ * A literal `+ legCount / 2` would have been a second, silent copy of a distribution that lives
+ * in `world-tick.ts`, and it would have been WRONG the moment those bounds moved — which is
+ * precisely what then happened. Reading the bounds is why correcting the jitter was a one-line
+ * change in one file instead of a hunt for every place the old mean had been written down.
+ * **Do not replace this call with the constant 0.** A zero-valued expression that derives its
+ * zero is not the same object as a zero.
+ *
+ * ## Expected value, not the static floor
+ *
+ * The alternative, back when the term was non-zero, was to leave the sum alone and document it
+ * as a floor. Rejected: a number labelled a floor that is beaten by essentially every run is not
+ * a floor a player can plan against, and a preview systematically 5% low in a CONSISTENT
+ * direction is worse than a noisy one — it is a bias, and the player who learns to add 5% has
+ * been made to do the engine's arithmetic. The preview's whole purpose is to let a route be
+ * judged before it is committed to.
  *
  * Integer arithmetic via `mulDivRound` for the reason `leg-hours.ts` gives: this figure is
  * advisory and never reaches the clock, but keeping one rounding convention across the module
- * costs nothing and removes the question.
+ * costs nothing and removes the question. It rounds half AWAY FROM ZERO, so an odd leg count
+ * under asymmetric bounds took `(legCount + 1) / 2` rather than the half-integer expectation —
+ * `travelHours` is an integer field and something has to absorb the half hour.
  *
  * ## The two ways this is still approximate, said rather than hidden
  *
  * It is a MEAN. A single run lands either side of it, and `worldTick`'s `max(1, ...)` floor
  * makes the true expectation a shade higher on any leg whose static cost is one hour — no route
  * on the shipped slice produces one, since every mode but `foot` carries an overhead of 2 or
- * more. And like every other field here it describes the STARTING mode: a run that loses its
- * truck and walks costs more than this says.
+ * more. At symmetric bounds that floor is the ONLY thing between this figure and exactness, so
+ * on the shipped slice the static sum is now the honest expectation to the hour. And like every
+ * other field here it describes the STARTING mode: a run that loses its truck and walks costs
+ * more than this says.
  */
 function legJitterHours(legCount: number): number {
-  // Mean of a uniform draw over an inclusive integer range. Zero when the bounds are symmetric.
+  // Mean of a uniform draw over an inclusive integer range. Zero when the bounds are symmetric,
+  // which they are — see the note above on why this is not written as `0`.
   return mulDivRound(legCount, LEG_JITTER_MIN + LEG_JITTER_MAX, 2);
 }
 
@@ -203,8 +222,9 @@ export function buildPreview(
   // because they reuse `HOURS_PER_HUNGER`: retuning the hunger rate updates the supply
   // requirement automatically, instead of leaving a second number to remember.
   //
-  // `worldTick`'s jitter is added because it is NOT zero-mean, which is what made the first
-  // version of this field defective — see `legJitterHours`.
+  // `worldTick`'s jitter is added rather than assumed away. It IS zero-mean since C1, so the
+  // term contributes nothing today — deriving that zero instead of writing it is what keeps this
+  // honest if the bounds move again. See `legJitterHours`.
   const montage = new Set(plan.montageLegs);
   const staticHours = plan.legKm.reduce(
     (sum, km, leg) => sum + legHours(km, mode, montage.has(leg)),

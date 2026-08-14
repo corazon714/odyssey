@@ -78,8 +78,9 @@ describe('worn — the curve itself', () => {
    * What actually holds the claim up is elsewhere and is real: the pointwise identity above,
    * the `bends` test below (anti-vacuity in the other direction), and the golden runs, which
    * measure the fixture routes against whatever knee is compiled in. Moving the knee 160 -> 200
-   * at M3.12b changed three of the nine goldens and NOTHING in this file, which is exactly the
-   * split that shows where the fence really lives.
+   * at the knee sweep — un-numbered, and NOT M3.12b, which ADR 0029 reserved for the quiet-leg
+   * odds sweep — changed three of the nine goldens and NOTHING in this file, which is exactly
+   * the split that shows where the fence really lives.
    */
 
   it('bends: a span past the knee costs strictly less than the same span before it', () => {

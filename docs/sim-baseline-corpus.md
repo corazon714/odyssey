@@ -768,39 +768,78 @@
   completion by 0.01pp. It is sized for a corpus with more than 13 events, and the number to
   watch as the corpus grows is `Universal choices picked`, at 27.4% against a ~30% ceiling.
 
+
+  C1 MOVED THIS BASELINE, and it is the first of three changes that all push the same way.
+  `LEG_JITTER_MAX` 2 -> 1. `rng.nextInt` is inclusive at BOTH ends, so the old `(-1, 2)` drew
+  from {-1, 0, 1, 2} with a mean of +0.5 hours per leg, against the symmetric ±1 that
+  docs/adr/0014 and docs/adr/0026 both specify. Every route now bills `legCount / 2` fewer
+  travel hours: 11 on the 22-leg route, 24 on each of the 48-leg ones. Measured on all 25 corpus
+  routes; see the note in docs/adr/0026 for the one place the arithmetic is not exactly
+  `legCount / 2`.
+
+  DECOMPOSE BEFORE READING ANY LINE BELOW. The systematic part is that one hour figure — a
+  lighter drain, so completion must RISE. Everything else is RE-RANDOMISATION: correcting the
+  draw moves every drawn value, so every run walks a different path through the same streams and
+  most of the line-by-line diff is a resample. Sub-0.5pp movements are noise, not results.
+
+    Completion rate       43.1% -> 45.6%   (+2.5pp, SYSTEMATIC — the lighter drain)
+    Median in-game days       9 -> 8       (systematic — the same route, fewer hours in it)
+    Median legs              23 -> 23      (UNMOVED, and it should be: this changes hours, not
+                                            leg counts, and the leg count is set by the route)
+    failure_gave_up       49.7% -> 47.7%   (-2.0pp — the completion rise, conserved)
+    failure_collapsed      7.1% ->  6.6%   (-0.5pp — same direction, at the edge of the band)
+    arrival_quiet         43.1% -> 45.5%   (+2.4pp)
+    Long-range payoff     18.6% -> 17.6%   (-1.0pp — runs end in fewer DAYS, so fewer scheduled
+                                            threads come due inside them; threads 104 -> 105)
+    Beat fill rate        27.2% -> 27.4%   (+0.2pp — NOISE)
+    Repeat-event rate     66.6% -> 67.0%   (+0.4pp — NOISE)
+    Complication rate     60.0% -> 60.2%   (+0.2pp — NOISE, and still on its 60 target)
+    Universal picked      27.4% -> 27.3%   (-0.1pp — NOISE)
+    Modifier chips/check    6.3 ->  6.3    (unmoved, over 19,948 checks)
+
+  STILL IN BAND, AND DELIBERATELY NOT RE-TUNED. 45.6% is inside engine-spec 6's 30-50%. The
+  stop condition this change was run under was "if C1 alone takes pooled completion past ~47%,
+  stop" — it did not, so C2 follows.
+
+  NO DRAIN CONSTANT WAS RE-DERIVED HERE, ON PURPOSE. `HOURS_PER_HUNGER_DAMAGE`,
+  `HOURS_PER_MORALE` and `FULL_UNTIL` are all hour-denominated and sized against a route set
+  that keeps moving until C3. Re-deriving them now guarantees doing it twice; they are verified
+  ONCE, at C4, after the route hours stop moving. This is the same trap
+  `HOURS_PER_HUNGER_DAMAGE`'s own comment records falling into three times.
+
 -->
 
 # Sim Report — seed=base contentVersion=1ed866f8 runs=2000
 
 Grid cells sampled            125   (of 125 — 25/25 routes x 5/5 policies)
-Completion rate             43.1%   (target band 30-50%)
+Completion rate             45.6%   (target band 30-50%)
 Median legs                    23
-Median in-game days             9
+Median in-game days             8
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
 Quiet legs (designed)        0.0%   (odds gate — designed silence, NOT the two gaps above)
 Forced-fire legs            28.6%   (beat slot or queue due — never gated; caps quiet at 71.4%)
-Long-range payoff rate      18.6%   (target 80%)
-Beat fill rate              27.2%
-Repeat-event rate           66.6%
-Near-repeat rate            27.1%   (a redraw inside recency's own 6-event window; 25.50 draws/run — LESS confounded than the line above, NOT unconfounded: subtract a null baseline before reading it)
-Complication rate           60.0%   (target 60%)
-Modifier chips / check        6.3   (target 3-7, over 19503 checks)
+Long-range payoff rate      17.6%   (target 80%)
+Beat fill rate              27.4%
+Repeat-event rate           67.0%
+Near-repeat rate            27.1%   (a redraw inside recency's own 6-event window; 25.91 draws/run — LESS confounded than the line above, NOT unconfounded: subtract a null baseline before reading it)
+Complication rate           60.2%   (target 60%)
+Modifier chips / check        6.3   (target 3-7, over 19948 checks)
 Checks under 2 chips            0   (each one draws nothing the registry exists for)
 Checks over 7 chips             0   (0.0% of checks; worst pulls 7)
 Universal choices offered   36.9%   (share of choices shown)
-Universal choices picked    27.4%   (over ~30% means they are flattening the corpus)
-Unresolved threads            104
+Universal choices picked    27.3%   (over ~30% means they are flattening the corpus)
+Unresolved threads            105
 
-Wall clock                 1808 ms   (0.90 ms/run)
-Extrapolated to 20,000     18.1 s   (target <30 s)
+Wall clock                 1775 ms   (0.89 ms/run)
+Extrapolated to 20,000     17.8 s   (target <30 s)
 
 ## Endings
-  ending.failure_gave_up              49.7%
-  ending.arrival_quiet                43.1%
-  ending.failure_collapsed             7.1%
-  ending.detained_at_border            0.0%
+  ending.failure_gave_up              47.7%
+  ending.arrival_quiet                45.5%
+  ending.failure_collapsed             6.6%
+  ending.detained_at_border            0.1%
 
 ## Never-fired events
   (none)
@@ -814,63 +853,63 @@ Extrapolated to 20,000     18.1 s   (target <30 s)
   road.the_hitchhiker/u:use_an_item                    0.0%   <- never picked
   weather.the_storm_you_cannot_drive_through/find_the_mechanic_first   0.0%   <- never picked
   weather.the_storm_you_cannot_drive_through/u:use_an_item   0.0%   <- never picked
-  breakdown.the_roadside_repair/find_someone_who_can   0.0%
   breakdown.the_roadside_repair/nurse_it_along         0.0%
+  breakdown.the_roadside_repair/find_someone_who_can   0.0%
+  breakdown.the_roadside_repair/u:offer_to_work_for_it   0.0%
   crime.the_offer/put_it_somewhere_they_will_not_look   0.0%
   breakdown.the_roadside_repair/u:threaten             0.0%
-  breakdown.the_roadside_repair/u:offer_to_work_for_it   0.0%
-  border.night_crossing/keep_it_out_of_sight           0.0%
   breakdown.the_roadside_repair/fix_it_yourself        0.0%
-  authority.the_file_catches_up/make_it_go_away        0.0%
   authority.the_file_catches_up/u:bluff_with_documents   0.0%
-  authority.the_file_catches_up/stand_your_ground      0.0%
-  authority.the_file_catches_up/u:bribe                0.0%
-  road.the_hitchhiker/u:let_the_companion_handle_it    0.0%
-  weather.the_storm_you_cannot_drive_through/push_on_through_it   0.0%
+  border.night_crossing/keep_it_out_of_sight           0.0%
+  authority.the_file_catches_up/make_it_go_away        0.0%
   authority.the_file_catches_up/u:run                  0.0%
+  authority.the_file_catches_up/u:bribe                0.0%
+  authority.the_file_catches_up/stand_your_ground      0.0%
   road.the_hitchhiker/leave_them_at_the_junction       0.0%
-  rest.the_shared_room/u:stop_and_rest                 0.0%
   city.the_address_that_moved/u:let_the_companion_handle_it   0.0%
+  road.the_hitchhiker/u:let_the_companion_handle_it    0.0%
+  rest.the_shared_room/u:stop_and_rest                 0.0%
+  weather.the_storm_you_cannot_drive_through/push_on_through_it   0.0%
   weather.the_storm_you_cannot_drive_through/u:ask_for_help   0.0%
   rest.the_shared_room/sleep_on_your_bag               0.1%
   rest.the_shared_room/u:create_a_distraction          0.1%
   encounter.the_other_traveller/u:let_the_companion_handle_it   0.1%
   border.night_crossing/u:offer_to_work_for_it         0.1%
-  breakdown.the_roadside_repair/u:pay_the_asking_price   0.1%
   border.night_crossing/offer_something                0.1%
   weather.the_storm_you_cannot_drive_through/see_to_the_damage   0.1%
+  breakdown.the_roadside_repair/u:pay_the_asking_price   0.2%
   transit.the_wrong_carriage/u:offer_to_work_for_it    0.2%
   city.the_address_that_moved/u:plead_ignorance        0.2%
-  transit.the_wrong_carriage/u:lie_about_destination   0.2%
   crime.the_offer/u:create_a_distraction               0.2%
+  transit.the_wrong_carriage/u:lie_about_destination   0.2%
   crime.the_offer/u:offer_to_work_for_it               0.2%
   opportunity.work_for_a_day/u:walk_away               0.3%
-  city.the_address_that_moved/work_it_out_yourself     0.3%
   weather.the_storm_you_cannot_drive_through/shelter_and_lose_the_day   0.3%
-  opportunity.work_for_a_day/take_the_day_rate         0.3%
   filler.the_long_quiet_stretch/listen_to_the_engine   0.3%
-  rest.the_shared_room/u:threaten                      0.4%
+  city.the_address_that_moved/work_it_out_yourself     0.3%
+  opportunity.work_for_a_day/take_the_day_rate         0.3%
   authority.the_file_catches_up/answer_the_questions   0.4%
-  weather.the_storm_you_cannot_drive_through/u:run     0.5%
+  rest.the_shared_room/u:threaten                      0.4%
+  weather.the_storm_you_cannot_drive_through/u:run     0.4%
   rest.the_shared_room/see_to_your_feet                0.5%
-  encounter.the_other_traveller/u:walk_away            0.5%
+  encounter.the_other_traveller/u:walk_away            0.6%
   filler.the_long_quiet_stretch/u:wait_it_out          0.7%
   border.night_crossing/present_papers                 0.7%
   border.night_crossing/u:bluff_with_documents         0.7%
   crime.the_offer/u:bribe                              1.1%
   road.the_hitchhiker/u:run                            1.2%
-  transit.the_wrong_carriage/u:pay_the_asking_price    1.2%
   transit.the_wrong_carriage/talk_your_way_through     1.3%
-  rest.the_shared_room/pay_for_a_private_room          1.4%
+  transit.the_wrong_carriage/u:pay_the_asking_price    1.3%
+  rest.the_shared_room/pay_for_a_private_room          1.3%
   encounter.the_other_traveller/share_what_you_have    1.5%
   transit.the_wrong_carriage/pay_the_difference        1.5%
-  city.the_address_that_moved/u:pay_the_asking_price   1.5%
   crime.the_offer/say_no                               1.6%
-  city.the_address_that_moved/ask_in_the_shop          1.7%
+  city.the_address_that_moved/u:pay_the_asking_price   1.6%
   transit.the_wrong_carriage/move_before_they_reach_you   1.7%
   border.night_crossing/u:bribe                        1.7%
+  city.the_address_that_moved/ask_in_the_shop          1.7%
   road.the_hitchhiker/pull_over                        1.7%
-  encounter.the_other_traveller/look_at_their_leg      1.9%
+  encounter.the_other_traveller/look_at_their_leg      2.0%
 
 ## Flags
   written: 21   read: 6
@@ -878,12 +917,12 @@ Extrapolated to 20,000     18.1 s   (target <30 s)
   read but NEVER WRITTEN:   (none)   <- gate can never open
 
 ## Resource trajectories (p10/p50/p90 by leg)
-  cash     leg5: 1140/2154/4264   leg15: 956/1864/4021   leg25: 1192/2041/3680
-  health   leg5: 9/10/10   leg15: 4/7/9   leg25: 2/5/7
-  morale   leg5: 5/7/10   leg15: 2/5/9   leg25: 2/6/9
-  energy   leg5: 0/1/6   leg15: 0/0/1   leg25: 0/0/0
-  hunger   leg5: 6/9/10   leg15: 9/10/10   leg25: 8/10/10
-  hygiene  leg5: 0/1/3   leg15: 0/0/0   leg25: 0/0/0
+  cash     leg5: 1140/2154/4264   leg15: 959/1864/3990   leg25: 1170/2008/3581
+  health   leg5: 9/10/10   leg15: 4/7/9   leg25: 3/5/8
+  morale   leg5: 5/8/10   leg15: 2/6/9   leg25: 2/6/9
+  energy   leg5: 0/2/6   leg15: 0/0/1   leg25: 0/0/0
+  hunger   leg5: 5/8/10   leg15: 8/10/10   leg25: 8/10/10
+  hygiene  leg5: 0/1/4   leg15: 0/0/0   leg25: 0/0/0
 
 ## Beat types no event can fill
   A slot for one of these can only expire, so the fill rate above is bounded below 100%.

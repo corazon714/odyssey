@@ -223,17 +223,22 @@ describe('the start block is derived, never authored', () => {
    * `legHours` the production path calls rather than reimplementing the per-mode arithmetic, so
    * the only thing restated is the loop.
    *
-   * Both sides read `LEG_JITTER_*`, so if the bounds are ever made symmetric — they are under
-   * review, see the constant — this keeps passing with the correction at zero, and it is not the
-   * test that has to be remembered.
+   * Both sides read `LEG_JITTER_*`, so the identity survived the bounds being made symmetric at
+   * C1 — the correction went to zero and this kept passing without an edit, which is what it was
+   * built for.
+   *
+   * WHAT IT NO LONGER DOES, said plainly because the shape still looks like a guard. It once
+   * carried `if (asymmetric) expect(travelHours).toBeGreaterThan(staticHours)`, and under
+   * symmetric bounds that condition is `false`, so the branch never ran and the surviving
+   * equality collapsed to `travelHours === staticHours` — the exact "old behaviour" its own
+   * anti-vacuity comment warned about. A dead branch that reads as a live assertion is worse
+   * than no assertion, so it is gone. **The guard against re-introducing an asymmetric jitter is
+   * `world-tick.test.ts`'s draw-set test**, which measures what the tick actually bills rather
+   * than what two constants sum to. That is where it belongs and where it can fail.
    */
   it('reports the EXPECTED duration, jitter included, not the static leg sum', () => {
     const expectedJitter = (legCount: number): number =>
       mulDivRound(legCount, LEG_JITTER_MIN + LEG_JITTER_MAX, 2);
-
-    // Anti-vacuous: at a zero correction every assertion below degenerates to the old behaviour,
-    // so the suite must say out loud which regime it is running in.
-    const asymmetric = LEG_JITTER_MIN + LEG_JITTER_MAX !== 0;
 
     for (const { seed, pair, plan } of ALL) {
       const montage = new Set(plan.route.montageLegs);
@@ -246,7 +251,6 @@ describe('the start block is derived, never authored', () => {
       expect(`${where}: ${String(plan.preview.travelHours)}`).toBe(
         `${where}: ${String(staticHours + expectedJitter(plan.route.legCount))}`,
       );
-      if (asymmetric) expect(plan.preview.travelHours).toBeGreaterThan(staticHours);
     }
   });
 

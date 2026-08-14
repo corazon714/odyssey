@@ -34,7 +34,9 @@ describe('universal-choices.yaml as it ships', () => {
     // `UNIVERSAL_NEVER_INJECTED` in content:lint is the running check; this pins the count so a
     // row cannot be quietly dropped. Reachability itself is asserted there, over the real splice.
     //
-    // 16 at M3.12b, which added `stop_and_rest`. The literal is deliberate and is the one thing
+    // 16 at the knee sweep, which added `stop_and_rest` — that milestone is un-numbered and is
+    // NOT M3.12b, which ADR 0029 reserved for the quiet-leg odds sweep and which has not run.
+    // The literal is deliberate and is the one thing
     // here that is not derived: the property is "no row was silently deleted", and there is no
     // constant to read it off — the registry IS the source. Bumping it is the intended cost of
     // adding a row, and a DROP shows up as this number moving down in a reviewed diff.
