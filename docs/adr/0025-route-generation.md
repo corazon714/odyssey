@@ -160,6 +160,47 @@ sharing a different 45% with each of two accepted routes is 90% covered.
 > The 45%-plus-45% case that motivated the clause is still the one that matters and it has its own
 > test — the clause was right about the risk and wrong about needing two measurements to catch it.
 
+> **Amended at C2 (Phase 3 close). The note above is CORRECT and INCOMPLETE, and the gap is the
+> normalisation, not the union.** "The union is a superset of every pairwise set" is true, and it
+> is true only **within a fixed normalisation**. Every measurement the note compares is normalised
+> by the CANDIDATE's length, so the union really does dominate the pairwise sets and dropping them
+> really does cost nothing. What the note is silent about is the OTHER denominator: the accepted
+> route's own length. `overlapPercent(a, b) != overlapPercent(b, a)`, and no amount of union-taking
+> in the candidate's direction produces a number in the accepted route's direction.
+>
+> So the filter made a ONE-DIRECTIONAL guarantee while `verifyPair` (`geo-build/verify-routes.ts`)
+> maximised over ORDERED pairs, and the two quantities are not the same quantity. `geo:verify`
+> reported 85% on Valencia-Palermo while the filter believed it had held the pair to 70. Neither
+> was wrong; they were measuring different things, and nothing in this ADR said so.
+>
+> **The fix, and the shape of it is the decision.** The forward check STAYS the union — the
+> 45%-plus-45% case is real and only the union catches it. A REVERSE check is added, pairwise per
+> accepted route, asking how much of each accepted route a later candidate would swallow. The
+> post-condition is then exactly `verifyPair`'s metric:
+>
+> > for every accepted pair `(a, b)`, `max(overlap(a,b), overlap(b,a)) <= the threshold of the rung
+it was accepted at`.
+>
+> **Pairwise in reverse, NOT a second union, and that is a measured choice rather than a stylistic
+> one.** A union in reverse — "how much of this accepted route is covered by everything else
+> together" — is a strictly stronger claim than anything measures or asks for. It would reject far
+> more, push far more pairs up the rung ladder into Yen backfill, and Yen is ~95% of `selectPaths`'
+> cost (Decision 4's estimate, confirmed by the section 5 benchmark). Pairwise makes the guarantee
+> equal to the reported metric, which is the property that was missing.
+>
+> **What it cost, measured on the 692-node slice.** The one genuine filter failure among the twelve
+> named pairs cleared: Valencia-Palermo 85% -> 63%, PASS, on three routes rather than four.
+> Chongjin-Jeju City still FAILs at 80% and always will — three edges totalling 1,000 km are in
+> every route and its shortest is 1,391 km, a structural floor of 71% that no threshold at or below
+> 70 can clear — but it now resolves at rung 2 instead of rung 1. That escalation is the price:
+> `selectPaths` mean went ~11.9 ms -> ~13.3 ms over repeated runs, bands not overlapping. p90 moved
+> ~3% and max not at all. **The regression is real and is accepted**, because a diversity guarantee
+> the report can contradict is not a guarantee.
+>
+> **This is unrelated to the water/ferry defect reported in the same `geo:verify` finding** — the
+> 70%-land threshold admitting road edges to islands lives in `build-edges.ts`, changes committed
+> artifacts, and is Phase 4 work.
+
 The ladder, written in the shape of `RELAXATION_RUNGS`: 0 nothing · 1 run Yen for each rejected
 profile · 2 threshold 70→80 · 3 80→90 · 4 drop the profile's mode and season masks and re-run
 Dijkstra · 5 accept what exists. The threshold never reaches 100. Consideration order is fixed:

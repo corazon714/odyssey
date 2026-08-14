@@ -429,56 +429,95 @@ export function formatVerification(
   lines.push('  journey. A degree-1 endpoint breaks diversity in proportion to how much of the');
   lines.push('  route it forces, which is why the floor is the verdict and the degree is context.');
   lines.push('');
-  lines.push('  VALENCIA-PALERMO IS THE OTHER KIND, and it is the row this classification was');
-  lines.push('  built to find. Same degree-1 island, but a 34% floor — so two thirds of the route');
-  lines.push(
-    '  WAS free to vary and the filter returned an 85% overlap anyway. Nothing structural',
-  );
-  lines.push(
-    "  forced that. It is `acceptByDiversity`'s directional guarantee (ONE below) landing",
-  );
-  lines.push(
-    '  on a pair short enough for the forced ferry to still dominate what is left, and it',
-  );
-  lines.push('  is the only genuine filter failure in the twelve.');
+  lines.push('  VALENCIA-PALERMO WAS THE OTHER KIND, and it is the row this classification was');
+  lines.push('  built to find: same degree-1 island, but a 34% floor — two thirds of the route');
+  lines.push('  WAS free to vary and the filter returned an 85% overlap anyway. It now reads 63%');
+  lines.push('  and PASSES, on three routes rather than four. Nothing about the graph changed.');
   lines.push('');
-  lines.push('  NOT the ladder relaxing either — the breach resolved at rung 1, and rungs 0 and 1');
-  lines.push('  both cap overlap at 70 (`DIVERSITY_RUNGS`). Two further mechanisms sit underneath');
+  lines.push('  THE NEW THREE ARE NOT THE OLD FOUR MINUS ONE, and getting that backwards inverts');
+  lines.push('  the mechanism. The old set was `fastest` 2,414 km, `scenic` 3,579, `fastest`+Yen');
+  lines.push('  2,819 and `safest`+Yen 3,975; the new set is 2,414, 2,819 and `scenic`+Yen 3,737.');
   lines.push(
-    '  the structural floor and are re-measured on the 692-node slice. Neither CAUSES the',
+    '  The 85% cell was the FIRST route sitting inside the FOURTH — 2,414 km is 85% inside',
   );
-  lines.push('  FAIL above — the floor does that on its own — but both decide how bad it reads:');
+  lines.push(
+    '  the 3,975 km backfill — so the route being SWALLOWED was route 1 and the SWALLOWER',
+  );
+  lines.push(
+    '  was route 4. It is the swallower the reverse check rejects. Two of the old four go',
+  );
+  lines.push(
+    '  (3,579 at 71% and 3,975 at 85%, both caught only in reverse) and one route the old',
+  );
+  lines.push('  filter never reached, 3,737 km, takes a slot in their place.');
   lines.push('');
-  lines.push('  ONE: THE GUARANTEE IS DIRECTIONAL, and it survived the slice change intact.');
-  lines.push('  `acceptByDiversity` tests each NEW candidate against the union of what is already');
-  lines.push('  accepted, normalised by the CANDIDATE’s length, and never re-tests an earlier');
-  lines.push('  route against a later one. Chongjin-Jeju City accepts, in order, `fastest`');
+  lines.push('  THE GUARANTEE IS NO LONGER DIRECTIONAL, which is what moved that row.');
+  lines.push('  `acceptByDiversity` used to test only the NEW candidate against the union of what');
+  lines.push(
+    '  was already accepted, normalised by the CANDIDATE’s length, and never re-tested an',
+  );
+  lines.push(
+    '  earlier route against a later one. Chongjin-Jeju City accepted, in order, `fastest`',
+  );
   lines.push('  (1,391 km), `safest` (1,724) and three Yen backfills at 2,573, 2,690 and 9,068.');
   lines.push(
-    '  `safest` is 80% inside the 2,573 km backfill — but the backfill was accepted AFTER',
+    '  `safest` was 80% inside the 2,573 km backfill — but the backfill arrived AFTER it,',
+  );
+  lines.push('  so the only number ever measured between the two was the backfill’s 53% against');
+  lines.push('  `safest`. The 80% was never looked at by anything, and `maxOverlap` above — which');
+  lines.push('  maximises over ORDERED pairs — reported it while the filter believed it had held');
+  lines.push('  the pair to 70. The report and the filter were measuring different quantities.');
+  lines.push('');
+  lines.push('  THEY NOW MEASURE THE SAME ONE. The forward check stays the union, because that is');
+  lines.push('  what catches a candidate 45% covered by each of two accepted routes. The REVERSE');
+  lines.push('  check is pairwise per accepted route, which makes the filter’s guarantee exactly');
+  lines.push('  `max(overlap(a,b), overlap(b,a)) <= the rung’s threshold` — this column’s own');
+  lines.push(
+    '  definition. A union in reverse would be a strictly stronger claim, would reject far',
+  );
+  lines.push('  more, and nothing asks for it. ADR 0025 Decision 5 records the amendment.');
+  lines.push('');
+  lines.push(
+    '  WHAT IT COSTS IS RUNG ESCALATION, AND SECTION 5 IS WHERE THAT LANDS. Chongjin-Jeju',
   );
   lines.push(
-    '  it, so the only number ever measured between the two is the backfill’s 53% against',
+    '  City resolves at rung 2 rather than rung 1: at a threshold of 70 the two-directional',
   );
-  lines.push('  `safest`. The 80% was never looked at by anything.');
-  lines.push('  The candidate-normalisation is deliberate (ADR 0025 Decision 5 uses it to reject');
+  lines.push('  filter can no longer find three routes there, so the ladder relaxes to 80 and the');
+  lines.push('  pair is admitted at exactly 80. Its 71% floor means no threshold at or below 70');
+  lines.push('  could ever have passed it, so this is the ladder doing its job on an impossible');
+  lines.push('  pair, not the fix failing. More escalation means more Yen, and Yen is ~95% of');
+  lines.push('  `selectPaths`; over repeated runs the mean below moved from ~11.9 ms to ~13.3 ms,');
+  lines.push('  a band that does not overlap the old one. p50 moved ~6%, p90 ~3%, max not at all.');
+  lines.push('');
+  lines.push('  ONE MECHANISM STILL SITS UNDERNEATH THE STRUCTURAL FLOOR, re-measured on the');
+  lines.push('  692-node slice. It does not CAUSE the FAIL above — the floor does that on its own');
+  lines.push('  — but it decides how bad the pair reads:');
+  lines.push('');
+  lines.push('  YEN BACKFILL OFFERS ROUTES NOBODY WOULD DRIVE, and the bigger slice made this');
+  lines.push('  worse rather than better. Marand-Mosul is 466 km direct and returns a 1,401 km');
   lines.push(
-    '  truncations) but its consequence — a one-way guarantee — is still not written down.',
+    '  backfill alongside it, 3.0x. `kShortestPaths` has no length ceiling relative to the',
+  );
+  lines.push('  shortest path, and on a continental graph there is far more room to stray.');
+  lines.push('  Section 4 measures how far this goes across the whole graph.');
+  lines.push('');
+  lines.push('  THE TWO-DIRECTIONAL FILTER MOVED THIS AND DID NOT FIX IT. Chongjin-Jeju City used');
+  lines.push('  to RETURN a 9,068 km route against its 1,391 km shortest — 6.5x, offered as a');
+  lines.push('  choice — and now returns 2,944 km as its longest instead, because escalating to');
+  lines.push(
+    '  rung 2 filled the five slots before reaching it. The 9,068 km route is still in the',
+  );
+  lines.push(
+    '  pool. Nothing bounds how far a backfill may stray; one pair stopped displaying it.',
   );
   lines.push('');
   lines.push(
-    '  TWO: YEN BACKFILL OFFERS ROUTES NOBODY WOULD DRIVE, and the bigger slice made this',
+    '  So a per-pair guarantee IS now something this system makes — but it is a guarantee',
   );
-  lines.push('  worse rather than better. Chongjin-Jeju City is 1,391 km direct and the pool also');
-  lines.push('  holds a 9,068 km route — 6.5x the shortest, offered as a choice. Marand-Mosul is');
-  lines.push('  466 km direct against a 1,401 km backfill, 3.0x. `kShortestPaths` has no length');
-  lines.push('  ceiling relative to the shortest path, and on a continental graph there is far');
-  lines.push('  more room to stray. Section 4 measures how far this goes across the whole graph.');
-  lines.push('');
-  lines.push(
-    '  So a per-pair 70% guarantee is not something this system currently makes. ADR 0025',
-  );
-  lines.push('  gates the MEDIAN over many pairs, which `pnpm geo:diversity` reports and passes.');
+  lines.push('  against the RUNG REACHED, not a flat 70%, and the two are different promises on');
+  lines.push('  any pair the ladder had to escalate. ADR 0025 additionally gates the MEDIAN over');
+  lines.push('  many pairs, which `pnpm geo:diversity` reports and passes.');
   lines.push('');
 
   // ── 2b ───────────────────────────────────────────────────────────────────────────────────
@@ -709,7 +748,7 @@ export function formatVerification(
   lines.push('  mask by design and route 410 and 406 of 410 respectively.');
   lines.push('');
   lines.push('  WHAT IT COSTS IS DIVERSITY, NOT REACHABILITY. The ladder reaches rung 4 (masks');
-  lines.push('  dropped) on only 5 of 200 pairs in `geo:diversity`, so these pairs are not being');
+  lines.push('  dropped) on only 6 of 200 pairs in `geo:diversity`, so these pairs are not being');
   lines.push('  rescued by relaxation — they are being filled by `scenic`, `illicit` and Yen');
   lines.push('  backfill instead. On 31% of pairs the candidate pool is therefore built from two');
   lines.push('  profiles and their alternatives rather than five, which is a quieter failure than');
@@ -826,7 +865,8 @@ export function formatVerification(
   lines.push('  the way past. That is a content-reachability problem, not only a balance one.');
   lines.push('');
   lines.push(
-    '  VERDICT ON THE 35%: CONFIRMED at 142 of 410, and it is NOT an artefact of measuring',
+    `  VERDICT ON THE ${pct(illicitBest.length, sampled)}: CONFIRMED at ${String(illicitBest.length)} of ` +
+      `${String(sampled)}, and it is NOT an artefact of measuring`,
   );
   lines.push(
     '  geometry — it survives the only other generation-time number that exists. But it is',
@@ -1015,6 +1055,10 @@ export function formatBenchmark(graph: GeoGraph, sample: BenchmarkSample): strin
     ['30-39', 30, 39],
     ['40+', 40, Number.MAX_SAFE_INTEGER],
   ];
+  // Kept so the prose below can quote the trend it is describing. Writing those two figures as
+  // literals is how the previous copy came to claim "1.6 ms to 24.7 ms" three lines under a table
+  // printing 2.05 and 26.80 — a millisecond is a clock reading and must never be hardcoded here.
+  const bandMeans = new Map<string, number>();
   for (const [name, lo, hi] of bands) {
     const picked: number[] = [];
     let hopSum = 0;
@@ -1028,6 +1072,7 @@ export function formatBenchmark(graph: GeoGraph, sample: BenchmarkSample): strin
     if (picked.length === 0) continue;
     const m = picked.reduce((s, v) => s + v, 0) / picked.length;
     const meanHops = hopSum / picked.length;
+    bandMeans.set(name, m);
     lines.push(
       `    ${name.padEnd(10)}${String(picked.length).padStart(7)}${m.toFixed(2).padStart(10)}` +
         `${Math.max(...picked)
@@ -1040,7 +1085,14 @@ export function formatBenchmark(graph: GeoGraph, sample: BenchmarkSample): strin
   lines.push('  `ms/hop` RISING FROM THE 10-19 BAND DOWN IS THE POINT. If Yen cost were linear in');
   lines.push('  hops that column would be flat; instead it roughly quadruples from 10-19 to 40+,');
   lines.push('  because each extra hop adds a spur Dijkstra AND every spur Dijkstra runs over a');
-  lines.push('  longer path. Mean time itself goes 1.6 ms to 24.7 ms across those bands.');
+  const lowBand = bandMeans.get('10-19');
+  const highBand = bandMeans.get('40+');
+  lines.push(
+    lowBand === undefined || highBand === undefined
+      ? '  longer path. Mean time itself rises across those bands.'
+      : `  longer path. Mean time itself goes ${lowBand.toFixed(1)} ms to ${highBand.toFixed(1)} ms ` +
+          `across those bands.`,
+  );
   lines.push('');
   lines.push('  THE 0-9 ROW IS NOT PART OF THAT TREND and is not evidence against it: 25 pairs at');
   lines.push('  sub-millisecond totals, where fixed call overhead rather than spur count sets the');

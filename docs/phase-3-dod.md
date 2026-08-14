@@ -114,10 +114,18 @@ pnpm geo:verify
 measured. What this gate requires is that **the output MATCHES THE HANDOFF** in
 `docs/phase-3-verification.md` §8:
 
-1. **Route diversity** — Chongjin–Jeju City 80% (structural, floor 71%) and Valencia–Palermo 85%
-   (a genuine `acceptByDiversity` failure, floor only 34%).
+1. **Route diversity** — Chongjin–Jeju City 80% (structural, floor 71%), now resolving at **rung 2**.
+   **1 of 12 pairs, worst 80%.** Valencia–Palermo was the second row and the only genuine
+   `acceptByDiversity` failure (85%, floor only 34%); **C2 closed it — 63% on three routes, PASS**,
+   verified at 0 post-condition breaches over 1,498 enumerated pairs.
 2. **The `selectPaths` benchmark** — FAIL at p90 and max against the phone budget, PASS at p50.
-3. **`ILLICIT STRICTLY DOMINATES`** — 142 of 410 pairs, 34.6%.
+3. **`ILLICIT STRICTLY DOMINATES`** — 139 of 410 pairs, 33.9%.
+
+> **These three lines were themselves re-measured at C2, because this gate applies to its own
+> summary.** They read "2 of 12 / 85% / a genuine filter failure" and "142 of 410, 34.6%" before,
+> and a gate that restates a stale handoff is the failure it exists to catch. The full re-measure —
+> what moved, what closed, and what is permanent — is `docs/phase-3-verification.md` §3, §4(c)
+> and §8.
 
 **A red gate whose numbers have MOVED since the handoff was written is abandoned, not handed off.**
 The handoff's value is that Phase 4 can reproduce the failure from the number; a stale number sends
@@ -153,9 +161,18 @@ The floor is the overlap forced by edges every candidate must use. So:
 - **Low floor, high overlap** — `filter`. Routes were admitted that did not have to be. **This is
   the only cause that is a failure of ours**, and it is the one the median alone hides.
 
-Reporting the median without the causes is how Valencia–Palermo went unnoticed: on the shipped
-slice `geo:diversity` exits 0 at **median 54% (n = 755)** while its **p90 is 88%**, and a genuine
-filter defect sat inside that pass.
+Reporting the median without the causes is how Valencia–Palermo went unnoticed: it exited 0 at
+**median 54% (n = 755)** with a **p90 of 88%**, and a genuine filter defect sat inside that pass.
+Post-C2 the same command reads **median 53% (n = 747), p90 87%** — the median moved by a point and
+the defect it was hiding is gone, which is the clearest available demonstration that **the median
+was never the instrument that could see it**.
+
+**Read the p90 correctly, because it is NOT the per-pair post-condition.** This command measures
+each accepted route against the **union of all the others**; the union is a superset of every
+pairwise edge set, so the number it prints is never smaller than the worst pairwise overlap the
+filter bounds. A route 87% inside the union of four others can be under 70% against each one
+individually. A fat tail here is a diversity observation; a breach is a pair failing
+`max(overlap(a,b), overlap(b,a)) <= the rung's threshold`, and there are none.
 
 ### 8. Engine purity under bare Node
 

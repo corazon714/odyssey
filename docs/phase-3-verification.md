@@ -10,7 +10,24 @@
 > grid) and is not a rebaselining of anything.
 >
 > **§8 FINDINGS is the part to read if you read one part.** Four failures are recorded there.
-> None of them is fixed. None of them is softened into a caveat.
+> None of them is softened into a caveat.
+>
+> **RE-MEASURED AT C2 (the two-directional diversity filter), and that is why this file moved.**
+> `docs/phase-3-dod.md` gate 6 says a red gate whose numbers have MOVED is abandoned rather than
+> handed off, and requires the new figures to land here in the same commit. C2 moved two of the
+> three handed-off items, so every figure below that depends on `acceptByDiversity` or on the
+> illicit sweep has been re-measured from `pnpm geo:verify` and `pnpm geo:diversity` on the C2 tree.
+>
+> **One finding is now CLOSED and it is marked closed, not deleted.** Finding 1's filter half —
+> Valencia–Palermo — was the only genuine `acceptByDiversity` failure in the twelve and C2 fixed it.
+> The structural half survives and always will. Keeping both is the point: `floorPercent` was built
+> to make the difference between a structural breach and a filter breach measurable, and a record
+> that erased the filter breach once it was fixed would have erased the evidence that the
+> distinction works.
+>
+> **Milliseconds in §5 are NOT re-measured, by the same gate's instruction.** They move on every
+> run; what §5 hands off is the verdict per statistic and the attribution. C2's effect on them is
+> stated as a verdict-preserving regression, not as a new table.
 
 ---
 
@@ -99,20 +116,40 @@ of the first route.
 
 | pair                     | band                |     km | hops | legs | mtg | days | cash | mode  | brdr | fry | toll | hard | rts | ovlp | rung |
 | ------------------------ | ------------------- | -----: | ---: | ---: | --: | ---: | ---: | ----- | ---: | --: | ---: | ---: | --: | ---: | ---: |
-| Marand–Mosul             | 250–500             |    466 |    3 |   15 |   0 |  2.8 |  316 | car   |    1 |   0 |    0 |    2 |   5 |  50% |    1 |
-| Belgrade–Burgas          | 500–1,000           |    950 |    4 |   20 |   0 |  2.8 |  394 | train |    1 |   0 |    0 |    4 |   5 |  59% |    1 |
-| Chongjin–Jeju City       | 1,000–2,000         |  1,391 |    4 |   22 |   0 |  3.1 |  466 | train |    1 |   0 |    0 |    4 |   5 |  80% |    1 |
-| Guangyuan–Monywa         | 2,000–3,000         |  2,754 |    7 |   22 |   0 |  5.8 |  685 | car   |    1 |   0 |    0 |    4 |   4 |  70% |    0 |
-| Kampala–Kinshasa         | 3,000–4,500         |  3,016 |    5 |   23 |   0 |  6.2 |  830 | car   |    2 |   0 |    0 |    4 |   3 |  43% |    0 |
-| Lampang–Mianwali         | 4,500–6,000         |  4,807 |   14 |   30 |   1 |  8.5 | 1222 | car   |    3 |   0 |    0 |    4 |   3 |  39% |    0 |
-| Molde–Montana            | 6,000–8,000         |  7,345 |   20 |   32 |   2 | 10.5 | 1941 | car   |    6 |   0 |    0 |    4 |   3 |  25% |    0 |
-| Palermo–Riyadh           | 8,000–10,000        |  9,787 |   35 |   45 |   3 |  9.8 | 2852 | train |   11 |   4 |    1 |    4 |   3 |  69% |    1 |
-| Sambalpur–Slavonski Brod | 10,000–13,000       | 10,333 |   32 |   48 |   8 | 10.1 | 2527 | train |    7 |   0 |    1 |    4 |   4 |  54% |    0 |
-| Tianshui–Toulouse        | 13,000+             | 17,698 |   46 |   48 |   9 | 14.2 | 4023 | train |   10 |   0 |    0 |    4 |   5 |  60% |    0 |
-| Ankara–Canakkale         | _kind: border-free_ |    778 |    3 |   15 |   0 |  2.3 |  232 | car   |    0 |   0 |    0 |    2 |   5 |  68% |    1 |
-| Valencia–Palermo         | _kind: ferry_       |  2,414 |    9 |   22 |   1 |  4.6 | 1006 | train |    4 |   4 |    0 |    4 |   4 |  85% |    1 |
+| Marand–Mosul             | 250–500             |    466 |    3 |   15 |   0 |  2.5 |  316 | car   |    1 |   0 |    0 |    2 |   5 |  50% |    1 |
+| Belgrade–Burgas          | 500–1,000           |    950 |    4 |   20 |   0 |  2.4 |  394 | train |    1 |   0 |    0 |    4 |   5 |  59% |    1 |
+| Chongjin–Jeju City       | 1,000–2,000         |  1,391 |    4 |   22 |   0 |  2.6 |  466 | train |    1 |   0 |    0 |    4 |   5 |  80% |    2 |
+| Guangyuan–Monywa         | 2,000–3,000         |  2,754 |    7 |   22 |   0 |  5.3 |  685 | car   |    1 |   0 |    0 |    4 |   4 |  70% |    0 |
+| Kampala–Kinshasa         | 3,000–4,500         |  3,016 |    5 |   23 |   0 |  5.7 |  830 | car   |    2 |   0 |    0 |    4 |   3 |  43% |    0 |
+| Lampang–Mianwali         | 4,500–6,000         |  4,807 |   14 |   30 |   1 |  7.9 | 1222 | car   |    3 |   0 |    0 |    4 |   3 |  39% |    0 |
+| Molde–Montana            | 6,000–8,000         |  7,345 |   20 |   32 |   2 |  9.8 | 1941 | car   |    6 |   0 |    0 |    4 |   3 |  25% |    0 |
+| Palermo–Riyadh           | 8,000–10,000        |  9,787 |   35 |   45 |   3 |  8.9 | 2852 | train |   11 |   4 |    1 |    4 |   3 |  69% |    1 |
+| Sambalpur–Slavonski Brod | 10,000–13,000       | 10,333 |   32 |   48 |   8 |  9.1 | 2527 | train |    7 |   0 |    1 |    4 |   4 |  54% |    0 |
+| Tianshui–Toulouse        | 13,000+             | 17,698 |   46 |   48 |   9 | 13.2 | 4023 | train |   10 |   0 |    0 |    4 |   5 |  60% |    0 |
+| Ankara–Canakkale         | _kind: border-free_ |    778 |    3 |   18 |   0 |  3.8 |  263 | car   |    0 |   0 |    1 |    1 |   5 |  68% |    1 |
+| Valencia–Palermo         | _kind: ferry_       |  2,414 |    9 |   22 |   0 |  5.0 |  837 | car   |    3 |   4 |    0 |    4 |   3 |  63% |    1 |
 
 Two rows sit on the 48-leg cap (Sambalpur, Tianshui) — exercised, not saturated.
+
+### What moved in this table since it was first written, and who moved it
+
+- **`days`, every row — C1, not C2.** `5de121b` made the leg jitter symmetric, so `travelHours`
+  dropped by `ceil(legCount / 2)` on every route. C1 did not update this file; the sweep for gate 6
+  caught it. Nothing else in the ten printed rows moved: `km`, `hops`, `legs`, `mtg`, `cash`,
+  `mode`, `brdr`, `fry`, `toll` and `hard` all still reproduce byte-for-byte off `pnpm geo:verify`.
+- **Chongjin–Jeju City `rung` 1 → 2, and Valencia–Palermo `rts` 4 → 3 with `ovlp` 85% → 63% — C2.**
+  §3 is where both are explained.
+- **THE TWO `KIND_PAIRS` ROWS WERE WRONG AND NOBODY COULD HAVE NOTICED.** `geo:verify` prints the
+  ten banded pairs in its own section 1 table and does **not** print Ankara–Canakkale or
+  Valencia–Palermo there, so those two rows were hand-carried and never re-checked against the
+  command. Re-derived here through the exact calls the header below names — `previewsFor(...)[0]`
+  and `factsFor` — which were first validated by reproducing all ten printed rows exactly. Ankara
+  moves `legs` 15 → 18, `days` 2.3 → 3.8, `cash` 232 → 263, `toll` 0 → 1, `hard` 2 → 1; Valencia
+  moves `mtg` 1 → 0, `cash` 1006 → 837, `mode` train → car, `brdr` 4 → 3. **None of that is C1's or
+  C2's**: neither touched `legCount`, `recommendedCash` or the geo artifacts, and C2 provably left
+  Ankara's accepted set identical (`fastest` 778, `cheapest` 769, then 1,198 / 1,426 / 1,528 under
+  both filters). The rows were transcription drift, and the mechanism that hid them is that a row
+  the gate does not print is a row the gate cannot check.
 
 ### The four columns that did not exist, and how each was derived
 
@@ -136,13 +173,15 @@ Two rows sit on the 48-leg cap (Sambalpur, Tianshui) — exercised, not saturate
 
 ## 3. Item 3 — route diversity. **VERDICT: FAIL**
 
-**2 of 12 pairs exceed the 70% ceiling. Worst seen 85%.**
+**1 of 12 pairs exceeds the 70% ceiling — 1 structural, 0 filter. Worst seen 80%.** Re-measured on
+the C2 tree; it read **2 of 12, worst 85%** when this section was written, and the row that left is
+the filter one.
 
 | pair                     | rts | worst | floor | deg | rung | verdict               |
 | ------------------------ | --: | ----: | ----: | --- | ---: | --------------------- |
 | Marand–Mosul             |   5 |   50% |    0% | 4,5 |    1 | PASS                  |
 | Belgrade–Burgas          |   5 |   59% |    0% | 7,4 |    1 | PASS                  |
-| **Chongjin–Jeju City**   |   5 |   80% |   71% | 4,1 |    1 | **FAIL — STRUCTURAL** |
+| **Chongjin–Jeju City**   |   5 |   80% |   71% | 4,1 |    2 | **FAIL — STRUCTURAL** |
 | Guangyuan–Monywa         |   4 |   70% |    0% | 7,4 |    0 | PASS                  |
 | Kampala–Kinshasa         |   3 |   43% |    0% | 5,6 |    0 | PASS                  |
 | Lampang–Mianwali         |   3 |   39% |   18% | 5,5 |    0 | PASS                  |
@@ -151,7 +190,7 @@ Two rows sit on the 48-leg cap (Sambalpur, Tianshui) — exercised, not saturate
 | Sambalpur–Slavonski Brod |   4 |   54% |    0% | 5,5 |    0 | PASS                  |
 | Tianshui–Toulouse        |   5 |   60% |    0% | 6,5 |    0 | PASS                  |
 | Ankara–Canakkale         |   5 |   68% |    0% | 4,3 |    1 | PASS                  |
-| **Valencia–Palermo**     |   4 |   85% |   34% | 4,1 |    1 | **FAIL — FILTER**     |
+| Valencia–Palermo         |   3 |   63% |   34% | 4,1 |    1 | PASS — _was_ 4 / 85%  |
 
 ### Structural vs real is now MEASURED, not asserted
 
@@ -167,7 +206,21 @@ totalling 1,000 km appear in all five routes. Shortest route 1,391 km ⇒ floor 
 past the ceiling before any filtering runs. Jeju City is degree-1 and its sole edge is 630 km of
 that 1,000; the other 370 km is the neck out of Chongjin. Full matrix: route[0] reads 71% against
 every one of the other four, so it cannot pass. The 80% cell is `safest` (1,724 km) against a
-2,573 km Yen backfill.
+2,573 km Yen backfill — measured directly at 80% one way and 53% the other.
+
+**It now resolves at rung 2 rather than rung 1, and that is C2's price rather than C2 failing.**
+Under the two-directional filter a threshold of 70 admits **one** route here — the 1,391 km
+`fastest`, after which every remaining candidate is rejected because that first route sits 71%
+inside it — so the ladder relaxes to 80 and the pair is admitted at exactly 80. The 71% floor means
+no threshold at or below 70 could ever have passed it, so escalating is the ladder doing its job on
+an impossible pair. What escalation costs is Yen, and Yen is ~95% of `selectPaths`; §5 is where
+that lands.
+
+**The returned set changed even though the 80% did not.** It used to be 1,391 / 1,724 / 2,573 /
+2,690 / **9,068** km — a 6.5× detour offered as a choice. At rung 2 it is 1,391 / 1,724 / 2,573 /
+2,690 / **2,944**, because the five slots fill before the search reaches the 9,068 km route. The
+9,068 km route is still in the pool and nothing bounds how far a backfill may stray; one pair
+stopped displaying it. That is a display accident, not a fix — §4's detour tail is still open.
 
 ### The framing has to be corrected: degree-1 is the CAUSE, not the TEST
 
@@ -176,19 +229,61 @@ unavoidable ferry — and it **PASSES at 69%**, because 1,525 km of forced edge 
 9,787 km journey. A degree-1 endpoint breaks diversity **in proportion to how much of the route it
 forces**. That is why the floor is the verdict and the degree is context.
 
-### New finding: Valencia–Palermo, 85%, a GENUINE filter failure
+### Valencia–Palermo, 85%, a GENUINE filter failure — **FOUND HERE, CLOSED BY C2**
 
-Surfaced by the supplementary ferry row. Same degree-1 island — but floor only **34%**. Two thirds
-of the route was free to vary and the filter returned 85% anyway. Nothing structural forced it.
-This is the only real diversity-filter failure in the twelve, and the mechanism is the known
-directional defect: `acceptByDiversity` tests each new candidate against the union of what is
-**already** accepted, and never re-tests an earlier route against a later one.
+**What the finding was.** Surfaced by the supplementary ferry row. Same degree-1 island as
+Chongjin — but floor only **34%**. Two thirds of the route was free to vary and the filter returned
+85% anyway. Nothing structural forced it. This was the only real diversity-filter failure in the
+twelve, and the mechanism was a directional defect: `acceptByDiversity` tested each new candidate
+against the union of what was **already** accepted, normalised by the CANDIDATE's own length, and
+never re-tested an earlier route against a later one.
 
-### The median gate still passes, and that is the problem
+**What closed it.** C2 added a reverse pass — pairwise per accepted route — so the filter now bounds
+`max(overlap(a,b), overlap(b,a))` over every accepted pair, which is exactly the quantity the
+`worst` column above reports. ADR 0025 Decision 5 carries the amendment. The pair now reads **63% on
+three routes and PASSES**, and an independent enumeration over the whole 692-node slice — 1,498
+pairs, 5,498 accepted routes — finds **0 post-condition breaches**. The same enumeration under the
+pre-C2 filter breaches on **386 of those 1,498 pairs** (900 ordered route-pairs, worst 96% against
+its own rung's threshold). C2's own run reported 388; the two-pair gap is the harness that stands in
+for the old ladder, not the filter, and is recorded rather than smoothed. **What it cost is 72
+routes of 5,570 — 1.3%** — spread as one fewer alternative on some pairs, not as a pair losing its
+minimum.
 
-`pnpm geo:diversity` exits 0 at median **54%** (n = 755). Its **p90 is 88%.** The median passes
-and the tail badly fails. The honest reading of "no two routes share more than 70%" is that **as a
-per-pair guarantee the system does not make it.**
+**The new three are not the old four minus one, and the difference is the whole mechanism.** Old
+accepted set: `fastest` 2,414 / `scenic` 3,579 / `fastest`+Yen 2,819 / `safest`+Yen 3,975. New:
+`fastest` 2,414 / `fastest`+Yen 2,819 / `scenic`+Yen 3,737. **The 85% cell was the FIRST route
+sitting inside the FOURTH** — 2,414 km is 85% inside the 3,975 km backfill, a number nothing ever
+computed because the backfill arrived after it. So the route being swallowed was route 1, the
+swallower was route 4, and it is the swallower that the reverse check now rejects. Two of the old
+four are gone (3,579 at 71% and 3,975 at 85%, both caught in reverse) and one route the old filter
+never reached — 3,737 — takes a slot in their place.
+
+**Why this row is kept rather than deleted.** `floorPercent` exists to tell a structural breach from
+a filter breach. Valencia–Palermo is the only case on record where the classifier said "filter", the
+filter was then fixed, and the row moved to PASS — while Chongjin–Jeju City, classified
+"structural", did not move and cannot. That pairing is the evidence the metric works, and it is only
+legible if both halves stay on the page.
+
+### The median gate passes, and the tail is still the problem
+
+`pnpm geo:diversity` exits 0 at median **53%** (n = 747, p10 12%). Its **p90 is 87%.** Re-measured
+post-C2; it read median 54% (n = 755) with p90 88% before. The median barely moved, which is the
+point `docs/phase-3-dod.md` §7 makes: **the median was never the instrument that could see this.**
+
+**And the p90 was never going to move much either, because it is not the post-condition.**
+`geo:diversity` measures each accepted route against the **union of all the others**, which is a
+strictly stronger quantity than what C2 guarantees: the union is a superset of every pairwise edge
+set, so overlap-against-the-union is never smaller than the worst pairwise overlap. A route can sit
+87% inside the union of four others while being under 70% against each one individually — that is
+the 45%-plus-45% case, and it is a diversity observation rather than a breach. **The two numbers to
+keep apart are therefore:** the per-pair guarantee, which the system now DOES make and which the
+enumeration above verified at 0 breaches; and this union statistic, which nothing bounds and which
+still has a fat tail.
+
+What is genuinely weaker than the flat claim is the threshold: the guarantee is against **the rung
+the pair was accepted at**, not a flat 70%. On the 200-pair sample the ladder reaches rung 2 on 19
+pairs and rung 3 on 21, so **40 of 200 pairs are held to 80% or 90% rather than to 70%** — and
+Chongjin–Jeju City is one of them by structural necessity.
 
 ### 3a. Endpoint degrees — all 20, plus the slice
 
@@ -230,9 +325,15 @@ travelling".
 
 ### (b) ONLY ONE ROUTE — 0 of 410
 
-### (c) ILLICIT STRICTLY DOMINATES — **142 of 410 = 34.6%. CONFIRMED.**
+### (c) ILLICIT STRICTLY DOMINATES — **139 of 410 = 33.9%. CONFIRMED.**
 
-(An illicit route is returned at all on 375 of 410, so the rate among pairs that have one is 38%.)
+Re-measured post-C2; it read **142 of 410 = 34.6%** before. Three pairs left the set, and the cause
+is the same escalation §3 describes: dominance is measured against the routes `selectPaths`
+RETURNS, so a pair whose returned set changed can change verdict without any cost function moving.
+**The finding is unmoved in every way that matters** — a third of the graph, the same ten exemplars
+printed by the report, and `Durban → El Bayadh` still at 0 crossings against 32.
+
+(An illicit route is returned at all on 377 of 410, so the rate among pairs that have one is 37%.)
 
 **What "strictly better" is measured on.** `verifyPair` tests three **geometric** facts about the
 path: illicit is shorter than every other returned route, crosses no more borders, and crosses no
@@ -244,12 +345,15 @@ crossing and population penalties, so it is close to a distance-minimiser that d
 posts, which is what two of the three tests reward. **So preparation cost was added and measured.
 The hypothesis was WRONG, and the measurement is reported, not the hypothesis:**
 
-| test                                | result                             |
-| ----------------------------------- | ---------------------------------- |
-| geometric dominance                 | 142 of 410 (35%)                   |
-| **also cheapest to prepare**        | 137 of 410 (33%) — **96% survive** |
-| illicit distance ÷ best alternative | mean 0.827, median 0.870           |
-| controlled crossings AVOIDED        | mean 16.4, median 14               |
+| test                                | result                             | before C2        |
+| ----------------------------------- | ---------------------------------- | ---------------- |
+| geometric dominance                 | 139 of 410 (34%)                   | 142 of 410 (35%) |
+| **also cheapest to prepare**        | 133 of 410 (32%) — **96% survive** | 137 of 410 (33%) |
+| illicit distance ÷ best alternative | mean 0.825, median 0.865           | 0.827 / 0.870    |
+| controlled crossings AVOIDED        | mean 16.4, median 14               | unmoved          |
+
+**96% of the dominant set survives the cash test on both sides of C2**, which is the number the
+hypothesis was tested against, and it did not move by a single point.
 
 **The crossing count is the whole story.** `recommendedCash` charges 45 per crossing; a dominant
 illicit route avoids a median of 14 (~630 cash), swamping the 125%-vs-85% `PROFILE_COST` handicap.
@@ -275,15 +379,32 @@ one at a time: relaxing **season** alone takes fastest/cheapest 126 → 0; `safe
 terrain, then also 0. The entire effect comes from **38 `winter_closed` edges of 1,215 (3%), none
 flagged `unavoidable`.**
 
-The cost is **diversity, not reachability**: the ladder reaches rung 4 on only 5 of 200 pairs, so
-on 31% of pairs the pool is built from `scenic`, `illicit` and Yen backfill rather than five
-profiles. `mark-unavoidable.ts` exists and has evidently set the flag on none of the 38.
+The cost is **diversity, not reachability**: the ladder reaches rung 4 on only 6 of 200 pairs (5
+before C2), so on 31% of pairs the pool is built from `scenic`, `illicit` and Yen backfill rather
+than five profiles. `mark-unavoidable.ts` exists and has evidently set the flag on none of the 38.
 
 ---
 
 ## 5. Item 4b — the performance benchmark. **VERDICT: FAIL at p90 and max**
 
 692 nodes / 1,215 edges, 200 pairs, Node v26 / V8.
+
+> **THE MILLISECONDS BELOW ARE ONE SAMPLE AND ARE NOT RE-MEASURED HERE, BY INSTRUCTION.**
+> `docs/phase-3-dod.md` gate 6 carves this item out of its own re-measure rule precisely because it
+> is a wall-clock reading: run `pnpm geo:verify` twice on an unchanged tree and it moves. What this
+> section hands to Phase 4 is the **verdict per statistic**, the **attribution**, and the
+> break-even multipliers to about one decimal. Reprinting a fresh table every commit would dress
+> the clock up as a finding.
+>
+> **C2's effect on it is real and is stated as a verdict-preserving regression.** The
+> two-directional filter pushes pairs up the rung ladder, escalation means more Yen, and Yen is
+> ~95% of the call. Over repeated runs the **mean moved ~11.9 ms → ~13.3 ms, bands not
+> overlapping** — about 11.6%. p50 moved ~6%, p90 ~3%, max not at all. **No verdict changed: PASS at
+> mean, PASS at p50, FAIL at p90, FAIL at max, exactly as below.** The break-even multipliers slide
+> with the clock — mean's sat at 12.9× and now reads ~11.3× — but they slide inside their own
+> run-to-run noise and none of them crosses a defensible phone multiplier in either direction.
+> ADR 0025 records the regression as accepted: a diversity guarantee the report can contradict is
+> not a guarantee.
 
 | Node/V8 per call    |  mean |  p50 |   p90 |    max |
 | ------------------- | ----: | ---: | ----: | -----: |
@@ -1059,37 +1180,61 @@ Ranked by how cheaply the measurement could be made and how decisively it would 
 
 ## 8. FINDINGS
 
-**Four failures. None is fixed. None is a caveat.**
+**Four failures. ONE IS NOW FIXED — the filter half of Finding 1, closed by C2 and marked closed
+below. The other three stand, and none is a caveat.**
 
-### FINDING 1 — Route diversity FAILS on 2 of 12 named pairs, and the median gate hides it
+### FINDING 1 — Route diversity FAILS on 1 of 12 named pairs. **The filter half is CLOSED; the structural half is permanent.**
 
-**Chongjin–Jeju City: 80% worst overlap against a 70% ceiling. STRUCTURAL.** Floor 71% — the pair
-was unpassable before any filtering ran. Cause: Jeju City is degree-1, its sole 630 km edge is
-forced into all five routes. **This is the same defect the old Barcelona–Zaragoza row was removed
-for. It was kept this time.**
+**Chongjin–Jeju City: 80% worst overlap against a 70% ceiling. STRUCTURAL. STILL OPEN, AND NO FILTER
+CAN CLOSE IT.** Floor 71% — the pair was unpassable before any filtering ran. Cause: Jeju City is
+degree-1, its sole 630 km edge is forced into all five routes. **This is the same defect the old
+Barcelona–Zaragoza row was removed for. It was kept this time.** Post-C2 it resolves at **rung 2**
+rather than rung 1, because a two-directional filter at 70 can find only one route here and the
+ladder must relax to 80. **The fix for it is an edge — a ferry or a second corridor — never a
+filter**, and that is Finding 4's territory.
 
-**Valencia–Palermo: 85%. A GENUINE FILTER FAILURE, newly surfaced.** Floor only 34% — two thirds of
-the route was free to vary and the filter returned 85% anyway. Mechanism: `acceptByDiversity` tests
-each new candidate against the union of what is **already** accepted and never re-tests an earlier
-route against a later one.
+**Valencia–Palermo: 85%, a GENUINE FILTER FAILURE. FOUND HERE. CLOSED BY C2.** Floor was only 34% —
+two thirds of the route was free to vary and the filter returned 85% anyway. Mechanism:
+`acceptByDiversity` tested each new candidate against the union of what was **already** accepted and
+never re-tested an earlier route against a later one, so an accepted route could be swallowed by one
+admitted after it and nothing looked. C2 added a pairwise reverse pass; the filter's guarantee is
+now `max(overlap(a,b), overlap(b,a)) <= the rung's threshold`, which is exactly what `geo:verify`
+reports. The pair reads **63% on three routes and PASSES**. Verified by independent enumeration over
+the 692-node graph: **1,498 pairs, 5,498 accepted routes, 0 post-condition breaches — against 386 of
+the same 1,498 pairs breaching under the old filter**, at a cost of 72 routes (1.3%) across the
+sample. §3 has the mechanism and ADR 0025 Decision 5 has the amendment.
 
 **Do not read "degree-1" as the test.** Palermo–Riyadh is degree-1 with a forced ferry and PASSES
 at 69%, because the forced edge is only 15% of a 9,787 km journey. The **floor** is the verdict;
-degree is context.
+degree is context. **That distinction is now load-bearing rather than decorative**: it predicted
+which of these two rows a filter change could move, and it was right about both.
 
-**19 of 411 settlements on the shipped slice are degree-1.** Every one is a latent recurrence.
+**19 of 411 settlements on the shipped slice are degree-1.** Every one is a latent recurrence of the
+STRUCTURAL half. None is a latent recurrence of the filter half any more.
 
-**`pnpm geo:diversity` still exits 0 at median 54% — and its p90 is 88%.** The median passes and
-the tail badly fails. **As a per-pair guarantee, "no two routes share more than 70%" is not a
-promise this system keeps.**
+**`pnpm geo:diversity` still exits 0 at median 53% — and its p90 is 87%.** But read that p90
+correctly: it is each route against the **union of all the others**, a strictly stronger quantity
+than the per-pair post-condition, so a fat tail there is not a breach. **As a per-pair guarantee,
+"no two routes share more than 70%" is now a promise this system keeps — against the threshold of
+the rung the pair was accepted at.** On the 200-pair sample, 40 pairs are held to 80% or 90% rather
+than 70% because the ladder escalated. That weaker-but-true statement is the one to hand forward.
 
 ### FINDING 2 — The `selectPaths` benchmark FAILS its budget at p90 and max
 
-Node/V8: mean 11.63 ms, p50 0.91, p90 42.11, max 122.95. At the 6× phone multiplier against a
-150 ms budget: mean 69.8 **PASS**, p50 5.5 **PASS**, p90 252.7 **FAIL**, max 737.7 **FAIL**.
+**The handoff here is the verdict per statistic, not the milliseconds** — they move on every run and
+`docs/phase-3-dod.md` gate 6 says so explicitly. At the 6× phone multiplier against a 150 ms budget:
+mean **PASS**, p50 **PASS**, p90 **FAIL**, max **FAIL**. The sample behind that (Node/V8: mean
+11.63 ms, p50 0.91, p90 42.11, max 122.95 → 69.8 / 5.5 / 252.7 / 737.7 on the phone estimate) is one
+reading, kept for scale.
 
-**The multiplier is not load-bearing.** Break-even: `max` needs ≤1.22×, `p90` needs ≤3.56×.
-**p90 and max fail at 4×, 6× and 8× alike.**
+**C2 made it ~11.6% slower in the mean and changed no verdict.** Two-directional filtering pushes
+pairs up the rung ladder, escalation buys more Yen, and Yen is ~95% of the call: mean ~11.9 → ~13.3
+ms over repeated runs with non-overlapping bands, p50 ~6%, p90 ~3%, max unmoved. **Verdict-preserving
+regression, accepted in ADR 0025** — the alternative was a diversity guarantee `geo:verify` could
+contradict.
+
+**The multiplier is not load-bearing.** Break-even: `max` needs ≤~1.2×, `p90` needs ≤~3.5×.
+**p90 and max fail at 4×, 6× and 8× alike**, and that is true on both sides of C2.
 
 **~95% of the call is Yen backfill** (5 raw Dijkstras are 0.63 ms mean), and cost is **super-linear
 in hop count** — ms/hop quadruples from 0.115 (10–19 hops) to 0.511 (40+). Hops went 19 → 59 with
@@ -1107,14 +1252,17 @@ carries the measurement; the code was reverted rather than shipped. **The open f
 the NUMBER of spur searches, not the cost of each — unmeasured, and nobody should quote it as a
 plan until it is.**
 
-### FINDING 3 — `ILLICIT STRICTLY DOMINATES` on 34.6% of pairs, and it is not a metric artefact
+### FINDING 3 — `ILLICIT STRICTLY DOMINATES` on 33.9% of pairs, and it is not a metric artefact
 
-**142 of 410 (35%), confirmed on the current slice.** §4's own text calls anything above 0 a design
-bug. **It still has no owner.**
+**139 of 410 (34%), re-measured post-C2** — it was 142 of 410 (34.6%) when this was written, and the
+three pairs that left are pairs whose RETURNED route set changed under the new filter, not pairs
+whose economics changed. §4's own text calls anything above 0 a design bug. **It still has no
+owner.**
 
 The obvious defence — that the three geometric tests are near-tautological for a distance-minimiser
 that dodges border posts — was tested and **failed**. Adding preparation cost:
-**137 of 410 (33%) are also cheapest to prepare — 96% of the dominant set survives.**
+**133 of 410 (32%) are also cheapest to prepare — 96% of the dominant set survives**, the identical
+survival rate measured on both sides of C2.
 
 **The mechanism is the crossing count.** `recommendedCash` charges 45 per crossing; a dominant
 illicit route avoids a **median of 14** (~630 cash), swamping the 125%-vs-85% `PROFILE_COST`
@@ -1164,9 +1312,12 @@ unreachable by geometry.
 
 - **38 `winter_closed` edges of 1,215 (3%), none flagged `unavoidable`**, cause 126 of 410 rung-0
   refusals for `fastest`/`cheapest`/`safest`. The cost is diversity, not reachability: the ladder
-  reaches rung 4 on only 5 of 200 pairs, so on 31% of pairs the pool is built from `scenic`,
-  `illicit` and Yen backfill. `mark-unavoidable.ts` exists and has set the flag on none of them.
-- **`acceptByDiversity`'s directional guarantee** (Finding 1's mechanism).
+  reaches rung 4 on only 6 of 200 pairs (5 before C2), so on 31% of pairs the pool is built from
+  `scenic`, `illicit` and Yen backfill. `mark-unavoidable.ts` exists and has set the flag on none.
+- ~~**`acceptByDiversity`'s directional guarantee**~~ (Finding 1's mechanism) — **CLOSED at C2.**
+  The filter now bounds the same quantity `verifyPair` reports; 0 post-condition breaches over 1,498
+  enumerated pairs. The cost was ~11.6% on the `selectPaths` mean and one extra pair escalated to
+  rung 4; Finding 2's verdicts are unchanged by both.
 - **§4's wording** printed a geometric test as though it were a cost-function claim.
 - **Four of six beat types are unfillable** by the shipped corpus. §7 is built on a ceiling that
   assumes this, and §7.7 item 1 is the measurement that would retire it.
@@ -1240,7 +1391,7 @@ checkable and no geo file carries a country code. CLAUDE.md §11 holds throughou
 | `pnpm content:lint`  | **CLEAN** — 0 errors; 1 pre-existing unrelated warning, `MISSING_IMAGE_MANIFEST`  |
 | `pnpm format:check`  | **CLEAN** — three geo-build files needed `--write`; formatting only, no behaviour |
 | `pnpm sim:diff`      | **NOT RUN AND NOT REQUIRED** — no engine behaviour changed                        |
-| `pnpm geo:diversity` | still exits 0, median 54%                                                         |
+| `pnpm geo:diversity` | still exits 0, median 54% — **53% (n = 747) post-C2**                             |
 
 **DoD 6 is not triggered.** Every code edit is in `packages/tools/geo-build/`; `packages/engine` is
 untouched. No goldens, no baselines. New behaviour has tests: 17 in `route-structure.test.ts` plus
@@ -1272,6 +1423,10 @@ every committed deterministic statistic byte-for-byte.
 | fixes the p90/max benchmark | **FALSE** — both fail at every ratio, 1.10× included      |
 | deletes the detour tail     | **FALSE** — max 10.71× at every ratio                     |
 | dents illicit dominance     | **FALSE** — 142 of 410 at every ratio, not one pair moved |
+
+The sweep's control was the pre-C2 filter, so its 142 is the pre-C2 count; §4(c) reads 139 today.
+The numbers are left as they were measured — re-stating a refuted sweep against a tree it never ran
+on would be inventing an experiment — and the claim it refutes is unaffected either way.
 
 **Why the benchmark claim was wrong, and it is the transferable part.** The attribution was right
 (Yen is ~95% of the call) and the inference from it was wrong. Yen runs one Dijkstra _per spur node
