@@ -212,8 +212,80 @@ const LEG_BAND_MAX = 48;
  * "take the best" concentrates rather than spreads. Same class of error as the shared-destination
  * set: the ranking, not the measurement, decides the shape.
  *
- * All five cross borders, and all five yield the full five candidate routes. That is not a second constraint, it is what long routes on this slice
- * do; the intra-country pairs the previous list kept for contrast were all short.
+ * All six cross borders. FIVE of the six yield the full five candidate routes; Beira-Aktobe
+ * yields THREE, and that is measured rather than assumed — see the paragraph below. **Route count
+ * is not route health**, and Nairobi-Segezha is the pair that proves it: it yields five, and it
+ * does so out of the same collapsed generator Beira-Aktobe has. The correction is at the bottom
+ * of this comment.
+ *
+ * ## The sixth pair, and why the leg-bucket constraint is AMENDED rather than kept
+ *
+ * C2 made `acceptByDiversity` two-directional and correct, and the corpus fell 25 routes to 23.
+ * The whole loss is at ONE pair. Measured at `YEN_K = 6`: Beira-Aktobe's five profile cost
+ * functions produce only **2 distinct shortest paths**, so its candidate pool is 12 where the
+ * other pairs' are 14-29, the ladder climbs to rung 3 (overlap 90) and every remaining candidate
+ * there overlaps an accepted route by **91-98%**. The filter is not over-rejecting; the generator
+ * is under-supplying, and the three routes that survive are `scenic`, `illicit`, `illicit` —
+ * one endpoint pair contributing the SAME profile twice.
+ *
+ * That is also why the >500 h tail was two routes, both from this pair: `illicit` starts on a
+ * truck and its cost function detours around controls, so it is systematically the slowest
+ * profile (median 490 h against 284 h for the next-slowest, `scenic`/car), and at 48 legs the LEG
+ * cap saturates while kilometres and hours keep climbing. A leg bucket is therefore a poor proxy
+ * for the long-hour regime, which is the constraint that actually needed spreading.
+ *
+ * So the third constraint becomes ONE PAIR PER LEG BUCKET, **except the 46-48 bucket, which
+ * takes two** — because that bucket is where the hour tail lives and a floor measured over a
+ * regime carried by a single endpoint pair is measuring that pair, not the regime.
+ *
+ * The sixth pair was picked under a constraint stated BEFORE the search ran, which is the
+ * discipline the two degenerate re-picks lacked:
+ *
+ * 1. both endpoints >=900 km from all ten already chosen (the existing separation rule, extended);
+ * 2. all five routes inside the 22-48 leg band;
+ * 3. **five DISTINCT profiles** among the plans `generateRoutes` returns — intended to exclude
+ *    Beira-Aktobe's collapse. **It did not. See the correction below.**
+ * 4. longest route at 46-48 legs and above 400 travel hours, i.e. the regime the breaching
+ *    routes occupy;
+ * 5. **the MEDIAN of the qualifying set by that hour figure, never the maximum.** 94 pairs
+ *    qualified, spanning 401-631 h. Taking the extreme is exactly what produced five pairs at
+ *    the 48-leg cap last time; a median of an already-constrained set cannot saturate.
+ *
+ * ## CORRECTION: constraint 3 did not do the work it was written to do
+ *
+ * It was written to guarantee that the sixth pair could not "import the same collapse under a
+ * healthier-looking count". Adversarial review measured the sixth pair against the same
+ * instruments Beira-Aktobe was measured with, and the collapse is IDENTICAL:
+ *
+ * | measured at `YEN_K = 6`        | Beira-Aktobe | Nairobi-Segezha | the healthy four |
+ * | ------------------------------ | ------------ | --------------- | ---------------- |
+ * | distinct profile shortest paths| 2 of 5       | **2 of 5**      | 2, 2, 5, 5       |
+ * | profiles with NO path at all   | 3 of 5       | **3 of 5**      | 0 of 5           |
+ * | pool B (profiles + Yen)        | 12           | **12**          | 14, 24, 29, 28   |
+ * | rung the ladder had to reach   | 3            | **4**           | 1, 1, 0, 0       |
+ * | plans returned                 | 3            | 5               | 5, 5, 5, 5       |
+ *
+ * `fastest`, `cheapest` and `safest` return NO PATH at rung-0 masks on BOTH pairs. Both therefore
+ * enter the ladder with a two-path pool. The only thing that differs is where they stop: at rung 3
+ * Beira-Aktobe has already collected three routes and the loop breaks, while Nairobi-Segezha has
+ * not, so it climbs to rung 4 — **masks dropped** — where its pool goes 12 -> 29 and five routes
+ * appear. Those five carry five distinct profile LABELS, but they are labels applied after the
+ * profiles' own cost functions were relaxed away. Nairobi-Segezha did not satisfy constraint 3;
+ * it climbed past the rung at which the constraint was meaningful.
+ *
+ * So the constraint measured an OUTPUT of `generateRoutes` and inferred a property of the
+ * generator, and the inference is invalid: profile diversity in the returned plans does not
+ * imply profile diversity in the pool they were drawn from. The pair still delivers five routes
+ * in the 22-48 band and it STAYS — the amendment it was added for (two pairs in the 46-48 bucket,
+ * so the long-hour regime is not carried by one endpoint pair) it does deliver, and the >500 h
+ * tail is now three routes across two pairs rather than two routes from one. But it was kept for
+ * a stated reason that measurement refuted, and the reason is corrected here rather than quietly
+ * dropped.
+ *
+ * The constraint that WOULD have done the job is `selectPaths`'s own `rungReached` — 0 or 1 is a
+ * generator that supplies alternatives, 3 or 4 is one that does not — and `generateRoutes`
+ * already returns it. Nothing reads it. That, not the profile count, is the check to write if a
+ * seventh pair is ever added.
  */
 const CORPUS_PAIRS: readonly (readonly [string, string])[] = [
   // Riyadh-Beersheba: 22 legs, 1,957 km, 5 routes
@@ -224,8 +296,11 @@ const CORPUS_PAIRS: readonly (readonly [string, string])[] = [
   ['n.city.g2492913', 'n.city.g496015'],
   // Copenhagen-Brest: 42 legs, 8,353 km, 5 routes
   ['n.city.g2618425', 'n.city.g3030300'],
-  // Beira-Aktobe: 48 legs, 15,296 km, 5 routes
+  // Beira-Aktobe: 48 legs, 15,296 km, THREE routes — the collapse described above
   ['n.city.g1052373', 'n.city.g610611'],
+  // Nairobi-Segezha: 48 legs, longest 509 h — the median of the 94 qualifiers. Five routes, but
+  // only from rung 4 (masks dropped) and out of the SAME collapsed pool as Beira-Aktobe above.
+  ['n.city.g184745', 'n.city.g497927'],
 ];
 
 export function loadCorpusScenarios(): {
