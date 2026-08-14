@@ -575,8 +575,13 @@ misattribute a mode effect to a distance effect.
 #### Route-shape notes the table hides
 
 - **Not one of the twelve has a ferry hop.** Bands 11 (trans-Asia, 8,310 km) and 12 (trans-Africa,
-  12,067 km) both cross zero water. This corroborates §8's ferry finding from the run-time side:
-  `ferry_boarding` is in `pack.unfillableBeatTypes` **and** unreachable by geometry.
+  12,067 km) both cross zero water. This corroborates §8's ferry finding from the run-time side.
+  **CORRECTED AT C3 — the second half of this bullet was wrong twice over.** It read
+  "`ferry_boarding` is in `pack.unfillableBeatTypes` **and** unreachable by geometry". It is no
+  longer unfillable (`transit.the_boarding_queue`), and "unreachable by geometry" does not
+  generalise off these twelve routes: **4 of the 23 corpus routes take the Algiers–Barcelona ferry
+  and carry 8 `ferry_boarding` slots between them**, 696 of which are reached over 2,000 runs. The
+  observation about THESE TWELVE stands as measured; the inference drawn from it did not.
 - **Band 11 is an `illicit` route with zero border crossings across 8,310 km.** Its beat schedule
   is `departure / midpoint_crisis / approach / finale` — no `border_crossing` slot at all. This is
   §4(c)'s dominance finding seen from the other side, and its consequence is concrete (§6.4).
@@ -889,10 +894,30 @@ rather than 13.
 
 #### (5) Beat fill — against its ceiling, not against 100%
 
-`pack.unfillableBeatTypes = ['departure', 'ferry_boarding', 'approach', 'finale']`. **Four of six
-beat types have no content that can fill them**, and every route schedules exactly one `departure`
-and one `finale`. A raw fill rate is therefore uninterpretable; here it is against the achievable
-ceiling (`border_crossing` + `midpoint_crisis` slots ÷ all slots):
+> **THE CEILING THIS SECTION IS COMPUTED AGAINST NO LONGER EXISTS (C3, 2026-08-14).**
+> `pack.unfillableBeatTypes` is **empty**: `road.the_first_hour`, `transit.the_boarding_queue`,
+> `city.the_outskirts` and `city.the_last_kilometre` fill `departure`, `ferry_boarding`, `approach`
+> and `finale`. Every `Ceiling` and `% of ceiling` cell below therefore divides by a denominator
+> that has been retired, and the twelve-band sweep was **NOT re-run** — it is a bespoke harness at
+> 1,000 runs per policy per band and re-running it is milestone-sized, so no re-measured table is
+> printed here rather than a fabricated one. What WAS re-measured is the corpus, at 2,000 runs:
+> **beat fill 28.2% → 47.8%, structural ceiling 55.8% → 100%**, per type
+> `departure` 31.2% · `ferry_boarding` 20.8% · `approach` 98.6% · `finale` 65.1%.
+> `docs/sim-baseline-corpus.md`'s C3 block has the full table and the mechanism.
+>
+> **WHAT THAT DOES NOT RETIRE, AND IT IS THE HALF THIS SECTION ACTUALLY TURNS ON.** Bands 9 and 10
+> are short of their ceiling on `border_crossing` slots, and C3 touched no border content. On the
+> corpus, `border_crossing` fill moved **45.0% → 43.8%** with four new events in the pool — the
+> movement is resample (a beat event whose type is not the due slot's is excluded by gate 3, so the
+> pool at a border leg is unchanged), and the shortfall is unmoved. **That is evidence against the
+> corpus explanation and for the director one**, which is what §7.7 item 1 was built to separate.
+> The band-level confirmation is still owed.
+
+`pack.unfillableBeatTypes` **was** `['departure', 'ferry_boarding', 'approach', 'finale']` when this
+was measured. **Four of six beat types had no content that could fill them**, and every route
+schedules exactly one `departure` and one `finale`. A raw fill rate is therefore uninterpretable;
+here it is against the then-achievable ceiling (`border_crossing` + `midpoint_crisis` slots ÷ all
+slots):
 
 | #   | Slots | Fillable | Ceiling | Measured | % of ceiling | Filled/run | Expired/run |
 | --- | ----: | -------: | ------: | -------: | -----------: | ---------: | ----------: |
@@ -1156,6 +1181,19 @@ Ranked by how cheaply the measurement could be made and how decisively it would 
    `approach`, `finale` and `ferry_boarding`. If the collapse is a **director** failure it will
    persist; if it is a **corpus** failure it will not. **If bands 9–10 then fill at 70%+, the
    primary charge (pillar 3) is withdrawn and the answer moves to band 11.**
+
+   **HALF-DONE AT C3, AND THE HALF THAT LANDED POINTS AT THE DIRECTOR.** The content exists — four
+   events, `pack.unfillableBeatTypes` empty, corpus beat fill 28.2% → 47.8%. The twelve-band sweep
+   was NOT re-run, so the verdict on bands 9–10 is still owed. But the corpus already answers the
+   question the re-run was for: `border_crossing` fill is **45.0% → 43.8%** with four more events in
+   the pool, i.e. unmoved, and bands 9–10's shortfall is a `border_crossing` shortfall. The
+   mechanism is visible and is not corpus size — `hard-filters.ts` gate 3 restricts a BEAT event to
+   its own open slot but does not restrict the POOL to beat events, so a beat event competes with
+   every normal event on its slot's leg, and `PRIORITY_BOOST.beat` is 1.0 on a comment that says the
+   gate already did the restricting. Slack is what decides the outcome: `approach` (slack 2) fills
+   98.6% and `departure` (slack 0) fills 31.2% with the same authoring care. **Expect bands 9–10 to
+   persist, and re-run the sweep to confirm it rather than to discover it.**
+
 2. **Set a real `BASE_EVENT_ODDS` at M3.12b and re-run §6.3.** _Decisive on half the charge._
    Every minute figure here is an upper bound taken at `{fire: 1, quiet: 0}`. If band 10 drops
    below ~13 minutes, the "too long" half evaporates and band 10 becomes merely average. Note the
@@ -1303,8 +1341,9 @@ crossing and the two halves are never re-tested for water. The 14th is Istanbul�
 authored `forcedCorridors` row, exempt by intent.
 
 Run-time corroboration: **not one of the twelve swept routes has a ferry hop**, including a
-trans-Asia and a trans-Africa crossing. `ferry_boarding` is in `pack.unfillableBeatTypes` _and_
-unreachable by geometry.
+trans-Asia and a trans-Africa crossing. (This sentence used to continue "`ferry_boarding` is in
+`pack.unfillableBeatTypes` _and_ unreachable by geometry"; **both halves are retired at C3** — see
+§6.4. The water-test finding above is unaffected, since it is about non-ferry edges.)
 
 **This is `geo:build`'s, and it has no owner.**
 
@@ -1319,8 +1358,18 @@ unreachable by geometry.
   enumerated pairs. The cost was ~11.6% on the `selectPaths` mean and one extra pair escalated to
   rung 4; Finding 2's verdicts are unchanged by both.
 - **§4's wording** printed a geometric test as though it were a cost-function claim.
-- **Four of six beat types are unfillable** by the shipped corpus. §7 is built on a ceiling that
-  assumes this, and §7.7 item 1 is the measurement that would retire it.
+- ~~**Four of six beat types are unfillable** by the shipped corpus~~ — **CLOSED at C3.** Four
+  events land `departure`, `ferry_boarding`, `approach` and `finale`; `pack.unfillableBeatTypes` is
+  empty and corpus beat fill is 28.2% → 47.8% against a structural ceiling that moved 55.8% → 100%.
+  **§7's ceiling is retired, but §7's verdict is not**: bands 9–10 are short on `border_crossing`,
+  which C3 did not touch and which did not move (45.0% → 43.8%). §7.7 item 1 records what the
+  corpus measurement already implies and what the band re-run still owes.
+- **NEW, and it is what §7.7 item 1 turned into: a beat event COMPETES for its slot.** Gate 3
+  restricts a beat event to a matching open slot; it does not restrict the pool to beat events, so
+  `PRIORITY_BOOST.beat = 1.0` leaves it at even odds with every normal event on that leg — against
+  a comment asserting the gate already did the restricting. `approach` (slack 2) fills 98.6%,
+  `departure` (slack 0) 31.2%. **Measured, not fixed**: it is a director constant and C3 is a
+  content milestone.
 - **The memory-chain mechanism is one authored `scheduleEvent` edge.** Verified by grep.
 - **`RoutePreview` has no risk field and no scalar was invented.** Compressing crossings, terrain,
   ferry/toll hops and profile into one number is a design decision with no owner.
@@ -1367,6 +1416,10 @@ unreachable by geometry.
     is an upper bound. Band _ordering_ should survive; the absolute numbers will not.
 12. **Ferry behaviour at any distance.** None of the twelve has a ferry hop and `ferry_boarding` is
     unfillable — two independent reasons a ferry column would be empty. None was fabricated.
+    **C3 removed the second reason and refuted the generalisation behind the first**: the corpus
+    route set does carry ferries (4 of 23 routes, 8 slots), and `transit.the_boarding_queue` fills
+    20.8% of the 696 that are reached. The twelve-band sweep still has no ferry column, because
+    those twelve routes still have no ferry hop.
 13. **The 43.1% pooled completion figure was not re-measured.** It is `sim`'s, from
     `docs/sim-baseline-corpus.md`, not this verification's, and nothing here touches it.
 

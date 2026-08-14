@@ -1,0 +1,103 @@
+id: transit.the_boarding_queue
+category: transit
+tags: [transit, money, documents, risk]
+priority: beat
+beatType: ferry_boarding
+tensionBand: [0.2, 0.8]
+image: transit/the_boarding_queue
+# NO context at all, and each half of that is a measured decision rather than an omission.
+#
+# locationTypes: the four corpus routes that take a ferry board at legs typed `border_crossing`,
+# `city` and `checkpoint` — NOT `port`. The terminal is whatever the geo node says it is, and
+# declaring the intuitive `[port]` would make this beat unfillable on every route that has one.
+#
+# transportModes: `transport.mode` is the route's mode for the whole run and never becomes
+# `ferry`; the four ferry-carrying routes run train, bus, train and car. Declaring `[ferry]`
+# would be the same trap one field over.
+#
+# NO maxOccurrences and no cooldown: a crossing is modelled as two edges through the frontier
+# node, so a route can carry two ferry slots on consecutive legs. Both are fillable, and
+# `recency` is what makes the second showing uncommon rather than a gate that forbids it.
+choices:
+  # Always available and always costs the hours. The crossing happens whatever you decide.
+  - id: queue_with_the_freight
+    outcomes:
+      - id: a_bench_and_six_hours
+        weight: 3
+        variants: 2
+        effects:
+          - { op: advanceTime, hours: 6 }
+          - { op: resource, key: energy, delta: -1 }
+          - { op: resource, key: hygiene, delta: -1 }
+      - id: rolled_all_night
+        weight: 2
+        variants: 2
+        effects:
+          - { op: advanceTime, hours: 9 }
+          - { op: resource, key: health, delta: -1 }
+          - { op: resource, key: morale, delta: -1 }
+
+  - id: pay_for_a_bunk
+    hiddenUnless: { resource: cash, gte: 35 }
+    costs:
+      - { op: resource, key: cash, delta: -35 }
+    outcomes:
+      - id: slept_across_the_water
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 8 }
+          - { op: resource, key: energy, delta: 3 }
+          - { op: resource, key: hygiene, delta: 2 }
+          - { op: flag, id: rested_recently }
+
+  - id: show_your_papers_at_the_ramp
+    check:
+      skill: negotiation
+      dc: 11
+      tags: [social, documents, authority]
+    outcomes:
+      - id: stamped_and_waved_on
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: flag, id: ticket_purchased }
+          - { op: advanceTime, hours: 5 }
+      - id: pulled_out_of_the_line
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: flag, id: papers_questioned }
+          - { op: advanceTime, hours: 8 }
+          - { op: resource, key: morale, delta: -1 }
+      # Gated on the MODE rather than on heat or a flag: a ferry slot lands in the first legs of
+      # a route, where nothing has happened yet and a state-gated outcome would be unreachable.
+      - id: the_vehicle_has_papers_too
+        weight: 2
+        onCheck: failure
+        requires: { transportMode: [car, truck] }
+        effects:
+          - { op: transport, change: { field: legal, legal: false } }
+          - { op: advanceTime, hours: 6 }
+          - { op: resource, key: cash, delta: -25 }
+
+  - id: work_the_vehicle_deck
+    check:
+      skill: endurance
+      dc: 11
+      tags: [endurance, physical, mechanics]
+    outcomes:
+      - id: paid_in_cash_and_a_meal
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: relationship, npc: long_haul_driver, trustDelta: 1, meet: true, addTags: [] }
+          - { op: resource, key: cash, delta: 25 }
+          - { op: resource, key: hunger, delta: -2 }
+          - { op: advanceTime, hours: 7 }
+      - id: seven_hours_of_it
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: resource, key: energy, delta: -3 }
+          - { op: resource, key: hygiene, delta: -1 }
+          - { op: advanceTime, hours: 7 }

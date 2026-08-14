@@ -32,8 +32,10 @@ The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 > Phase 3 was then **verified adversarially** — `docs/phase-3-verification.md`, four findings,
 > none fixed, all handed forward.
 >
-> Steps **5-7 RUN** against a real corpus — 13 events, 137 modifiers, 25 complications,
-> 16 universal choices, a complete `en` locale, `content:lint` clean. **Step 2 routes on real
+> Steps **5-7 RUN** against a real corpus — 17 events, 137 modifiers, 25 complications,
+> 16 universal choices, a complete `en` locale, `content:lint` clean. **Every one of the six beat
+> types is fillable** as of C3, so `pack.unfillableBeatTypes` is empty and beat fill is 47.8%
+> against a structural ceiling of 100% rather than 28.2% against 55.8%. **Step 2 routes on real
 > geography** (ADR 0033) and its diversity gate exits 0 at median 54% — **but the median is not
 > the finding**: p90 is 88% and two named pairs breach the ceiling, one of them a genuine filter
 > defect. Generation is COMPLETE and **the corpus sim runs on generated routes** (ADR 0034); the
@@ -144,7 +146,7 @@ packages/engine/            Pure TS game engine                      ✅
   src/modifiers/            check tags, registry, resolution pipeline ✅ ADR 0015
   src/route/                graph · Dijkstra · Yen · legs · beats · gen ✅ 0025/0026/0027
 packages/content/                                                    ✅
-  events/                   13 seed events, grouped by category      ✅
+  events/                   17 seed events, grouped by category      ✅
   __fixtures__/events/      the 9 Phase 1 fixtures, frozen, UNLINTED ✅ ADR 0022
   modifiers · complications · universal-choices .yaml   137 · 25 · 16   ✅
   flags/items/npcs/traits/endings.yaml   declaration registries      ✅

@@ -1,0 +1,88 @@
+id: road.the_first_hour
+category: road
+tags: [road, money, social]
+priority: beat
+beatType: departure
+# Leg 0 is the start of the route, so progress is 0 and a fresh run carries no strain. The band
+# is where the departure slot actually sits, not an aspiration about it.
+tensionBand: [0, 0.4]
+maxOccurrences: 1
+image: road/the_first_hour
+# The departure slot is leg 0 with NO SLACK, so this is the only leg it can honestly fill. The
+# gate is `requires` rather than `context` because rung 1 of the relaxation ladder drops the beat
+# gate and rung 5 drops locationTypes, while `requires` is never relaxed — and a setting-out
+# scene arriving at leg 30 is the coherence failure the ladder is supposed to avoid, not absorb.
+requires: { leg: true, lte: 0 }
+choices:
+  # No check and no cost. The weights ARE the mechanism: leaving without a last look round is a
+  # real gamble, and it is the one choice available to a player with nothing.
+  - id: go_now
+    outcomes:
+      - id: moving_before_you_decided_to
+        weight: 3
+        effects:
+          - { op: advanceTime, hours: 1 }
+          - { op: resource, key: morale, delta: 1 }
+      - id: forty_kilometres_to_remember_it
+        weight: 2
+        effects:
+          - { op: advanceTime, hours: 4 }
+          - { op: resource, key: morale, delta: -1 }
+          - { op: resource, key: hunger, delta: 1 }
+
+  - id: buy_what_you_are_short_of
+    hiddenUnless: { resource: cash, gte: 30 }
+    costs:
+      - { op: resource, key: cash, delta: -30 }
+    outcomes:
+      - id: stocked_and_slower
+        weight: 1
+        effects:
+          - { op: advanceTime, hours: 3 }
+          - { op: resource, key: hunger, delta: -3 }
+          - { op: resource, key: energy, delta: 1 }
+
+  # Writes `travelling_light`, whose declared meaning is exactly this trade: easier to move,
+  # nothing to fall back on. THE HUNGER IS THE SECOND HALF, and it is charged here rather than
+  # promised for later — nothing in the corpus reads the flag yet, so a version of this choice
+  # that only granted energy was strictly free, and the sim took it 43% of the time for that
+  # reason alone. A stated cost the engine never charges is not a cost.
+  - id: leave_the_heavy_things
+    outcomes:
+      - id: everything_in_one_bag
+        weight: 1
+        effects:
+          - { op: flag, id: travelling_light }
+          - { op: resource, key: energy, delta: 1 }
+          - { op: resource, key: hunger, delta: 2 }
+          - { op: advanceTime, hours: 1 }
+
+  - id: ask_someone_who_has_done_it
+    check:
+      skill: negotiation
+      dc: 10
+      tags: [social, language, perception]
+    outcomes:
+      - id: two_useful_things
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: relationship, npc: long_haul_driver, trustDelta: 1, meet: true, addTags: [] }
+          - { op: resource, key: morale, delta: 1 }
+          - { op: advanceTime, hours: 2 }
+      - id: everyone_has_a_version
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: advanceTime, hours: 3 }
+          - { op: resource, key: morale, delta: -1 }
+      # Gated on cash rather than on state, deliberately: at leg 0 nothing has happened yet, so
+      # cash and items are the only things an outcome can honestly branch on.
+      - id: the_man_who_knows_a_man
+        weight: 1
+        onCheck: failure
+        requires: { resource: cash, gte: 100 }
+        effects:
+          - { op: resource, key: cash, delta: -40 }
+          - { op: flag, id: paid_a_local }
+          - { op: advanceTime, hours: 2 }

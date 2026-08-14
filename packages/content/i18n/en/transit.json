@@ -12,5 +12,28 @@
 
   "events.transit.the_wrong_carriage.choice.move_before_they_reach_you": "Move down before he gets here",
   "events.transit.the_wrong_carriage.out.slipped_back": "You go the long way round through the buffet car and are in your own seat, breathing normally, by the time he reaches it.",
-  "events.transit.the_wrong_carriage.out.caught_between_cars": "He comes through the connecting door as you are going the other way, and there is nowhere in a corridor that width to look like you belong."
+  "events.transit.the_wrong_carriage.out.caught_between_cars": "He comes through the connecting door as you are going the other way, and there is nowhere in a corridor that width to look like you belong.",
+
+  "events.transit.the_boarding_queue.title": "The Boarding Queue",
+  "events.transit.the_boarding_queue.body": "A queue of freight, a queue of foot passengers, and a man with a clipboard who has already decided which one you are. The boat is a rust-streaked slab with the ramp down and its engines running. Nobody says how long the crossing takes. Everybody seems to know.",
+
+  "events.transit.the_boarding_queue.choice.queue_with_the_freight": "Sit it out on deck",
+  "events.transit.the_boarding_queue.out.a_bench_and_six_hours": "A moulded bench, a strip light that does not turn off, and six hours of somebody else's radio. You are across, and that is the whole of it.",
+  "events.transit.the_boarding_queue.out.a_bench_and_six_hours.v1": "You know which bench now, and which end of the deck the wind does not reach. It is not comfort. It is competence.",
+  "events.transit.the_boarding_queue.out.a_bench_and_six_hours.v2": "Same bench, same strip light, same radio. You sleep through most of it out of practice rather than tiredness.",
+  "events.transit.the_boarding_queue.out.rolled_all_night": "The swell gets up somewhere in the middle and stays up. Nobody on the deck talks for the last three hours, on principle.",
+  "events.transit.the_boarding_queue.out.rolled_all_night.v1": "It rolls again, and knowing it is going to does not help in the slightest.",
+  "events.transit.the_boarding_queue.out.rolled_all_night.v2": "You spend the crossing on the outside rail, which is cold and wet and still the better option.",
+
+  "events.transit.the_boarding_queue.choice.pay_for_a_bunk": "Pay for a bunk",
+  "events.transit.the_boarding_queue.out.slept_across_the_water": "A cabin the size of a cupboard, a door that locks, and eight hours of not being anywhere. It is the best money you have spent in a fortnight.",
+
+  "events.transit.the_boarding_queue.choice.show_your_papers_at_the_ramp": "Present your papers at the ramp",
+  "events.transit.the_boarding_queue.out.stamped_and_waved_on": "He reads two lines of it, stamps the third, and hands it back without looking up. You are on the manifest.",
+  "events.transit.the_boarding_queue.out.pulled_out_of_the_line": "You are moved out of the line and into an office with one chair in it, and the boat is loaded around the fact of you sitting there.",
+  "events.transit.the_boarding_queue.out.the_vehicle_has_papers_too": "Yours are fine. The vehicle's are a different form, filed somewhere else, in a hand nobody can read. It sails anyway, and so do you, on an understanding.",
+
+  "events.transit.the_boarding_queue.choice.work_the_vehicle_deck": "Lend a hand on the vehicle deck",
+  "events.transit.the_boarding_queue.out.paid_in_cash_and_a_meal": "You spend the crossing chocking wheels and running chains with the drivers, and come off it fed, paid a little, and known to four people who do this route monthly.",
+  "events.transit.the_boarding_queue.out.seven_hours_of_it": "Seven hours in a space with no daylight and a floor that moves. Nobody pays you and nobody asked you to be there."
 }

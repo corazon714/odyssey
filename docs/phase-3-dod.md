@@ -55,19 +55,30 @@ four things off the regenerated report body:
 - **`Completion rate` inside 30–50%.** The band is the phase's balance claim; ADR 0035 and ADR 0040
   are what put the number inside it, and ADR 0041 records the sweep that chose the knee.
 - **`Beat fill rate` at the recorded acceptance** — which is **against its achievable ceiling, not
-  against 100%**. Four of six beat types are in `pack.unfillableBeatTypes` (`departure`,
-  `ferry_boarding`, `approach`, `finale`) and have no content that can fill them, while every
-  route schedules a `departure` and a `finale`. The raw rate is uninterpretable on its own.
+  against 100%**. **C3 emptied `pack.unfillableBeatTypes`**, so the structural ceiling that used to
+  bound this line is gone: it read 28.2% against a 55.8% ceiling — the share of REACHED slots whose
+  type had any event — and now reads **47.8% against 100%**. The four events are
+  `road.the_first_hour`, `transit.the_boarding_queue`, `city.the_outskirts` and
+  `city.the_last_kilometre`. Read the per-type table in `docs/sim-baseline-corpus.md`'s C3 block,
+  not the pooled figure: the residual is no longer content absence but the fact that **a beat event
+  COMPETES for its slot** against the whole eligible pool, so the slack-0 types (`departure` 31.2%,
+  `ferry_boarding` 20.8%) fill far worse than slack-2 `approach` at 98.6%.
   `docs/phase-3-verification.md` §6.5(5) holds the per-band table and the acceptance it was read
-  against; bands 9 and 10, at 44% and 34% of their own ceiling, are the known-red rows.
-- **`Never-fired events` accounted for.** Zero is the current state. A non-zero count is either a
-  `requires` no route reaches or a weight that lost, and which one it is has to be named.
-- **`Grid cells sampled` showing full marginals** — `125 (of 125 — 25/25 routes x 5/5 policies)`.
-  **A SHORT MARGINAL IS A HOLE, NOT A SMALLER SAMPLE.** If a route or a policy never ran, every
-  rate printed below that line is averaged over a corpus that is missing it, and the report will
-  look entirely healthy while doing it. This gate exists because that happened: the harness
-  sampled 25 of 125 cells for several milestones because its stride shared a factor with the grid
-  dimension. ADR 0038.
+  against, re-measured at C3.
+- **`Never-fired events` accounted for.** Zero is the current state **and C3 kept it there** — the
+  plan predicted `ferry_boarding` would create the first never-fired event on the theory that no
+  corpus route takes a ferry, and four of the 23 routes do. A non-zero count is either a `requires`
+  no route reaches or a weight that lost, and which one it is has to be named.
+- **`Grid cells sampled` showing full marginals** — `115 (of 115 — 23/23 routes x 5/5 policies)`.
+  **This figure MOVED AT C2 and the movement is the point of reading the marginals rather than the
+  cell count.** It was `125 (of 125 — 25/25 routes x 5/5 policies)`; making `acceptByDiversity`
+  measure overlap in both directions left one endpoint pair with 3 in-band routes instead of 5, so
+  the grid is 23 × 5. **A SHORT MARGINAL IS A HOLE, NOT A SMALLER SAMPLE** — but a marginal that
+  shrank because the route SET shrank is neither, and telling the two apart is why this gate names
+  the marginals and not the product. If a route or a policy never ran, every rate printed below
+  that line is averaged over a corpus that is missing it, and the report will look entirely healthy
+  while doing it. This gate exists because that happened: the harness sampled 25 of 125 cells for
+  several milestones because its stride shared a factor with the grid dimension. ADR 0038.
 
 ### 4. Goldens
 
@@ -229,10 +240,13 @@ Decision 7). **That is removed, and the removal is deliberate rather than a conc
 
 M3.12b's PRECONDITIONS are milestone-sized, and none of them is tuning:
 
-- **`forcedFireShare` must be re-measured on the tree the sweep runs on.** It has drifted **29.0% →
-  28.6%** with nobody touching it, and C3 (beat events) moves it again. It sets the CEILING on how
-  quiet the game can get — a quiet leg is by definition not forced — so a sweep against a stale
-  ceiling is calibrating against a number that is not there.
+- **`forcedFireShare` must be re-measured on the tree the sweep runs on.** It drifted **29.0% →
+  28.6%** with nobody touching it, C2 took it to **27.8%**, and **C3 has now moved it to 26.3%** —
+  measured, on this tree, at 2,000 runs. It sets the CEILING on how quiet the game can get (a quiet
+  leg is by definition not forced), so the reachable quiet share is now bounded at **73.7%**. The
+  C3 movement is arithmetic rather than sampling: an unfillable slot forced `slackLegs + 1`
+  consecutive legs and filled none, and a fillable one forces one leg and fills it. **Sweep against
+  26.3%, and re-measure it again if anything touches beat content or the route set.**
 - **Three fenced rates are mixed-unit subtractions** — `complicationRate`, `uneventfulRate` and
   `fallbackRate` are per-SELECTION counts subtracted from a leg-INDEX sum. The absolute error is
   pinned while the remainder it sits in shrinks with the quiet share, so **the relative error GROWS

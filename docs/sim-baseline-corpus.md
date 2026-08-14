@@ -824,109 +824,350 @@
   49.5% sits ON the 30-50% ceiling. C3 pushes the same way, and the plan's last step —
   re-tightening HOURS_PER_MORALE and the 44/22 rungs — exists for exactly this. It fires after
   C4 measures, not before.
+
+  C3 FILLED THE FOUR UNFILLABLE BEAT TYPES, AND THE REPORT LOST SEVEN LINES DOING IT. Four
+  events: road.the_first_hour (departure), transit.the_boarding_queue (ferry_boarding),
+  city.the_outskirts (approach), city.the_last_kilometre (finale). The corpus is 17 events.
+  `pack.unfillableBeatTypes` is now EMPTY, so format-report.ts stops printing its "Beat types no
+  event can fill" section — a blank line, a heading, an explanatory line and four type rows.
+  diff-report.ts compares by LINE INDEX, so this baseline is regenerated in the same commit as
+  the content it measures. That is the M3.8b precedent and it is the third time this file has
+  needed it.
+
+  THE FERRY PREMISE THIS WORK WAS PLANNED ON IS REFUTED, and it is the finding that changed the
+  shape of the commit. The plan said ferry_boarding would add ZERO fill and would create the
+  corpus's first never-fired event, because no corpus route has a ferry hop. MEASURED ON THIS
+  TREE: FOUR of the 23 corpus routes carry EIGHT ferry_boarding slots, at legs 1 and 2, and 696
+  slot-instances are reached across 2,000 runs. The Jijel-Shakhty pair crosses the western
+  Mediterranean, so all four of its in-band routes take the Algiers-Barcelona ferry — modelled as
+  two edges through the frontier node, hence two slots each. `Never-fired events` stays 0 and the
+  property ADR 0034 banked is NOT retired. The premise was reached by testing a geo edge for a
+  `ferry` field, which does not exist; the test the engine uses is `hasMode(edge.modes, 'ferry')`,
+  and `overlay.yaml`'s three authored corridors are all in the shipped slice.
+
+  BEAT FILL 28.2% to 47.8%, AND THE CEILING IT IS READ AGAINST MOVED 55.8% to 100%. Per type over
+  2,000 runs, counted as slots REACHED — filled + expired, so a slot the run never got to is in
+  neither, which is why `finale` reaches 1,002 of the 2,000 scheduled. The `reached` column is the
+  AFTER value; it moves by a percent or so between the two trees because the runs walk different
+  paths (`approach` 493 to 514, `border_crossing` 4,538 to 4,567, `midpoint_crisis` 759 to 754,
+  `departure` and `ferry_boarding` unchanged at 2,000 and 696):
+
+    type              reached   before    after   note
+    departure           2,000      0.0%   31.2%   slack 0 — one leg, one draw
+    ferry_boarding        696      0.0%   20.8%   slack 0, and two slots on consecutive legs
+    approach              514      0.0%   98.6%   slack 2 — three legs to land in
+    finale              1,002      0.0%   65.1%   slack 0; only half its slots are ever reached
+    border_crossing     4,567     45.0%   43.8%   content unchanged — resample
+    midpoint_crisis       754     83.1%   83.6%   content unchanged — resample
+
+  BEFORE, the structural ceiling was 55.8% — the share of reached slots whose type had any event
+  at all — so 28.2% was 50.4% of what was reachable and the rest was CONTENT ABSENCE. AFTER, no
+  type is unfillable, the structural ceiling is 100%, and the whole of the remaining 52.2pp is
+  something else. The two unchanged types moving by 1.2pp and 0.5pp on n of 4,567 and 754 is the
+  scale of the resample: adding four beat events cannot dilute a border leg's pool, because gate 3
+  excludes a beat event whose type is not the due slot's, so those two moved only because the runs
+  walk different paths.
+
+  WHAT THE REMAINING GAP IS, and it is the transferable finding: A BEAT EVENT DOES NOT GET ITS
+  SLOT, IT COMPETES FOR IT. `hard-filters.ts` gate 3 restricts BEAT events to a matching open
+  slot; it does not restrict the POOL to beat events, so every normal and filler event is still
+  eligible on a beat leg and the beat event wins only its share of the weighted pick.
+  `scoring-constants.ts` sets `PRIORITY_BOOST.beat = 1.0` with the comment "the beat GATE already
+  restricted the pool to events that can fill the due slot, so boosting them again would
+  double-count". THAT PREMISE IS FALSE, and the slack column above is what it costs: `approach`
+  gets three legs and fills 98.6%, `departure` gets one and fills 31.2%, with the same authoring
+  care on both. NOT FIXED HERE — it is a director constant and C3 is a content milestone.
+
+  FORCED-FIRE SHARE 27.8% to 26.3%, WHICH IS THE NUMBER M3.12b IS DENOMINATED IN. It had to fall,
+  and the mechanism is arithmetic rather than statistical: `advanceLeg` skips the odds gate for
+  the WHOLE window of an open slot, so an unfillable slot forced `slackLegs + 1` consecutive legs
+  and filled none of them. `approach` at slack 2 forced three legs and filled nothing; fillable,
+  it forces one and fills it. The quiet-share ceiling `1 - forcedFireShare` moves 72.2% to 73.7%.
+  MEASURE M3.12b AGAINST 26.3% ON THIS TREE, not against the 29.0% the M3.12a block above records.
+
+  COMPLETION 49.5% to 49.9%, AND THE ORDER THE EDITS LANDED IN MATTERS MORE THAN THE FIGURE. The
+  four events AS FIRST AUTHORED read 51.1% — OUT of the top of the 30-50 band. It was not tuned
+  back. No constant moved: `HOURS_PER_MORALE`, the 44/22 rungs and `FULL_UNTIL` are all still
+  waiting for C4, exactly as the C1 block above promises. What moved it were two defects in the
+  NEW content, both found by measuring it and both fixed on their own merits:
+
+    51.1%   as first authored
+    50.2%   after city.the_outskirts stopped selling the same cash-for-hygiene-and-reputation
+            trade the finale sells one beat later, and sold food and fuel instead      (-0.9pp)
+    49.9%   after road.the_first_hour/leave_the_heavy_things was charged for what it does. It
+            granted energy +1 and set `travelling_light`, whose declared cost is "nothing to fall
+            back on" — and nothing in the corpus READS that flag, so the choice was strictly free
+            and the sim took it 43% of the time for that reason alone. It now also costs
+            hunger +2, which at the corpus's own harvested price of 4 cash a point leaves it a
+            trade rather than a gift.                                                  (-0.3pp)
+
+  SO 49.9% IS 0.1pp UNDER THE CEILING AND MUST BE READ AS ON IT. C2 wrote "49.5% sits ON the
+  30-50% ceiling"; that is more true now, not less, and the two fixes above are worth 1.2pp
+  between them — the same size as the headroom. C4 re-derives the hour constants against a route
+  set that has finally stopped moving, and 49.9% is the number it starts from.
+
+  TWO ARRIVAL ENDINGS ARE REACHABLE FOR THE FIRST TIME. `ending.arrival_triumphant` and
+  `ending.arrival_hollow` have been declared since Phase 1 and unlocked by nothing, and
+  `check-run-end.ts` names the finale event as the thing that reaches them: "an ending unlocked by
+  the finale event wins; otherwise the run arrived without one". They read 1.6% and 0.1% here, and
+  arrival_quiet gives up exactly that much: 49.5% to 48.0%.
+
+  THE TRIUMPHANT ONE WAS 0 OF 2,000 AT FIRST, on a mechanism worth recording: it hung off
+  `walk_in_as_you_are`, the choice with the weakest meter payoff in the event, which the five
+  policies picked 13 times out of 679 fires. A verdict reachable only through the choice a scorer
+  ranks last is a dead branch wearing an ending's name. Moved onto `spend_the_last_of_it` — the
+  choice that is actually taken, and coherent, since arriving on your own terms is what the money
+  buys — it resolves 33 times.
+
+  THIS BLOCK ALSO CLAIMED THE HOLLOW ONE WAS "RARE FOR A REASON RATHER THAN BY ACCIDENT" — that
+  its state gate needs health or morale at 3 or below at arrival, that a run in that state has
+  usually already ended in failure, and that arriving hollow is "nearly the same condition as not
+  arriving". **THAT DIAGNOSIS IS REFUTED, MEASURED, and the correction is the C3a block at the
+  foot of this header.** The gate is OPEN on 281 of 652 finale fires (43.1%). The constraint was
+  the same dead branch this paragraph had just finished describing, left in place one choice
+  over: `arrival_hollow` stayed on `walk_in_as_you_are` after `arrival_triumphant` was moved off
+  it. Do not go looking at that gate — it was never the problem.
+
+  LONG-RANGE PAYOFF 13.5% to 19.1% WITH THREADS 103 to 99, AND NO MECHANISM IS CLAIMED FOR IT.
+  The counts are 35 fires over 260 schedules before and 47 over 246 after; queue drops 157 to 147.
+  This is the lowest-n line in the report by an order of magnitude, as the M3.11f/g block above
+  already says, and a +12 numerator on a base of 35 is not resolvable at this sample.
+  `authority.the_file_catches_up` is `priority: normal`, so no beat gate touches it and the four
+  new events cannot have competed with it in the queue. Do not read this line as a C3 result.
+
+  WHAT DID NOT MOVE, CHECKED RATHER THAN ASSUMED. `Modifier chips / check` is 6.3 over 20,041
+  checks against 6.3 over 20,227, `Checks over 7 chips` is 0 and the worst pull is 7 — the chip
+  line is a property of the registry and the check tags, and no new event was allowed to carry a
+  local modifier. Empty-pool fallbacks and Uneventful legs stay 0.0%, so the relaxation ladder
+  still never leaves rung 0, which is the guarantee that these four beat events cannot fire off
+  their own slots. That is also verified directly rather than inferred: over 2,000 runs the finale
+  event fired off the last leg 0 times, and 0 runs unlocked an arrival ending without completing.
+
+  THE FIXTURE BASELINE AND THE GOLDEN RUNS ARE UNMOVED, AND STRUCTURALLY SO.
+  `sim:diff --pack=fixture` prints "No change vs docs/sim-baseline.md", and the goldens build from
+  `packages/engine/src/__tests__/__fixtures__/mini-pack.json` — a different pack in a different
+  package, which nothing under `packages/content/` can reach. golden-runs.json is untouched in
+  `git status` and all 1,324 engine tests pass. The fixture pack still reports departure,
+  ferry_boarding and approach as unfillable, and that is correct: it is a different corpus and C3
+  did not touch it.
+
+  READING THE DIFF THAT PRODUCED THIS FILE. Below the Endings block, nearly every line is reported
+  as moved and almost none of it is a finding: Endings gained two rows, "Choices picked <2%"
+  gained seventeen, and the seven-line beat-type section was deleted. diff-report.ts compares by
+  LINE INDEX on purpose. Read that section by key, never by position.
+
+  ────────────────────────────────────────────────────────────────────────────────────────────
+  C3a — `ending.arrival_hollow` 0.1% to 2.7%. ONE OUTCOME ADDED. NO CONSTANT TOUCHED.
+
+  THE C3 BLOCK ABOVE FIXED THIS PATHOLOGY FOR ONE ENDING AND LEFT IT IN PLACE FOR THE OTHER.
+  It moved `arrival_triumphant` off `walk_in_as_you_are` onto `spend_the_last_of_it`, wrote that a
+  verdict reachable only through the choice a scorer ranks last is a dead branch wearing an
+  ending's name, and then left `arrival_hollow` on that same branch — and attributed the resulting
+  0.1% to the state gate instead. Measured at 2,000 runs, on the tree that produced the report
+  below this header:
+
+    the gate                open on 281 of 652 finale fires        43.1%   NOT the constraint
+    `walk_in_as_you_are`    picked 11 of 652                        1.7%   the constraint
+      of which `random`     11 of 11                              100.0%   no scorer ranks it first
+    gate open AND walked    4 of 652                                0.6%
+    `arrival_hollow`        2 of 2,000 runs                         0.1%
+
+  WHY NO POLICY TAKES IT, from `policy.ts`'s own scores. `greedy-safe` (maximin) and `risk-taker`
+  (maximax) both take `spend_the_last_of_it` — 50 and 65 against walk-in's −15 and +15.
+  `greedy-fast` and `adversarial-worst-case` both take the injected `u:pay_the_asking_price`; it
+  ties walk-in at `timeCost` 1.0 and wins on the id tie-break, and its −150 worst case is the
+  minimum in the event. Four of five policies are decided before the choice is reached.
+
+  THE POOR-RUN DEFENCE, TESTED AND REFUTED. Walk-in is the only choice a player with no cash can
+  take, so it might have been right for a poor run and merely unreachable by these five policies.
+  Cash at the finale runs p10 771 / p25 1,101 / p50 1,784: 4 fires of 652 (0.6%) hold under the 40
+  `spend_the_last_of_it` asks. The population is four runs in two thousand — a door worth leaving
+  open, which is why `nothing_left_of_you` was KEPT, and not one an ending can hang from.
+
+  THE FIX, AND WHY IT IS AN ADDITION RATHER THAN A MOVE. `the_shirt_was_the_easy_part` on
+  `spend_the_last_of_it`, gated on the same health <= 3 OR morale <= 3. That choice is picked 323
+  of 648 offers (49.8%). It now carries BOTH verdicts on mutually exclusive gates — health >= 6
+  AND morale >= 6 for triumphant, health <= 3 OR morale <= 3 for hollow — so one choice returns
+  whichever verdict the STATE earned. The ending follows the run's condition, which is what an
+  arrival verdict is for; the choice stops being load-bearing.
+
+  THE WEIGHT IS DERIVED, NOT FITTED TO 1.6%. It is `upright_and_solvent`'s 2-against-3, which is
+  the event's own statement that a qualifying state converts to a verdict 40% of the time. Giving
+  the hollow branch the same 2 says the event has no preference between its verdicts and lets the
+  GATES set the rates. They differ, so the rates differ: 43.1% of fires are battered against
+  roughly a quarter clearing the triumphant gate, and hollow lands ABOVE triumphant at 2.7% vs
+  1.6%. Weight 1 would have produced ~1.7% and matched triumphant to the digit — that would have
+  been fitting to the target. More runs limp in than stride in is a reading of the wear curve
+  (ADR 0041), and flattening it would have hidden a real property of this corpus.
+
+  PREDICTED 55.2 UNLOCKS (323 picks x 138 gate-open x 2/5), MEASURED 54.
+
+  NOTHING ELSE MOVED, AND THAT WAS THE DESIGN OF THE EDIT. Every line of the report below is
+  identical to the C3 one except the Endings block and `contentVersion`. Completion holds at
+  49.9%, still 0.1pp under the ceiling and still to be read as ON it — `HOURS_PER_MORALE`, the
+  44/22 starvation rungs and `FULL_UNTIL` remain untouched for C4. Beat fill 47.8%, forced-fire
+  26.3%, complication 60.4%, chips 6.3 — all unchanged, because the edit adds no choice, no event
+  and no leg. The pick distribution is unchanged TO THE DIGIT on all five policies (walk-in 11,
+  spend 323, `u:pay_the_asking_price` 228), which is the control: adding an outcome perturbs
+  `worstCase(spend_the_last_of_it)` 50 to 35, and 35 still beats every alternative `greedy-safe`
+  can see; `bestCase` and `timeCost` are untouched by construction (hours 2, as its siblings), so
+  `risk-taker` and `greedy-fast` cannot move at all. Endings account exactly: hollow +52,
+  arrival_quiet −52, both failure rows unchanged at 884 and 119 — so no run flipped between
+  arriving and failing, and no arrival ending was unlocked on a run that did not complete.
+
+  STILL DEAD, HANDED TO C4 RATHER THAN FIXED. Five choices across the four C3 events are picked
+  ONLY by `random`, and each carries something downstream content reads:
+
+    city.the_last_kilometre/find_who_you_were_sent_to   21/652  3.2%  `owed_a_favour`; and a
+        SECOND `arrival_hollow` path, `recognised_before_you_knock` — weight 1, on check failure,
+        gated `flag: wanted`. It resolved 0 times in 2,000 and still does. Left alone deliberately:
+        the gate matches the prose (being recognised requires being hunted), so the defect is the
+        CHOICE's 3.2%, not the outcome. Fixing that means repricing the choice, which is balance
+        work on a beat event whose economy C4 owns.
+    city.the_outskirts/find_out_which_way_in           10/507  2.0%  `took_the_long_way`,
+        `papers_questioned`
+    transit.the_boarding_queue/show_your_papers_at_the_ramp  5/145  3.4%  `ticket_purchased`,
+        `papers_questioned`, and the `transport legal: false` change
+    transit.the_boarding_queue/work_the_vehicle_deck    3/145  2.1%  long_haul_driver trust
+    road.the_first_hour/buy_what_you_are_short_of      26/624  4.2%  no flag — not load-bearing
+
+  Three more are random-only and carry nothing downstream, so they are merely uncommon rather than
+  dead: `push_straight_in` (15/507), `go_now` (21/624), `queue_with_the_freight` (4/145). NO
+  `scheduleEvent` appears in any of the four events, so none of these can strand a queued payoff.
+  Every flag above is already on the report's "written but NEVER READ" list, which is the same
+  finding seen from the other end and is Phase 4 content work.
 -->
 
-# Sim Report — seed=base contentVersion=1ed866f8 runs=2000
+# Sim Report — seed=base contentVersion=0e72fec4 runs=2000
 
 Grid cells sampled            115   (of 115 — 23/23 routes x 5/5 policies)
-Completion rate             49.5%   (target band 30-50%)
+Completion rate             49.9%   (target band 30-50%)
 Median legs                    23
 Median in-game days             8
 Never-fired events              0
 Empty-pool fallbacks         0.0%   (target <2%)
 Uneventful legs              0.0%   (target <2%)
 Quiet legs (designed)        0.0%   (odds gate — designed silence, NOT the two gaps above)
-Forced-fire legs            27.8%   (beat slot or queue due — never gated; caps quiet at 72.2%)
-Long-range payoff rate      13.5%   (target 80%)
-Beat fill rate              28.2%
-Repeat-event rate           67.5%
-Near-repeat rate            27.2%   (a redraw inside recency's own 6-event window; 26.35 draws/run — LESS confounded than the line above, NOT unconfounded: subtract a null baseline before reading it)
-Complication rate           60.3%   (target 60%)
-Modifier chips / check        6.3   (target 3-7, over 20227 checks)
+Forced-fire legs            26.3%   (beat slot or queue due — never gated; caps quiet at 73.7%)
+Long-range payoff rate      19.1%   (target 80%)
+Beat fill rate              47.8%
+Repeat-event rate           64.0%
+Near-repeat rate            25.8%   (a redraw inside recency's own 6-event window; 26.43 draws/run — LESS confounded than the line above, NOT unconfounded: subtract a null baseline before reading it)
+Complication rate           60.4%   (target 60%)
+Modifier chips / check        6.3   (target 3-7, over 20041 checks)
 Checks under 2 chips            0   (each one draws nothing the registry exists for)
 Checks over 7 chips             0   (0.0% of checks; worst pulls 7)
 Universal choices offered   36.9%   (share of choices shown)
-Universal choices picked    26.8%   (over ~30% means they are flattening the corpus)
-Unresolved threads            103
+Universal choices picked    27.0%   (over ~30% means they are flattening the corpus)
+Unresolved threads             99
 
-Wall clock                 1826 ms   (0.91 ms/run)
-Extrapolated to 20,000     18.3 s   (target <30 s)
+Wall clock                 1899 ms   (0.95 ms/run)
+Extrapolated to 20,000     19.0 s   (target <30 s)
 
 ## Endings
-  ending.arrival_quiet                49.5%
-  ending.failure_gave_up              44.3%
-  ending.failure_collapsed             6.1%
-  ending.detained_at_border            0.0%
+  ending.arrival_quiet                45.4%
+  ending.failure_gave_up              44.1%
+  ending.failure_collapsed             5.9%
+  ending.arrival_hollow                2.7%
+  ending.arrival_triumphant            1.6%
+  ending.detained_at_border            0.2%
 
 ## Never-fired events
   (none)
 
 ## Choices picked <2%
   border.night_crossing/make_yourself_useful           0.0%   <- never picked
-  breakdown.the_roadside_repair/fix_it_yourself        0.0%   <- never picked
+  city.the_outskirts/u:use_an_item                     0.0%   <- never picked
   encounter.the_other_traveller/u:use_an_item          0.0%   <- never picked
   filler.the_hours_between/u:use_an_item               0.0%   <- never picked
   filler.the_long_quiet_stretch/u:use_an_item          0.0%   <- never picked
   rest.the_shared_room/leave_the_bulk_behind           0.0%   <- never picked
+  road.the_first_hour/u:use_an_item                    0.0%   <- never picked
   road.the_hitchhiker/u:use_an_item                    0.0%   <- never picked
   weather.the_storm_you_cannot_drive_through/find_the_mechanic_first   0.0%   <- never picked
   weather.the_storm_you_cannot_drive_through/u:use_an_item   0.0%   <- never picked
-  breakdown.the_roadside_repair/u:threaten             0.0%
   breakdown.the_roadside_repair/u:offer_to_work_for_it   0.0%
-  breakdown.the_roadside_repair/find_someone_who_can   0.0%
-  crime.the_offer/put_it_somewhere_they_will_not_look   0.0%
   breakdown.the_roadside_repair/nurse_it_along         0.0%
+  transit.the_boarding_queue/work_the_vehicle_deck     0.0%
+  breakdown.the_roadside_repair/fix_it_yourself        0.0%
+  breakdown.the_roadside_repair/find_someone_who_can   0.0%
+  transit.the_boarding_queue/queue_with_the_freight    0.0%
+  transit.the_boarding_queue/u:offer_to_work_for_it    0.0%
+  transit.the_boarding_queue/show_your_papers_at_the_ramp   0.0%
+  breakdown.the_roadside_repair/u:threaten             0.0%
+  city.the_outskirts/u:plead_ignorance                 0.0%
+  city.the_last_kilometre/u:plead_ignorance            0.0%
+  crime.the_offer/put_it_somewhere_they_will_not_look   0.0%
   authority.the_file_catches_up/stand_your_ground      0.0%
   border.night_crossing/keep_it_out_of_sight           0.0%
-  city.the_address_that_moved/u:let_the_companion_handle_it   0.0%
-  authority.the_file_catches_up/u:bluff_with_documents   0.0%
-  authority.the_file_catches_up/u:run                  0.0%
+  city.the_outskirts/find_out_which_way_in             0.0%
   authority.the_file_catches_up/u:bribe                0.0%
+  city.the_last_kilometre/walk_in_as_you_are           0.0%
+  city.the_last_kilometre/u:offer_to_work_for_it       0.0%
+  city.the_outskirts/push_straight_in                  0.0%
   authority.the_file_catches_up/make_it_go_away        0.0%
+  authority.the_file_catches_up/u:run                  0.0%
+  road.the_first_hour/u:offer_to_work_for_it           0.0%
   rest.the_shared_room/u:stop_and_rest                 0.0%
-  road.the_hitchhiker/leave_them_at_the_junction       0.0%
-  weather.the_storm_you_cannot_drive_through/u:ask_for_help   0.0%
+  authority.the_file_catches_up/u:bluff_with_documents   0.0%
   weather.the_storm_you_cannot_drive_through/push_on_through_it   0.0%
-  road.the_hitchhiker/u:let_the_companion_handle_it    0.0%
-  rest.the_shared_room/sleep_on_your_bag               0.1%
-  encounter.the_other_traveller/u:let_the_companion_handle_it   0.1%
+  weather.the_storm_you_cannot_drive_through/u:ask_for_help   0.0%
+  city.the_last_kilometre/find_who_you_were_sent_to    0.0%
+  road.the_first_hour/go_now                           0.0%
+  city.the_address_that_moved/u:let_the_companion_handle_it   0.0%
+  road.the_first_hour/buy_what_you_are_short_of        0.0%
+  road.the_hitchhiker/u:let_the_companion_handle_it    0.1%
+  transit.the_boarding_queue/u:pay_the_asking_price    0.1%
+  transit.the_boarding_queue/u:lie_about_destination   0.1%
+  road.the_hitchhiker/leave_them_at_the_junction       0.1%
   rest.the_shared_room/u:create_a_distraction          0.1%
+  rest.the_shared_room/sleep_on_your_bag               0.1%
   weather.the_storm_you_cannot_drive_through/see_to_the_damage   0.1%
+  encounter.the_other_traveller/u:let_the_companion_handle_it   0.1%
+  transit.the_boarding_queue/pay_for_a_bunk            0.1%
+  city.the_outskirts/stop_at_the_last_services         0.1%
+  border.night_crossing/offer_something                0.1%
   border.night_crossing/u:offer_to_work_for_it         0.1%
   breakdown.the_roadside_repair/u:pay_the_asking_price   0.1%
-  border.night_crossing/offer_something                0.1%
-  crime.the_offer/u:create_a_distraction               0.2%
   city.the_address_that_moved/u:plead_ignorance        0.2%
-  crime.the_offer/u:offer_to_work_for_it               0.2%
-  transit.the_wrong_carriage/u:offer_to_work_for_it    0.2%
   transit.the_wrong_carriage/u:lie_about_destination   0.2%
-  opportunity.work_for_a_day/u:walk_away               0.3%
+  transit.the_wrong_carriage/u:offer_to_work_for_it    0.2%
+  crime.the_offer/u:offer_to_work_for_it               0.2%
+  crime.the_offer/u:create_a_distraction               0.2%
+  road.the_first_hour/u:pay_the_asking_price           0.2%
   city.the_address_that_moved/work_it_out_yourself     0.3%
+  opportunity.work_for_a_day/u:walk_away               0.3%
+  road.the_first_hour/ask_someone_who_has_done_it      0.3%
   opportunity.work_for_a_day/take_the_day_rate         0.3%
+  city.the_outskirts/u:pay_the_asking_price            0.3%
   filler.the_long_quiet_stretch/listen_to_the_engine   0.3%
-  weather.the_storm_you_cannot_drive_through/shelter_and_lose_the_day   0.4%
   authority.the_file_catches_up/answer_the_questions   0.4%
+  city.the_outskirts/lose_what_you_should_not_have     0.4%
+  weather.the_storm_you_cannot_drive_through/shelter_and_lose_the_day   0.4%
   rest.the_shared_room/u:threaten                      0.4%
+  city.the_last_kilometre/u:pay_the_asking_price       0.4%
   rest.the_shared_room/see_to_your_feet                0.5%
-  weather.the_storm_you_cannot_drive_through/u:run     0.5%
+  road.the_first_hour/leave_the_heavy_things           0.5%
+  weather.the_storm_you_cannot_drive_through/u:run     0.6%
   encounter.the_other_traveller/u:walk_away            0.6%
+  city.the_last_kilometre/spend_the_last_of_it         0.6%
   filler.the_long_quiet_stretch/u:wait_it_out          0.7%
   border.night_crossing/present_papers                 0.7%
   border.night_crossing/u:bluff_with_documents         0.7%
-  crime.the_offer/u:bribe                              1.1%
   road.the_hitchhiker/u:run                            1.1%
-  rest.the_shared_room/pay_for_a_private_room          1.3%
+  crime.the_offer/u:bribe                              1.1%
   transit.the_wrong_carriage/u:pay_the_asking_price    1.3%
+  rest.the_shared_room/pay_for_a_private_room          1.3%
+  encounter.the_other_traveller/share_what_you_have    1.3%
   transit.the_wrong_carriage/talk_your_way_through     1.4%
-  encounter.the_other_traveller/share_what_you_have    1.4%
-  city.the_address_that_moved/u:pay_the_asking_price   1.5%
   crime.the_offer/say_no                               1.5%
+  city.the_address_that_moved/u:pay_the_asking_price   1.5%
   transit.the_wrong_carriage/pay_the_difference        1.6%
-  road.the_hitchhiker/pull_over                        1.6%
   border.night_crossing/u:bribe                        1.6%
+  city.the_address_that_moved/ask_in_the_shop          1.6%
+  road.the_hitchhiker/pull_over                        1.7%
   transit.the_wrong_carriage/move_before_they_reach_you   1.7%
-  city.the_address_that_moved/ask_in_the_shop          1.7%
-  encounter.the_other_traveller/look_at_their_leg      2.0%
+  encounter.the_other_traveller/look_at_their_leg      1.9%
 
 ## Flags
   written: 21   read: 6
@@ -934,16 +1175,9 @@ Extrapolated to 20,000     18.3 s   (target <30 s)
   read but NEVER WRITTEN:   (none)   <- gate can never open
 
 ## Resource trajectories (p10/p50/p90 by leg)
-  cash     leg5: 965/2040/4206   leg15: 843/1824/3626   leg25: 1176/1979/2885
-  health   leg5: 9/10/10   leg15: 5/8/9   leg25: 3/5/8
-  morale   leg5: 5/8/10   leg15: 2/6/10   leg25: 2/6/10
+  cash     leg5: 951/2015/4206   leg15: 837/1826/3676   leg25: 1178/1961/2864
+  health   leg5: 9/10/10   leg15: 5/8/9   leg25: 3/6/8
+  morale   leg5: 5/8/10   leg15: 2/6/10   leg25: 2/6/9
   energy   leg5: 0/2/7   leg15: 0/0/2   leg25: 0/0/1
   hunger   leg5: 5/8/10   leg15: 9/10/10   leg25: 8/10/10
   hygiene  leg5: 0/1/4   leg15: 0/0/0   leg25: 0/0/0
-
-## Beat types no event can fill
-  A slot for one of these can only expire, so the fill rate above is bounded below 100%.
-  departure
-  ferry_boarding
-  approach
-  finale
