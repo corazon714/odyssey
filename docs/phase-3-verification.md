@@ -342,11 +342,27 @@ and p50 PASS at all three.** Choosing 6 rather than 4 or 8 changes no PASS and n
 real device and read the ratio off. That needs the app shell, which does not exist (Steps 1, 3 and
 4 are not built). Until then the row is an assumption with a stated basis, labelled as one.
 
-**The budget was NOT raised. What would fix it:** bound `kShortestPaths`' stray ratio relative to
-the shortest path. It currently has no ceiling; the pairs that blow the budget are exactly the
-pairs where it strays furthest; and the same bound deletes the "routes nobody would drive" tail
-(p99 5.06×, max 10.71×) that §3 and §4 independently ask for. One change, three findings closed.
-Not done here.
+**The budget was NOT raised.**
+
+> **THIS SECTION PROPOSED A FIX AND THE FIX WAS REFUTED. Built, swept, measured, reverted.**
+> It read: "bound `kShortestPaths`' stray ratio relative to the shortest path … the pairs that blow
+> the budget are exactly the pairs where it strays furthest … One change, three findings closed."
+> All three claims are false, and the bound is not in the tree. See §11.
+>
+> The mechanism was implemented as a genuine PRUNE (a `maxCost` ceiling consumed inside the spur
+> Dijkstra, so over-budget work is never done rather than done and discarded) and swept at
+> 1.10× / 1.25× / 1.50× / 2.00× / 3.00× against an unbounded control that reproduced every
+> committed statistic byte-for-byte.
+>
+> **p90 and max FAIL at every ratio, including 1.10×.** p90 must shed 41.8% of the work and max
+> 80.4%; the most the mechanism removes without also removing the routes is 7.5%. The saving is a
+> cliff — 88.4% of the work survives at 1.05× and 18.8% at 1.00×, and 1.00× returns 0.82 paths per
+> call against 4.91, which is route generation switched off rather than bounded.
+>
+> **Why the attribution misled me.** Yen is ~95% of the call, but it runs one Dijkstra _per spur
+> node along the path_, so its cost scales with HOP COUNT. Bounding how far each spur may stray
+> does not reduce how MANY spur searches run. Hops went 19 → 59 with the continental slice; that is
+> the driver, and a cost ceiling is the wrong axis to bound.
 
 ---
 
@@ -1083,10 +1099,13 @@ the continental slice, which is the whole mechanism.
 ADR 0012 records Hermes as untested, and **Hermes has no JIT** while the 4–8× band comes from
 JIT-ed comparisons — so 6× is as likely optimistic as pessimistic.
 
-**The budget was not raised.** The fix, not done here: bound `kShortestPaths`' stray ratio relative
-to the shortest path. It has no ceiling today; the budget-blowing pairs are exactly the ones where
-it strays furthest; and the same bound deletes the "routes nobody would drive" tail (p99 5.06×, max
-10.71×). One change, three findings closed.
+**The budget was not raised.** The stray-ratio bound this section proposed was built, swept and
+**REFUTED** — p90 and max fail at every ratio including 1.10×, because Yen runs one Dijkstra per
+spur node and its cost therefore scales with HOP COUNT, which a cost ceiling does not reduce. The
+detour tail and the illicit dominance were unmoved too: three claims, none of which survived. §5
+carries the measurement; the code was reverted rather than shipped. **The open fix is now to bound
+the NUMBER of spur searches, not the cost of each — unmeasured, and nobody should quote it as a
+plan until it is.**
 
 ### FINDING 3 — `ILLICIT STRICTLY DOMINATES` on 34.6% of pairs, and it is not a metric artefact
 
@@ -1232,3 +1251,48 @@ never from a literal 70.
 documentation, linked from `docs/PROGRESS.md`.
 
 **Nothing in this session is committed.**
+
+---
+
+## 11. REFUTED: the Yen stray-ratio bound
+
+Proposed in §5 and §10 as "one change, three findings closed". Built, swept, measured, **reverted**.
+No code from it is in the tree. Recorded here so nobody proposes it a second time.
+
+**Implemented as a genuine prune, not a filter.** A `maxCost` ceiling consumed inside the spur
+Dijkstra (`break` once the cheapest frontier entry exceeds budget; never enqueue a relaxation above
+it), plus moving the root cost computation _before_ the spur search so the ceiling is available to it. Verified
+by instrumented pops-per-call falling, which a post-filter cannot do.
+
+**Swept** at 1.10× / 1.25× / 1.50× / 2.00× / 3.00× against an unbounded control that reproduced
+every committed deterministic statistic byte-for-byte.
+
+| claim                       | verdict                                                   |
+| --------------------------- | --------------------------------------------------------- |
+| fixes the p90/max benchmark | **FALSE** — both fail at every ratio, 1.10× included      |
+| deletes the detour tail     | **FALSE** — max 10.71× at every ratio                     |
+| dents illicit dominance     | **FALSE** — 142 of 410 at every ratio, not one pair moved |
+
+**Why the benchmark claim was wrong, and it is the transferable part.** The attribution was right
+(Yen is ~95% of the call) and the inference from it was wrong. Yen runs one Dijkstra _per spur node
+along the path_, so its cost scales with **hop count**, and hops went 19 → 59 with the continental
+slice. Bounding how far each spur may stray does not change how many spur searches run. p90 must
+shed 41.8% of the work and max 80.4%; the mechanism removes at most 7.5% without also removing the
+routes. The saving is a cliff — 88.4% of the work survives at 1.05×, 18.8% at 1.00×, and 1.00×
+returns 0.82 paths per call against 4.91, which is generation switched off rather than bounded.
+
+**Why the illicit claim was wrong.** `illicitDominates` compares the routes `selectPaths` RETURNS,
+and `illicit`'s winner is its own rung-0 profile shortest path — never a Yen backfill. A bound on
+backfill candidates cannot touch it. The real cause is the one FINDING 3 already names: the other
+four profiles are masked out of crossing an admin boundary except at a `border_crossing` node, so
+they detour to reach one while `illicit` walks over for a flat +150, avoiding a median of 14
+controlled crossings at 45 cash each. It is a cost-function and mask problem, not a search problem.
+
+**Why nothing was kept.** The tightest ratio leaving every green gate green (200%) still cost one
+pair of 410 its ladder minimum, and keeping the suite green required relaxing a pre-existing
+assertion in `yen-k-shortest.test.ts` that had held since the file was written. A bound that fixes
+nothing, costs a route, and needs an existing test loosened is worse than no bound.
+
+**What is still open.** The benchmark fix is to bound the NUMBER of spur searches — cap the spur
+nodes considered, or cap `k` by hop count. That is **unmeasured**; it is the next thing to try, not
+a plan to quote.
