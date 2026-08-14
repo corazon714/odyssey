@@ -5,6 +5,182 @@
 
 ---
 
+## C0-C4b — **every Phase 3 gate can now be RUN. Gate 9 does not PASS.**
+
+C0-C3 are **pushed**, HEAD `21855c8` on `dev`. **C4 and C4b are UNCOMMITTED in the tree** — the
+human commits. Uncommitted files:
+
+```
+NEW  packages/tools/sim/by-route.ts                 · __tests__/by-route.test.ts (16 tests)
+MOD  packages/tools/sim/{cli,parse-args,run-many,load-pack}.ts
+MOD  packages/tools/sim/__tests__/{pairing,report,sim}.test.ts
+MOD  packages/engine/src/index.ts                   (exports `legHours`)
+MOD  docs/sim-baseline-corpus.md                    (grid 23x5 -> 28x5, re-sampled in whole)
+NEW  docs/adr/0042-*.md · docs/adr/0043-*.md · this entry · CLAUDE.md §1/§5/§9
+```
+
+### Shipped this session — what WORKS, and the command that proves each
+
+- **Gate 9 is measurable by a committed command for the first time** —
+  `pnpm sim -- --pack=corpus --runs=280000 --by-route`. It prints one row per route with
+  completion, the Wald SE, and the margin
+  **in standard errors**, worst row first, then a `GATE 9 PASS/FAIL` line. Every per-route figure
+  ever quoted in this repo — ADR 0041's knee sweep, `docs/phase-3-verification.md`'s band table,
+  the recovery milestone's per-route S — came from a scratchpad harness that was thrown away and
+  rebuilt at least four times. It is in the repo now. **ADR 0042.**
+  _Use 280,000, not the 250,000 printed in `docs/phase-3-dod.md` §9 — that number predates the
+  sixth pair. 280,000 / (28 routes x 5 policies) is exactly 2,000 per cell; 250,000 is not._
+- **The leg jitter is symmetric.** `rng.nextInt` is inclusive at BOTH ends, so `(-1, 2)` drew
+  `{-1, 0, 1, 2}` — mean **+0.5 h per leg**, against the ±1 that ADR 0014 and ADR 0026 both state.
+  Every route in the game ran ~5% long, and had since the jitter was added. `LEG_JITTER_MAX` 2 -> 1.
+  Prove: `pnpm test:engine`. Commit `5de121b`.
+- **Diversity is a guarantee in both directions.** `overlapPercent` is deliberately asymmetric (it
+  is what distinguishes a truncation from a detour), but `acceptByDiversity` only ever measured a
+  new candidate against what was already accepted — so an accepted route could be swallowed by one
+  admitted _after_ it and nothing ever looked. It now bounds `max(overlap(a,b), overlap(b,a))`.
+  **0 post-condition breaches over 1,498 pairs, against 386 under the old filter**; Valencia-Palermo
+  85% -> 63%, PASS. Prove: `pnpm geo:verify`. Commit `76735b8`.
+- **`pack.unfillableBeatTypes` is EMPTY.** Four beat events shipped (`departure`, `approach`,
+  `finale`, `ferry_boarding`), so beat fill is **28.2% -> 47.8% against a structural ceiling that
+  moved 55.8% -> 100%** — the denominator moved further than the numerator, which is the point.
+  Two endings declared and unreachable since Phase 1 now resolve. Prove: `pnpm sim -- --pack=corpus
+--runs=2000`. Commit `21855c8`.
+  _Those are the figures at HEAD (23 routes). **On the tree, with C4b's 28 routes, the same
+  command reads beat fill 48.5%, `arrival_triumphant` 1.2%, `arrival_hollow` 2.7%.** Both readings
+  are correct for their route set; quote the one that matches the grid you are on._
+- **The Definition of Done is in the repo and every one of its nine gates runs.**
+  `docs/phase-3-dod.md`, each gate naming a command that exists today and a pass condition readable
+  off its output. Gate 9 was the last one with no command. Commit `8ff9b22`.
+
+### Half-done
+
+- **GATE 9 FAILS, and it fails on TWO routes, not one.** Measured on the tree at 280,000 runs
+  (10,000 per route):
+
+  | route                    | pair         | profile / mode | legs |    km | hours | completion |    vs floor |
+  | ------------------------ | ------------ | -------------- | ---: | ----: | ----: | ---------: | ----------: |
+  | `route.illicit.r1dlxpt5` | Beira-Aktobe | illicit/truck  |   48 | 16983 |   509 |  **2.32%** | **-4.5 SE** |
+  | `route.illicit.r16kyujq` | Beira-Aktobe | illicit/truck  |   48 | 17243 |   513 |  **2.81%** | **-1.1 SE** |
+
+  Pooled completion is 46.1% at 2,000 runs, comfortably in the 30-50% band, which is exactly the
+  blindness gate 9 exists to correct. **A brief handed to this session recorded "1 of 28 routes
+  under the floor"; that is wrong and the count was re-measured rather than copied.** The C4b note
+  already in `docs/sim-baseline-corpus.md` had it right at two. Reproduce with the command above;
+  files are `packages/tools/sim/by-route.ts` and `docs/phase-3-dod.md` §9.
+
+- **THE HOUR THEORY OF THE BREACH IS REFUTED. This is the session's sharpest lead.**
+  `world-tick.ts:125` still asserts "completion is a near-deterministic function of that one
+  number — routes under ~150 hours complete 55-85%, routes over ~250 hours complete 0.0%, with
+  nothing in between." The `--by-route` table refutes the second half outright:
+
+  | route      | pair            | legs |    km | hours | montage legs | beats | completion |
+  | ---------- | --------------- | ---: | ----: | ----: | -----------: | ----: | ---------: |
+  | `r1dlxpt5` | Beira-Aktobe    |   48 | 16983 |   509 |       10 /48 |     5 |      2.32% |
+  | `r16kyujq` | Beira-Aktobe    |   48 | 17243 |   513 |       10 /48 |     5 |      2.81% |
+  | `rskpfno`  | Jijel-Shakhty   |   48 | 17521 |   490 |       11 /48 |     5 |     10.80% |
+  | `r1gjd3s6` | Nairobi-Segezha |   48 | 16069 |   509 |       13 /48 |     4 |     16.51% |
+
+  All four are `illicit` on a `truck` at 48 legs. **Hours, profile, mode, leg count and distance
+  TOGETHER do not explain a 14pp spread**, and distance is not ordered with completion in either
+  direction: the longest route in the game (`rskpfno`, 17,521 km) completes 10.80% while the
+  second-longest (`r16kyujq`, 17,243 km) breaches at 2.81%, and the SHORTEST of the four
+  (`r1gjd3s6`, 16,069 km) completes best of all at 16.51%. Nobody knows what does.
+
+- **C4b COMPENSATES rather than restores, and it imported the defect it was meant to exclude.**
+  Beira-Aktobe still yields 3 routes and still supplies BOTH breaching routes. Raising `YEN_K`
+  would restore the literal routes (they exist at K=12 and K=16) but measurement showed it
+  CONCENTRATES the tail — its two extra routes are both more Beira-Aktobe long routes — and it
+  flips the route-generation benchmark from PASS to FAIL. Separately: the new pair was accepted
+  under a constraint requiring "five DISTINCT profiles", and **that constraint did not do its
+  job** — Nairobi-Segezha has the identical generator collapse (2 of 5 distinct shortest paths,
+  3 of 5 profiles returning no path at all, a 12-candidate pool) and reaches five routes only by
+  climbing to rung 4, where the masks are dropped. Corrected in
+  `packages/tools/sim/load-pack.ts`'s doc comment and recorded in **ADR 0043**.
+
+- **Five outcomes carrying a flag, an ending or a `scheduleEvent` hang off choices only `random`
+  picks.** Listed with their pick rates in the `docs/sim-baseline-corpus.md` header block
+  ("STILL DEAD, HANDED TO C4 RATHER THAN FIXED"). Not touched this session.
+
+- **The recorded justification for `HOURS_PER_HUNGER_DAMAGE` / `HOURS_PER_STARVING_DAMAGE`
+  (44 / 22) is STALE**, in two separate ways, at
+  `packages/engine/src/loop/world-tick.ts:111-136`. It cites "keeps collapse meaningful at 26.1%"
+  and `ending.failure_collapsed` now reads **5.9%** at HEAD and **8.3%** on the tree; and its
+  "routes over ~250 hours complete 0.0%" claim is refuted by the table above. The CONSTANTS were
+  not touched — only the record of why they are what they are is out of date.
+
+### Next step — ONE task
+
+> **Find what separates `route.illicit.r1dlxpt5` (2.32%) from `route.illicit.r1gjd3s6` (16.51%).**
+>
+> Same profile, same mode, same 48 legs, the same 509 static travel hours, 14pp apart. A floor
+> gate nobody can explain is a gate nobody can defend, and this is the last unknown standing
+> between Phase 3 and a defensible close on gate 9.
+>
+> **Run:** `pnpm sim -- --pack=corpus --runs=280000 --by-route` (~4.7 min; writes nothing, so it
+> is safe to run repeatedly). Use `--runs=28000` while iterating and only confirm at 280,000.
+>
+> **Read:** `packages/tools/sim/by-route.ts` (the instrument, and what each column means),
+> `packages/tools/sim/load-pack.ts` (`CORPUS_PAIRS`, and how a pair becomes scenarios),
+> `packages/engine/src/route/leg-plan.ts` (leg + montage planning),
+> `packages/engine/src/loop/world-tick.ts` (every per-hour drain), `docs/adr/0039` (montage's two
+> regimes), `docs/adr/0041` (the wear curve knee).
+>
+> **ALREADY RULED OUT — do not re-derive these:**
+>
+> - **travel hours** — 509 vs 509, identical;
+> - **distance** — the LONGEST route in the game (`rskpfno`, 17,521 km) completes 10.80%, 4.7x
+>   the shortest of the four comparables;
+> - **profile, transport mode, leg count** — all four comparables are `illicit`/`truck`/48;
+> - **starting cash** — runs the WRONG way: `r1gjd3s6` starts with the LEAST (4144 vs 4206) and
+>   completes best;
+> - **starting weather** — `world-tick.ts:274-282` re-rolls it roughly one leg in four, so a
+>   starting value cannot survive 48 legs. (`r1dlxpt5` starts `heat`, `r1gjd3s6` `clear`; both
+>   `heat` and `rain` are in `HARSH_WEATHER`, and `r16kyujq` starts `rain` and also breaches.)
+>
+> **NOT ruled out — start here, in this order:**
+>
+> 1. **Montage leg count.** 10, 10, 11, 13 against 2.32%, 2.81%, 10.80%, 16.51% — **monotone
+>    across all four comparables** on n=4. Note the obvious channel is currently INERT: the
+>    montage x0.3 odds multiplier (`director/event-odds.ts:77`) does nothing while
+>    `BASE_EVENT_ODDS` is fenced at `1:0` and quiet legs read 0.0%. So if montage is the cause it
+>    is acting through `legHours`' 30 h montage ceiling vs the ordinary 12 h one, or through
+>    `leg-plan.ts`'s rule that a beat whose window is montage is DROPPED — not through silence.
+> 2. **The per-leg hour DISTRIBUTION, not the total.** Equal totals over 48 legs can sit very
+>    differently against per-leg thresholds — `HARSH_WEATHER_HOURS = 6` is one that exists today.
+>    Count legs at or above each threshold per route before assuming the totals are comparable.
+> 3. **The endpoint pair itself.** BOTH breaching routes are Beira-Aktobe's two `illicit` routes,
+>    while Beira-Aktobe's `scenic` route completes 17.15%. Whatever this is may be a property of
+>    that corridor's geography — terrain, services, crossing count — crossed with `illicit`.
+>
+> The answer is a finding, not necessarily a fix. Recording _why_ a route is unfinishable is
+> worth more than moving it above 3% by tuning something until it clears.
+
+### Open questions for the human
+
+1. **Gate 9 fails on two routes.** Chase the discriminator now, or hand it to Phase 4 with the
+   four-route comparison above recorded as the handoff? Phase 3 cannot close on a green gate 9
+   either way.
+2. **C4b compensates rather than restores.** Acceptable, or should Beira-Aktobe's generator
+   collapse be fixed directly? ADR 0043 names the check that would have caught it —
+   `selectPaths`' own `rungReached`, which is returned and read by nothing.
+3. **The 44/22 justification is stale in two ways.** Re-derive the constants against the current
+   28-route set, or record the drift and move on? Note the collapse figure differs between HEAD
+   (5.9%) and the tree (8.3%), so "re-derive" means picking a route set first.
+4. **M3.12b is still not started, and is NOT a Phase 3 gate** — C0 recorded why, in
+   `docs/phase-3-dod.md`. Confirm it stays out of scope for the close.
+
+### DoD
+
+Measured by the human on this tree before this documentation pass, and re-stated rather than
+re-run: `pnpm typecheck` clean · `pnpm lint` clean · `pnpm test` green (86 files, 1,847 vitest +
+3 jest) · `pnpm content:lint` 0 errors, 1 warning (`MISSING_IMAGE_MANIFEST`, pre-existing) ·
+`pnpm format:check` clean · **both** `sim:diff` packs "No change" · goldens byte-identical to HEAD.
+
+**Gate 9 was re-run by this pass** and only because the brief's count disagreed with the tree's
+own baseline note. It writes nothing, so nothing moved.
+
+---
+
 ## Phase 3 verification — **`docs/phase-3-verification.md`** (COMMITTED at `e335cdf`)
 
 Measured at HEAD `8effe2f`, i.e. **after** the wear curve. Two halves against the same HEAD: the
