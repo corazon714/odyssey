@@ -1,7 +1,11 @@
 # 0036 — One component per landmass, not one component
 
-- **Status:** Accepted 2026-08-12 (decision by the human). **NOT YET IMPLEMENTED** — this is the
-  precondition for M3.11, not part of it.
+- **Status:** Accepted 2026-08-12 (decision by the human). **IMPLEMENTED** at `d21be34`
+  (`feat(geo): ADR 0036 implemented — one component per landmass, fragments fail`) and closed at
+  `0b241b4`, which dropped the 48 fragment nodes and left Afro-Eurasia as one component.
+  `MIN_LANDMASS_NODES = 40` is exported from `packages/tools/geo-build/connectivity.ts`; the
+  build fails on fragments in `packages/tools/geo-build/cli.ts`, and `GEO_DISCONNECTED` reports
+  them per fragment in `packages/tools/content-lint/rules-geo.ts`.
 - **Amends:** ADR 0024, which requires the geo graph to be exactly one connected component
 - **Relates to:** ADR 0025 (route selection), ADR 0033 (`GEO_DISCONNECTED`), ADR 0034 (corpus
   routes are generated from the slice)

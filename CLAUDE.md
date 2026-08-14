@@ -23,15 +23,26 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.10b (2026-08-12).** Steps **5-7 RUN**
-> against a real corpus — 13 events, 137 modifiers, 25 complications, 15 universal choices, a
-> complete `en` locale, `content:lint` clean. **Step 2 routes on real geography** (ADR 0033) and
-> its diversity gate PASSES at median 59%. Generation is COMPLETE and **the corpus sim runs on
-> generated routes** (ADR 0034); the APP still supplies `RunInit.route`. Steps 1, 3 and 4 do not
-> exist. Three of §9's registries are live.
+> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.12a, plus the recovery milestone
+> (2026-08-14).** Shipped since M3.10b: **M3.11** (chip collapse, ADR 0037), **M3.11c–g** (the
+> 692-node continental slice, the hour economy, `geo:verify` re-measured, the sampling-stride fix
+> — ADR 0035/0036/0038), **M3.12a** (the quiet-leg gate, fenced at `BASE_EVENT_ODDS = 1:0`), and
+> the un-numbered recovery work: **montage's second regime** (ADR 0039), the **policy scorer
+> weighting**, and the **wear curve** with its knee sweep (ADR 0040/0041, `SAVE_VERSION` 6).
+> Phase 3 was then **verified adversarially** — `docs/phase-3-verification.md`, four findings,
+> none fixed, all handed forward.
+>
+> Steps **5-7 RUN** against a real corpus — 13 events, 137 modifiers, 25 complications,
+> 16 universal choices, a complete `en` locale, `content:lint` clean. **Step 2 routes on real
+> geography** (ADR 0033) and its diversity gate exits 0 at median 54% — **but the median is not
+> the finding**: p90 is 88% and two named pairs breach the ceiling, one of them a genuine filter
+> defect. Generation is COMPLETE and **the corpus sim runs on generated routes** (ADR 0034); the
+> APP still supplies `RunInit.route`. Steps 1, 3 and 4 do not exist. Three of §9's registries
+> are live.
 >
 > **`docs/PROGRESS.md` is the authority on current state and this paragraph is not.**
 > `docs/engine-spec.md` Part II is the authority on what the engine does, written from the code.
+> **`docs/phase-3-dod.md` is the authority on what closing Phase 3 requires.**
 
 ---
 
@@ -114,7 +125,7 @@ These have caused real damage in similar projects when broken. Do not "improve" 
 ## 3. Repository layout
 
 **Target** layout. `(planned)` = does not exist on disk; `(empty)` = only a `.gitkeep`. Do not
-assume a `(planned)` path exists — create it in the phase that needs it. Verified 2026-08-12.
+assume a `(planned)` path exists — create it in the phase that needs it. Verified 2026-08-14.
 
 ```
 apps/mobile/                Expo app (UI only — no game rules here)
@@ -135,12 +146,12 @@ packages/engine/            Pure TS game engine                      ✅
 packages/content/                                                    ✅
   events/                   13 seed events, grouped by category      ✅
   __fixtures__/events/      the 9 Phase 1 fixtures, frozen, UNLINTED ✅ ADR 0022
-  modifiers · complications · universal-choices .yaml   137 · 25 · 15   ✅
+  modifiers · complications · universal-choices .yaml   137 · 25 · 16   ✅
   flags/items/npcs/traits/endings.yaml   declaration registries      ✅
   schema/ · loader/         Zod + terse->canonical · YAML w/ file:line:col   ✅ ADR 0009/0033
   i18n/en/                  complete — 157 event keys + 146 chip keys ✅
-  geo/{nodes,edges}.gen.json   263 nodes · 404 edges · 1 component   ✅ `pnpm geo:build`
-  geo/overlay.yaml          the ONE hand-edited geo file — 42 rows   ✅ ADR 0033
+  geo/{nodes,edges}.gen.json   692 nodes · 1,215 edges · 1 component ✅ `pnpm geo:build`
+  geo/overlay.yaml          the ONE hand-edited geo file — 8 rows    ✅ ADR 0033
   geo/sources.lock.json     source URLs · licences · hash pin        ✅ ADR 0024
   i18n/{tr,ru,de}/ · images/                                            (empty)
   images/manifest.json      image spec -> asset mapping                 (planned)
@@ -150,7 +161,9 @@ packages/tools/                                                      ✅
   content-lint/             19 rules inc. 10 GEO_*, file:line:col    ✅ CI job
   content-stats/            counts + 4-axis coverage report          ✅
   imagegen/ · i18n-check/                                              (empty)
-docs/                       adr/0001-0037 · engine-spec · PROGRESS   ✅
+docs/                       adr/0001-0041 · engine-spec · PROGRESS   ✅
+  phase-3-dod.md            the NINE phase gates, runnable           ✅ §7
+  phase-3-verification.md   the measured handoff — 4 findings, 0 fixed ✅
   enforcement.md            what enforces each §2 rule               ✅
   stack-notes.md            the dependency traps, in full            ✅
   content-style-guide.md    how to author; registry-vs-event         ✅
@@ -275,6 +288,12 @@ A change is not done until all of these pass:
 
 State the DoD results explicitly at the end of your response. Do not claim something passes
 without having actually run it.
+
+> **The PHASE gate is `docs/phase-3-dod.md`** — the nine gates Phase 3 must clear before it
+> closes, each naming a command that runs today and a pass condition readable off its output.
+> The list above is the per-TASK gate and every task still owes it; the phase file is additional,
+> not a substitute. It lives in the repo so it can be reviewed in a diff and run in CI, which is
+> exactly what the previous copy — in a plan file outside git — could not be.
 
 > **Items 1–3 are enforced at commit time**, not left to good intentions: the PreToolUse
 > hook `.claude/hooks/gate-commit.mjs` blocks `git commit` when the checks for the packages

@@ -1,9 +1,17 @@
 # 0040 — The wear curve compresses the span, not the base
 
-- **Status:** Accepted. **`FULL_UNTIL` was swept at M3.12b and is 200, not the 160 placed here.**
-  The ADR was written so the sweep would only have to change one number and re-run; it did, and
-  every other decision below is unchanged by the result. ADR 0041 records the sweep and the
-  registry row that shipped beside it.
+- **Status:** Accepted. **`FULL_UNTIL` was swept at THE KNEE SWEEP and is 200, not the 160 placed
+  here.** The ADR was written so the sweep would only have to change one number and re-run; it
+  did, and every other decision below is unchanged by the result. ADR 0041 records the sweep and
+  the registry row that shipped beside it.
+- **Also in this change:** **`SAVE_VERSION` 5 → 6.** The run records its TRAVEL clock, which is
+  the quantity the wear curve charges against; `worn` cannot be recomputed from a v5 save because
+  a v5 save never stored it. The migration is `v5->v6` in
+  `packages/engine/src/migrate/migrations.ts`, the checked-in fixtures are
+  `__fixtures__/save-v6.json` and `save-v6-loaded.json`, and
+  `packages/engine/src/migrate/__tests__/migrate.test.ts` enforces both — that the clock is
+  WRITTEN rather than left absent, and that it starts at zero, which is what makes the migration
+  unable to make a live run harsher than the build it was saved from.
 - **Date:** 2026-08-13
 - **Relates to:** ADR 0014 (world-tick drift), ADR 0026 (a leg is a session), ADR 0029 (the quiet
   gate's legibility precedent), ADR 0032 (a baseline belongs to its run count), ADR 0035 (morale
@@ -135,5 +143,15 @@ the previous leg's chip onto the ending screen.
   bit-identical, three exercising the bend" was true at 160; at 200 all nine are sub-knee, so the
   goldens prove the identity and no longer prove the bend. Recorded in `wear-curve.ts` rather than
   quietly absorbed.
-- Baselines regenerated at M3.12b, corpus only — the fixture pack produced a byte-identical
-  report, so there was nothing to write (ADR 0032, 2,000 runs).
+- Baselines regenerated at the knee sweep, corpus only — the fixture pack produced a
+  byte-identical report, so there was nothing to write (ADR 0032, 2,000 runs).
+
+> **On the label.** This ADR originally called the knee sweep "M3.12b". That label was **already
+> taken**: ADR 0029 reserved it on 2026-08-09 for the quiet-leg ODDS sweep — setting a real
+> `BASE_EVENT_ODDS` and meeting Decision 7's four calibration targets — and **that milestone has
+> not run.** Two different sweeps under one label is how a reader concludes the quiet-leg work
+> shipped when it did not. The knee sweep is un-numbered and is referred to here and in ADR 0041
+> as **the knee sweep**; M3.12b remains ADR 0029's, unspent.
+>
+> `packages/engine/src/loop/wear-curve.ts` still carries the old label in its `FULL_UNTIL`
+> docstring. That file is code and this commit is docs-only, so it is left for a later commit.

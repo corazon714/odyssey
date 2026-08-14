@@ -1,6 +1,9 @@
 # 0041 — The knee is 200, and the morale row cannot reach the legs that need it
 
 - **Status:** Accepted, with one part refuted by its own measurement — see Decision 3.
+- **Label:** this is **the knee sweep**, and it is un-numbered. It is **not M3.12b** — ADR 0029
+  reserved that on 2026-08-09 for the quiet-leg ODDS sweep, which has not run. ADR 0040 briefly
+  used the label for this work; that was a collision and is corrected there.
 - **Date:** 2026-08-13
 - **Relates to:** ADR 0032 (a baseline belongs to its run count), ADR 0035 (morale is a per-hour
   drain, and the conservation result), ADR 0040 (the wear curve compresses the span)

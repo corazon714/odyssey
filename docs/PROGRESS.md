@@ -5,7 +5,7 @@
 
 ---
 
-## Phase 3 verification — **`docs/phase-3-verification.md`** (uncommitted; tree left dirty for review)
+## Phase 3 verification — **`docs/phase-3-verification.md`** (COMMITTED at `e335cdf`)
 
 Measured at HEAD `8effe2f`, i.e. **after** the wear curve. Two halves against the same HEAD: the
 geo half **extended `pnpm geo:verify`** (no parallel reporter); the sim half ran a twelve-band
@@ -16,10 +16,10 @@ a pointer, not a summary.**
 
 ### The tree, declared
 
-Opened clean at `8effe2f`, ends at `8effe2f` with five geo-build files modified or untracked —
+Opened clean at `8effe2f`, ended at `8effe2f` with five geo-build files modified or untracked —
 NEW `route-structure.ts` (+ 17 tests), MOD `verify-routes.ts`, `report-verify.ts`,
 `__tests__/verify-routes.test.ts` (+ 6 tests). That is this verification's own deliverable.
-**Nothing is committed.**
+**All of it shipped at `e335cdf`**, together with `docs/phase-3-verification.md` itself.
 
 ### FOUR FAILURES, none fixed, none softened (§8 of the doc)
 
@@ -114,7 +114,7 @@ largest unknown in the band judgment.
 
 ## Recovery milestone step 3 — **the policy bracket is the right way up again**, and the route preview stops lying by 5%
 
-Uncommitted on `dev` over `970c021`. Two fixes and a correction pass; **no balance constant was
+Shipped at **`6d3c50d`** over `970c021`. Two fixes and a correction pass; **no balance constant was
 touched and `golden-runs.json` did not move.**
 
 ### Job 1 — `playerTotal` is WEIGHTED, at rates harvested from the corpus
@@ -787,7 +787,7 @@ computed over a population where a third of routes contribute nothing is thinner
 
 ---
 
-## M3.12a — the quiet-leg gate, plumbed and fenced at `BASE_EVENT_ODDS = 1:0` (uncommitted, tree left dirty for review)
+## M3.12a — the quiet-leg gate, plumbed and fenced at `BASE_EVENT_ODDS = 1:0` (COMMITTED at `f9614a5`)
 
 **SHIPPED.** The quiet-leg gate exists end to end — `director/quiet-gate.ts`, `director/event-odds.ts`,
 the `legOddsFactors` multiplier set, a fourth `SelectionResult` arm, and two new report lines — and
@@ -971,12 +971,14 @@ Four documentation defects from an adversarial review, all verified against the 
 
 ### EXACT NEXT STEP
 
-**Review and commit the M3.12a tree.** It is 23 modified + 5 untracked files under
-`packages/engine` and `packages/tools`, plus this session's edits to `docs/adr/0029`,
-`docs/sim-baseline.md`, `docs/sim-baseline-corpus.md` and this file. It has now survived **four**
-adversarial passes with the fence intact and has been left uncommitted across all of them.
+**DONE — the M3.12a tree was reviewed and shipped at `f9614a5`.** It was 23 modified + 5 untracked
+files under `packages/engine` and `packages/tools`, plus that session's edits to `docs/adr/0029`,
+`docs/sim-baseline.md`, `docs/sim-baseline-corpus.md` and this file. It survived **four**
+adversarial passes with the fence intact before it landed.
 
-Before committing, re-verify the fence — it is the milestone's only claim:
+The fence re-verification it shipped on — the milestone's only claim. **The golden hash below is
+the value AT `f9614a5`; the wear curve at `8effe2f` has since moved three of the nine goldens, so
+re-read it from the tree rather than from this block:**
 
 ```bash
 pnpm typecheck && pnpm lint && pnpm test && pnpm content:lint
@@ -1001,7 +1003,7 @@ between the three candidate fixes above by measuring, because until `montageLegs
 
 ---
 
-## M3.11f/g — the sim harness was sampling a fifth of its grid; both baselines rebaselined (uncommitted, tree left dirty for review)
+## M3.11f/g — the sim harness was sampling a fifth of its grid; both baselines rebaselined (COMMITTED at `b150f9d`)
 
 **`runMany` paired run `i` as `scenario = i % S; policy = i % P`.** That enumerates the route ×
 policy grid only when `gcd(S, P) === 1`. On the corpus S is 25 and P is 5, so `i % 5` was fully
@@ -1160,7 +1162,7 @@ computed at 1,000 runs per cell, this is the one that was measured last and at 2
 
 ---
 
-## M3.11e — M3.11 CLOSES on its DoD (uncommitted, tree left dirty for review)
+## M3.11e — M3.11 CLOSES on its DoD (COMMITTED at `6bc1c15`)
 
 The DoD's last open item was **`geo:verify` re-measured**; everything else on it was already
 satisfied at `04f0f38`/`6961f77`. Three jobs, no engine change, both `sim:diff`s **No change** on
@@ -1273,7 +1275,7 @@ City` is a 630 km edge with modes `bus/car/truck/rideshare` and no ferry — a r
 
 ---
 
-## M3.11d — the hour economy re-derived; corpus back in band at 41.0% (uncommitted, tree left dirty for review)
+## M3.11d — the hour economy re-derived; corpus back in band at 41.0% (COMMITTED at `6961f77`)
 
 **Corpus completion 19.2% → 41.0%, median legs 20 → 26, ending mix arrival 41.0% / gave_up 32.8%
 / collapsed 26.1%.** (**M3.11f/g re-measured these on an unwelded harness: 41.9%, 25 legs, and
@@ -1420,7 +1422,7 @@ arrival, 6 unchanged in outcome).
 
 ---
 
-## M3.11 — modifier chips collapse by `sourceKind` (uncommitted, tree left dirty for review)
+## M3.11 — modifier chips collapse by `sourceKind` (COMMITTED at `06f462b`)
 
 `ModifierResolution` gained `chips`: the resolved rows grouped by `sourceKind` and summed, as a
 seventh **presentation-only** step of `resolveModifiers`. `modifiers` is unchanged and is still

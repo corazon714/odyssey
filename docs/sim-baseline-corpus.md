@@ -735,7 +735,9 @@
   sums far larger than any meter term even at heat's weight of 40, so weighting cannot reorder
   them. The control being immune is the control working.
 
-  M3.12b REBASELINED FOR THE WEAR CURVE'S CHOSEN KNEE AND ONE NEW REGISTRY ROW. `FULL_UNTIL`
+  THE KNEE SWEEP REBASELINED FOR THE WEAR CURVE'S CHOSEN KNEE AND ONE NEW REGISTRY ROW.
+  (This block said "M3.12b". It was not: ADR 0029 reserved that label on 2026-08-09 for the
+  quiet-leg ODDS sweep, which has not run. See ADR 0040's note on the label.) `FULL_UNTIL`
   was swept over {140, 160, 180, 200, 240} plus a no-curve control at 2,000 runs/cell on the
   full 25 x 5 grid and landed on **200**, not the 160 that was placed unswept. Completion
   43.1% (was 36.0%), and the line that matters is PER ROUTE rather than pooled: the seven
