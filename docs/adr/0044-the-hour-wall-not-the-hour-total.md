@@ -216,9 +216,12 @@ collapse" **one item, not two**.
 2. **The corpus cannot demonstrate a fix.** With one corridor supplying both breaches, any change
    that clears gate 9 is being validated on n=1. Raising `YEN_K` was already measured to
    CONCENTRATE the tail (ADR 0043).
-3. **`--by-route` cannot see the thing that decides its own verdict.** It prints total hours,
-   which is blind within the stratum the gate reads. A `peak` column is the cheap fix; it is
-   proposed, not taken, in this ADR.
+3. **`--by-route` could not see the thing that decides its own verdict.** It printed total hours,
+   which is blind within the stratum the gate reads. **A `peak` column shipped immediately after
+   this ADR** — see `PEAK_WINDOW_LEGS` in `by-route.ts`, where the window's provenance and its
+   invalidation conditions are recorded. It reads 232 / 236 against 170 / 177 on the four
+   comparables. It landed BEFORE any change that moves `legKm`, so the fix in the next section
+   has a working instrument to be measured against rather than one that moved alongside it.
 4. **No dial is implicated.** Neither `HOURS_PER_MORALE`, nor `FULL_UNTIL`, nor `MAX_MONTAGE_HOURS`
    is mistuned — the same constants produce 2.56% and 9.60% on the same multiset of legs. The
    defect is in route SHAPE, so the fix belongs in `leg-plan.ts` or in path selection, not in the

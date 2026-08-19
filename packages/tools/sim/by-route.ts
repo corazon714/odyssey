@@ -19,10 +19,28 @@ import { type SimRun } from './run-one.ts';
  * ## Why the standard error is not optional
  *
  * Gate 9 is a FLOOR — no route below 3% completion — and a floor is a claim about the worst
- * cell, not about the pool. At the chosen knee the pooled figure reads a comfortable ~43-50%
- * while the worst route has sat at 4.3-4.8%, a margin measured at **4.1 standard errors**. A
- * rate printed without its SE cannot say whether a route that reads 3.1% is above the floor or
- * is a 2.7% route that got lucky, so the pass condition names the SE explicitly.
+ * cell, not about the pool. The pooled figure can sit comfortably inside the 30-50% band while
+ * a single route is unfinishable, which is the blindness this mode exists to correct. A rate
+ * printed without its SE cannot say whether a route reading 3.1% is above the floor or is a
+ * 2.7% route that got lucky, so the pass condition names the SE explicitly and the worst row is
+ * printed first.
+ *
+ * _This paragraph used to quote the then-current worst route (4.3-4.8%, a margin of 4.1 SE) in
+ * the present tense. It went stale the moment the gate started failing, and a doc comment that
+ * describes a passing world is worse than one that describes nothing. Everything above is a
+ * statement about the INSTRUMENT; the numbers live in `docs/PROGRESS.md` and in the output._
+ *
+ * ## Why `peak` is printed next to `hours` (ADR 0044)
+ *
+ * Because the instrument could not read its own verdict. Gate 9 failed on two routes that were
+ * identical in every column this table printed — same profile, same mode, same leg count, total
+ * hours within 4.7% — and 7.1x apart in completion, and finding out why cost a whole session.
+ *
+ * Total hours is the better predictor BETWEEN routes of different lengths. It is blind WITHIN a
+ * set whose totals are alike, and a floor gate reads exactly there: drain is charged per hour
+ * while recovery arrives per leg, so a route that concentrates its hours into a few legs pays
+ * more for the same total. `peak` is that concentration. Both columns are printed because a
+ * route can fail on either and the two want different fixes.
  *
  * Every per-route figure in ADR 0041 and `docs/phase-3-verification.md` was produced by a
  * scratchpad harness that was then thrown away, which is why the same measurement kept being
@@ -31,6 +49,62 @@ import { type SimRun } from './run-one.ts';
 
 /** Gate 9's floor. One named constant, so the table and the verdict cannot disagree. */
 export const ROUTE_COMPLETION_FLOOR = 0.03;
+
+/**
+ * The window `peak` is measured over, in legs. **EMPIRICAL, and labelled as such.**
+ *
+ * ## Where 9 came from
+ *
+ * ADR 0044. It is the length of the contiguous montage block measured on
+ * `route.illicit.r1dlxpt5` — legs 8-16, billing 232 of that route's 509 travel hours against
+ * nine events. So this is the size of the structure the statistic exists to detect, taken from
+ * the one case where the structure was identified, not fitted.
+ *
+ * **It is NOT optimal and nothing here claims it is.** Swept against completion over the
+ * 28-route corpus, K = 5 / 9 / 13 give Spearman -0.876 / -0.915 / -0.921: the statistic is
+ * insensitive to K across that range and 13 scores marginally better. 9 is kept because a
+ * window much shorter than the block it is meant to detect degenerates toward reporting one
+ * leg's `MAX_MONTAGE_HOURS` ceiling, and one much longer stops distinguishing a wall from a
+ * route that is simply long.
+ *
+ * ## What would make it wrong
+ *
+ * The block length is a consequence of montage selection, so anything that changes the SHAPE of
+ * a montage run invalidates this number rather than merely retuning it:
+ *
+ *   - `MAX_MONTAGE_HOURS` or `MAX_MONTAGE_SHARE` moving (`leg-hours.ts`, `leg-plan.ts`);
+ *   - the 48-leg compression cap moving, since the block is bounded by the montage budget;
+ *   - **the montage SPACING CONSTRAINT ADR 0044 names.** If `planLegs` is taught to refuse a
+ *     segment adjacent to one already montaged, contiguous blocks stop existing by construction
+ *     and a fixed-width window is the wrong shape for what remains. Re-derive it or retire the
+ *     column; do not keep it because it is already here.
+ *
+ * A parameter-free alternative exists — maximum-subarray over `hours[i] - r`, where `r` is the
+ * drain one event repays — and was not taken because it trades this constant for `r`, which has
+ * to be measured from content and would drift with every registry change. This one is a fact
+ * about route geometry and moves only when route geometry does.
+ */
+export const PEAK_WINDOW_LEGS = 9;
+
+/**
+ * The most travel hours any `window` consecutive legs of a route bill.
+ *
+ * Exported so its own test can exercise it on hand-built inputs rather than only through a sim
+ * summary. Windows shorter than the route are clamped to the route, so a 5-leg route reports its
+ * whole hour content and never a slice of a window it does not have.
+ */
+export function peakWindowHours(perLeg: readonly number[], window: number): number {
+  if (perLeg.length === 0 || window < 1) return 0;
+  const width = Math.min(window, perLeg.length);
+  let running = 0;
+  for (let i = 0; i < width; i += 1) running += perLeg[i] ?? 0;
+  let peak = running;
+  for (let i = width; i < perLeg.length; i += 1) {
+    running += (perLeg[i] ?? 0) - (perLeg[i - width] ?? 0);
+    if (running > peak) peak = running;
+  }
+  return peak;
+}
 
 export type RouteStat = {
   readonly routeId: string;
@@ -50,6 +124,24 @@ export type RouteStat = {
    * At the STARTING mode only. A run that loses its truck and walks costs more than this says.
    */
   readonly hours: number;
+  /**
+   * The most travel hours any `PEAK_WINDOW_LEGS` consecutive legs bill — the route's worst
+   * stretch, alongside `hours`, which is its total.
+   *
+   * **Both are printed and neither substitutes for the other**: a route can be unfinishable
+   * because it is long or because one stretch of it is brutal, and the two failures need
+   * different fixes. `hours` is the better predictor BETWEEN routes of different lengths;
+   * this one discriminates WITHIN a set whose totals are alike, which is the case a floor gate
+   * has to read and the case `hours` alone is blind to.
+   *
+   * Derived from the same `legHours` fold as `hours`, at the STARTING mode, so the two are
+   * commensurable by construction and `peak <= hours` always holds.
+   *
+   * Comparable within a leg count, not across one: nine legs is 19% of a 48-leg route and 41%
+   * of a 22-leg one. That is a property of a fixed-width window and is why this column supports
+   * the verdict rather than deciding it.
+   */
+  readonly peakHours: number;
   /** Runs that produced a verdict. Errored runs are excluded here and counted separately. */
   readonly runs: number;
   readonly completed: number;
@@ -75,10 +167,10 @@ function statOf(routeId: string, scenario: FixtureScenario, runs: readonly SimRu
 
   const montage = new Set(scenario.route.montageLegs);
   const mode = scenario.transport.mode;
-  const hours = scenario.route.legKm.reduce(
-    (sum, km, leg) => sum + legHours(km, mode, montage.has(leg)),
-    0,
-  );
+  // ONE fold, two statistics. `hours` is its sum and `peakHours` its worst window, so the two
+  // cannot disagree about what a leg costs the way two independent traversals could.
+  const perLeg = scenario.route.legKm.map((km, leg) => legHours(km, mode, montage.has(leg)));
+  const hours = perLeg.reduce((sum, h) => sum + h, 0);
 
   return {
     routeId,
@@ -87,6 +179,7 @@ function statOf(routeId: string, scenario: FixtureScenario, runs: readonly SimRu
     legs: scenario.route.legCount,
     km: scenario.route.totalKm,
     hours,
+    peakHours: peakWindowHours(perLeg, PEAK_WINDOW_LEGS),
     runs: n,
     completed,
     errors: runs.length - n,
@@ -197,7 +290,8 @@ export function formatByRoute(
   const idWidth = Math.max(8, ...stats.map((s) => s.routeId.length));
   lines.push(
     `${pad('route', idWidth)}  ${pad('profile', 8)}  ${pad('mode', 9)}  ${padStart('legs', 4)}  ` +
-      `${padStart('km', 6)}  ${padStart('hours', 5)}  ${padStart('runs', 6)}  ` +
+      `${padStart('km', 6)}  ${padStart('hours', 5)}  ${padStart('peak', 5)}  ` +
+      `${padStart('runs', 6)}  ` +
       `${padStart('completion', 10)}  ${padStart('SE', 8)}  ${padStart('vs floor', 10)}`,
   );
 
@@ -207,7 +301,8 @@ export function formatByRoute(
     lines.push(
       `${pad(stat.routeId, idWidth)}  ${pad(stat.profile, 8)}  ${pad(stat.mode, 9)}  ` +
         `${padStart(String(stat.legs), 4)}  ${padStart(String(stat.km), 6)}  ` +
-        `${padStart(String(stat.hours), 5)}  ${padStart(String(stat.runs), 6)}  ` +
+        `${padStart(String(stat.hours), 5)}  ${padStart(String(stat.peakHours), 5)}  ` +
+        `${padStart(String(stat.runs), 6)}  ` +
         `${padStart(pct(stat.rate), 10)}  ${padStart(pp(stat.standardError), 8)}  ` +
         `${padStart(marginText, 10)}` +
         (stat.rate < ROUTE_COMPLETION_FLOOR ? '   <- BELOW THE FLOOR' : '') +

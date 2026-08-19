@@ -3,6 +3,8 @@ import {
   byRouteStats,
   formatByRoute,
   marginInSe,
+  peakWindowHours,
+  PEAK_WINDOW_LEGS,
   ROUTE_COMPLETION_FLOOR,
   type RouteStat,
 } from '../by-route.ts';
@@ -137,6 +139,7 @@ describe('marginInSe — gate 9 is a margin, not a rate', () => {
     legs: 22,
     km: 1957,
     hours: 112,
+    peakHours: 47,
     runs,
     completed: Math.round(rate * runs),
     errors: 0,
@@ -202,5 +205,168 @@ describe('the table states its own verdict', () => {
       elapsedMs: 42,
     });
     expect(again).toBe(TABLE);
+  });
+});
+
+describe('peakWindowHours — the worst stretch, not the total', () => {
+  it('is the maximum over every window of the given width', () => {
+    // Hand-built so the expected answer is arithmetic rather than whatever the corpus happens
+    // to produce: the worst three of [1,2,9,9,1,1] are the 9,9 pair plus a neighbour.
+    expect(peakWindowHours([1, 2, 9, 9, 1, 1], 3)).toBe(20);
+    expect(peakWindowHours([1, 2, 9, 9, 1, 1], 1)).toBe(9);
+    expect(peakWindowHours([5, 5, 5, 5], 2)).toBe(10);
+  });
+
+  it('separates a WALL from a flat route at identical totals — the whole point', () => {
+    // The two shapes ADR 0044 is about, reduced to nine legs each. Same sum, same length; a
+    // statistic that cannot tell these apart cannot see what gate 9 failed on.
+    const flat = [10, 10, 10, 10, 10, 10, 10, 10, 10];
+    const wall = [2, 2, 2, 30, 30, 20, 2, 1, 1];
+    expect(flat.reduce((a, b) => a + b, 0)).toBe(wall.reduce((a, b) => a + b, 0));
+    expect(peakWindowHours(flat, 3)).toBe(30);
+    expect(peakWindowHours(wall, 3)).toBe(80);
+  });
+
+  it('clamps a window wider than the route to the route', () => {
+    // A 5-leg route has no 9-leg window. Reporting its whole hour content is right; reporting a
+    // slice of a window it does not have, or zero, would both be lies about a short route.
+    expect(peakWindowHours([3, 4, 5], 9)).toBe(12);
+    expect(peakWindowHours([], 9)).toBe(0);
+    expect(peakWindowHours([7], 9)).toBe(7);
+  });
+
+  it('never exceeds the total, and equals it exactly when the route fits the window', () => {
+    for (const stat of byRouteStats(SUMMARY, SCENARIOS)) {
+      expect(stat.peakHours).toBeLessThanOrEqual(stat.hours);
+      expect(Number.isInteger(stat.peakHours)).toBe(true);
+      if (stat.legs <= PEAK_WINDOW_LEGS) expect(stat.peakHours).toBe(stat.hours);
+    }
+  });
+});
+
+/**
+ * THE BASELINE-NEUTRALITY GUARD, asserted rather than argued.
+ *
+ * `LEGACY_*` below reproduce the format this table printed BEFORE the `peak` column existed,
+ * copied verbatim from the pre-change formatter. The claim under test is not "peak looks right"
+ * — it is **"nothing else moved"**: excise the peak field and the table must be byte-identical
+ * to what it rendered before.
+ *
+ * That matters because gate 9's whole design is that this mode cannot disturb either sim
+ * baseline (ADR 0032/0042). The mode returning before `formatReport` is what makes that true of
+ * `docs/sim-baseline*.md`; this is what makes it true of the table's own readers.
+ */
+const CELL = '  ';
+const legacyPad = (t: string, w: number) => (t.length >= w ? t : t + ' '.repeat(w - t.length));
+const legacyPadStart = (t: string, w: number) => (t.length >= w ? t : ' '.repeat(w - t.length) + t);
+
+describe('adding `peak` changed NOTHING ELSE about the table', () => {
+  const stats = byRouteStats(SUMMARY, SCENARIOS);
+  const idWidth = Math.max(8, ...stats.map((s) => s.routeId.length));
+
+  /** The header exactly as it read before the peak column. */
+  const legacyHeader =
+    legacyPad('route', idWidth) +
+    CELL +
+    legacyPad('profile', 8) +
+    CELL +
+    legacyPad('mode', 9) +
+    CELL +
+    legacyPadStart('legs', 4) +
+    CELL +
+    legacyPadStart('km', 6) +
+    CELL +
+    legacyPadStart('hours', 5) +
+    CELL +
+    legacyPadStart('runs', 6) +
+    CELL +
+    legacyPadStart('completion', 10) +
+    CELL +
+    legacyPadStart('SE', 8) +
+    CELL +
+    legacyPadStart('vs floor', 10);
+
+  /**
+   * The peak cell is `padStart(_, 5)` preceded by its separator, and it sits immediately after
+   * `hours`. Its offset is therefore fixed by the widths of the columns to its left.
+   */
+  const PEAK_AT =
+    idWidth +
+    CELL.length +
+    8 +
+    CELL.length +
+    9 +
+    CELL.length +
+    4 +
+    CELL.length +
+    6 +
+    CELL.length +
+    5;
+  const PEAK_WIDTH = CELL.length + 5;
+  const excisePeak = (line: string) => line.slice(0, PEAK_AT) + line.slice(PEAK_AT + PEAK_WIDTH);
+
+  it('renders the pre-change header once the peak column is removed', () => {
+    const header = TABLE.split('\n').find((l) => l.startsWith('route  '));
+    expect(header).toBeDefined();
+    expect(header).toContain(legacyPadStart('peak', 5));
+    expect(excisePeak(header ?? '')).toBe(legacyHeader);
+  });
+
+  it('renders every pre-change ROW byte-identically once the peak column is removed', () => {
+    const lines = TABLE.split('\n');
+    const rows = lines.filter((l) => stats.some((s) => l.startsWith(s.routeId)));
+    expect(rows).toHaveLength(stats.length);
+
+    for (const stat of stats) {
+      const row = rows.find((l) => l.startsWith(stat.routeId));
+      const margin = marginInSe(stat);
+      const marginText =
+        margin === null ? 'n/a' : `${margin >= 0 ? '+' : ''}${margin.toFixed(1)} SE`;
+      const legacyRow =
+        legacyPad(stat.routeId, idWidth) +
+        CELL +
+        legacyPad(stat.profile, 8) +
+        CELL +
+        legacyPad(stat.mode, 9) +
+        CELL +
+        legacyPadStart(String(stat.legs), 4) +
+        CELL +
+        legacyPadStart(String(stat.km), 6) +
+        CELL +
+        legacyPadStart(String(stat.hours), 5) +
+        CELL +
+        legacyPadStart(String(stat.runs), 6) +
+        CELL +
+        legacyPadStart(`${(stat.rate * 100).toFixed(2)}%`, 10) +
+        CELL +
+        legacyPadStart(`${(stat.standardError * 100).toFixed(2)}pp`, 8) +
+        CELL +
+        legacyPadStart(marginText, 10) +
+        (stat.rate < ROUTE_COMPLETION_FLOOR ? '   <- BELOW THE FLOOR' : '') +
+        (stat.errors > 0 ? `   <- ${String(stat.errors)} errored run(s)` : '');
+
+      expect(excisePeak(row ?? '')).toBe(legacyRow);
+    }
+  });
+
+  it('leaves every line that is not a route row untouched', () => {
+    // The verdict block, the marginals and the title carry no peak field, so they must be
+    // character-for-character what they were. `Routes below`/`Worst route`/`GATE 9` are what a
+    // reader and a future CI check both key on.
+    expect(TABLE).toContain('Gate 9 (docs/phase-3-dod.md): NO ROUTE BELOW 3.00% COMPLETION.');
+    expect(TABLE).toContain('Grid cells sampled');
+    expect(TABLE).toContain('Routes measured');
+    expect(TABLE).toContain(`Routes below ${(ROUTE_COMPLETION_FLOOR * 100).toFixed(2)}%`);
+    expect(TABLE).toContain('Worst route');
+    expect(TABLE).toMatch(/GATE 9 {22}(PASS|FAIL)/);
+  });
+
+  it('keeps `peak` out of the STANDARD report, which is what the baselines diff', () => {
+    // The column must not reach `format-report.ts`. If it ever did, both baselines would have to
+    // regenerate for a change that is purely an instrument improvement — ADR 0032's false
+    // positive, arriving by a new route.
+    const report = formatReport(SUMMARY, PACK, { seed: 'by-route', runs: 300, elapsedMs: 42 });
+    expect(report).not.toContain('peak');
+    expect(report).not.toContain('vs floor');
   });
 });

@@ -5,9 +5,10 @@
 
 ---
 
-## D0 — **gate 9's failure is EXPLAINED. It is one corridor, not two routes.**
+## D0 — **gate 9's failure is EXPLAINED, and the instrument can now read it.**
 
-Committed on `dev`. Two commits: `675d37a` (docs only — one run count for gate 9) and this one.
+Committed on `dev`. Three commits: `675d37a` (one run count for gate 9), `d4f40b7` (ADR 0044 —
+the finding), and the `peak` column on `--by-route`.
 **No engine change, no content change, no constant moved, both baselines untouched.**
 
 ### The finding — `docs/adr/0044` is the authority and this is a pointer
@@ -60,30 +61,63 @@ where total hours ranks both ends of the four comparables wrong.
 `r1dlxpt5` 2.32% (−4.5 SE), `r16kyujq` 2.81% (−1.1 SE). Byte-for-byte the figures C4b recorded;
 nothing this session moved it, which is the point.
 
-### Half-done / handed forward
+### The `peak` column — SHIPPED
 
-- **THE FIX IS NAMED AND NOT MADE.** `planLegs` picks montage by dullness alone; nothing stops
-  it taking nine consecutive segments. A **spacing constraint** — refuse a segment adjacent to
-  one already montaged while any unmontaged candidate remains — breaks the wall into a comb at
-  no cost to the montage budget. Not made here because it moves `legKm` on every corpus route,
-  therefore the corpus baseline, therefore gate 9 itself, and it must not be measured on the run
-  that discovered the problem. `packages/engine/src/route/leg-plan.ts`, `byDullness` /
-  `protectedFromMontage`.
+`--by-route` now prints **`peak` next to `hours`**: the most travel hours any nine consecutive
+legs bill. The session's whole cost was that the instrument could not read its own verdict — two
+routes identical in every printed column, 14pp apart — and the column pays for itself the first
+time that recurs. It lands **before** the `planLegs` fix deliberately, so the fix has a working
+instrument to be measured against rather than being validated by a measure that moved in the
+same commit. On the corpus it reads **232 / 236 against 170 / 177** for the two breaching routes
+against the two healthy ones, at total hours of 509 / 513 / 490 / 509.
+
+**Window 9 is empirical and labelled as such** in `by-route.ts`: it is the length of the
+contiguous montage block ADR 0044 measured, it is NOT optimal (K = 5/9/13 give ρ = −0.876 /
+−0.915 / −0.921, so 13 is marginally better and the statistic is insensitive across the range),
+and the comment names what invalidates it — `MAX_MONTAGE_HOURS`, `MAX_MONTAGE_SHARE`, the 48-leg
+cap, or **the spacing constraint below, which would remove contiguous blocks by construction and
+make a fixed-width window the wrong shape**. Re-derive it or retire the column at that point;
+do not keep it because it is already there.
+
+**Baseline-neutrality is asserted, not argued.** The test reproduces the pre-`peak` format
+verbatim and requires the table with the peak field excised to be **byte-identical** to it,
+row by row. Verified failing on a deliberate violation (widening `km` from 6 to 7 → 1 failed,
+23 passed). Empirically: `--by-route` output before and after, peak column cut out, `diff` is
+**zero lines**; `sim:diff` prints **"No change"** on both packs; nothing under `packages/engine`
+was touched, so no golden can have moved.
+
+`by-route.ts`'s stale header claim went with it — it described a passing world in the present
+tense ("the worst route has sat at 4.3–4.8%"). Replaced with a statement about the instrument
+and an explicit note about why the old wording was a defect, since results move and comments
+do not.
+
+### Handed forward — **PHASE 4 ITEM #1**
+
+- **THE MONTAGE SPACING CONSTRAINT. First thing in Phase 4, and nothing else in its commit.**
+  **Where:** `packages/engine/src/route/leg-plan.ts` — the selection loop in `planLegs`, beside
+  `byDullness` and `protectedFromMontage`.
+  **What:** `planLegs` picks montage by dullness alone; position enters only via
+  `protectedFromMontage` (the two anchors and each crossing's neighbourhood). Nothing stops it
+  taking nine consecutive segments, and on a corridor whose dull segments are contiguous it
+  reliably does. Refuse a segment adjacent to one already montaged while any unmontaged
+  candidate remains — that breaks the wall into a comb at no cost to the montage budget.
+  **Why it is DEFERRED rather than done:** it moves `legKm` on every corpus route, therefore the
+  corpus baseline, therefore **gate 9 itself** — and it must not be measured on the same run that
+  discovered the problem. A fix validated by a measure that changed in the same commit is not
+  validated. It is also an engine change, so it moves every golden (`legKm` feeds `stateDigest`).
+  **Order when it lands:** `leg-plan.ts` → `pnpm test:engine` → `pnpm sim:diff -- --runs=2000` on
+  BOTH packs → regenerate `docs/sim-baseline-corpus.md` → `--runs=280000 --by-route` →
+  `pnpm geo:verify` (route structure moved) → `pnpm golden:update`, reviewing the diff.
+  **Read first:** ADR 0044, ADR 0026 D4, ADR 0039.
 - **The corpus cannot validate that fix.** One corridor supplies both breaches, so any change
-  that clears gate 9 is validated on n=1. Fix the generator collapse first or accept n=1 knowingly.
-- **`--by-route` cannot see what decides its own verdict.** It prints total hours, which is blind
-  inside the stratum the gate reads. A `peak` column (worst 9-leg window) is ~15 lines in
-  `by-route.ts` plus a test, is baseline-neutral because the mode returns before `formatReport`,
-  and would have made this session's finding readable off the gate's own output. **Proposed, not
-  taken** — awaiting a call.
-- **`world-tick.ts:111-136` is now wrong in a THIRD way** — "completion is a near-deterministic
+  that clears gate 9 is validated on n=1. Fix the generator collapse first (ADR 0043's
+  `rungReached`, returned and read by nothing) or accept n=1 knowingly and say so.
+- **`world-tick.ts:111-136` is wrong in a THIRD way** — "completion is a near-deterministic
   function of that one number" is false within a stratum. Still not touched, deliberately: the
   comment justifies `HOURS_PER_HUNGER_DAMAGE` / `HOURS_PER_STARVING_DAMAGE`, and ADR 0044's
   finding is that **no dial is implicated at all** (the same constants give 2.56% and 9.60% on
   the same multiset of legs), so re-deriving 44/22 would be tuning against a route-shape defect.
   Rewrite it when the shape fix lands, against the route set that fix produces.
-- **`by-route.ts:24`** still reads "the worst route has sat at 4.3–4.8%, a margin measured at 4.1
-  standard errors" in the present tense, written before gate 9 failed. Same reason for leaving it.
 - Everything C4b handed forward is untouched: the five dead outcomes behind `random`-only choices,
   and the four findings in `docs/phase-3-verification.md`.
 
@@ -103,16 +137,22 @@ nothing this session moved it, which is the point.
 > packs → regenerate `docs/sim-baseline-corpus.md` → `--runs=280000 --by-route` → `pnpm geo:verify`
 > (route structure moved). Expect the goldens to move: `legKm` feeds `stateDigest`.
 >
-> **If it does not**, ADR 0044 plus this entry is the handoff, and the `peak` column on
-> `--by-route` is worth taking first so the next session reads the cause off the gate.
+> **If it does not**, ADR 0044 plus this entry is the handoff. The `peak` column has already
+> landed, so the next session reads the cause straight off the gate's own output.
 
 ### DoD
 
-`pnpm typecheck` clean · `pnpm lint` clean · `pnpm test` green (86 files, 1,847 vitest + 3 jest) ·
-`pnpm content:lint` 0 errors, 1 warning (`MISSING_IMAGE_MANIFEST`, pre-existing) ·
-`pnpm format:check` clean. Documentation only — **no `sim:diff` owed, no golden touched, neither
-baseline written.** Every measurement in this entry came from throwaway scratchpad harnesses and
-from the committed `--by-route` command, which writes nothing.
+`pnpm typecheck` clean · `pnpm lint` clean · `pnpm test` green (86 files, **1,855** vitest +
+3 jest — 1,847 before, +8 for `peak`) · `pnpm content:lint` 0 errors, 1 warning
+(`MISSING_IMAGE_MANIFEST`, pre-existing) · `pnpm format:check` clean.
+
+**`sim:diff` "No change" on BOTH packs** (`--runs=2000`, the count both baselines were generated
+at). Goldens judged by CONTENT: `git diff --stat -- packages/engine` is empty, so no golden can
+have moved and `golden:update` was not run. Neither baseline was written — `--by-route` returns
+before `formatReport`.
+
+Every measurement in the finding came from throwaway scratchpad harnesses and from the committed
+`--by-route` command, which writes nothing.
 
 ---
 
