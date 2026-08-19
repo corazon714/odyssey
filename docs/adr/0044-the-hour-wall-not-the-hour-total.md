@@ -222,6 +222,8 @@ collapse" **one item, not two**.
    invalidation conditions are recorded. It reads 232 / 236 against 170 / 177 on the four
    comparables. It landed BEFORE any change that moves `legKm`, so the fix in the next section
    has a working instrument to be measured against rather than one that moved alongside it.
+   **It is a FLAG, not a dial — see the addendum, which retired the stronger reading this ADR
+   originally gave it.**
 4. **No dial is implicated.** Neither `HOURS_PER_MORALE`, nor `FULL_UNTIL`, nor `MAX_MONTAGE_HOURS`
    is mistuned — the same constants produce 2.56% and 9.60% on the same multiset of legs. The
    defect is in route SHAPE, so the fix belongs in `leg-plan.ts` or in path selection, not in the
@@ -239,3 +241,79 @@ cost to the montage budget, and it is a change to route generation rather than t
 It is not made here because it moves `legKm` on every corpus route, therefore the corpus baseline,
 therefore gate 9 itself, and it should not be measured on the same run that discovered the
 problem. Handed forward with an owner.
+
+---
+
+# ADDENDUM — `peak` is a FLAG, not a dial. The comb permutation retires the stronger claim
+
+**Date:** 2026-08-20. Written against the same tree, before any Phase 4 work, so that the fix
+above cannot be justified against a claim this measurement has weakened.
+
+## What this ADR originally claimed, and what was measured
+
+The body says a route "that concentrates its hours into a few legs pays more for the same total",
+and the `peak` column shipped carrying that reading. **Three measurements narrow it.**
+
+### 1. The comb permutation. Halving `peak` bought nothing
+
+A spacing constraint does not relocate the montage block, it dissolves it. The **comb** — the
+same 10 montage legs placed as far apart as the interior allows (3, 7, 12, 17, 21, 26, 30, 35,
+40, 44 rather than 8-16) — is that shape, reachable inside the permutation family, so every
+multiset is still held fixed. 10,000 runs per variant:
+
+| variant               | peak    | hours | completion |     SE | morale floor | collapsed |
+| --------------------- | ------- | ----: | ---------: | -----: | -----------: | --------: |
+| base (as generated)   | 232     |   509 |      2.31% | 0.15pp |        61.2% |     22.6% |
+| wall last             | **232** |   509 |  **9.32%** | 0.29pp |        35.9% |     31.9% |
+| COMB — montage spread | **109** |   509 |  **8.64%** | 0.28pp |        51.3% |     17.6% |
+
+**A 2.1x difference in `peak` for a 1.7 SE difference in completion.** The intervention that left
+`peak` untouched did nominally better than the one that halved it. Whatever the engine responds
+to, `peak` is not it: both permutations move WHERE the hours sit relative to the meters and the
+wear knee, and only one of them moves `peak`.
+
+The body's causal result is untouched — arrangement is causal, at 21 SE, with null controls. What
+is retired is the identification of arrangement WITH `peak`.
+
+### 2. The same two variants reach the same completion through DIFFERENT failure mixes
+
+Morale floor 35.9% / collapse 31.9% against 51.3% / 17.6%: **collapse differs by 1.8x at
+statistically identical completion.** These are two mechanisms averaging to one number — the
+relocated block starves runs at the end, the comb demoralises them throughout. That is a second,
+independent argument against `peak` as a dial, and it is the reason the acceptance test for the
+fix cannot be a single completion figure: pillar 1 says a bad outcome should be interesting
+rather than punishing, and "starves out slowly" and "collapses" are not interchangeable.
+
+### 3. Most of `peak`'s corpus correlation is borrowed from `hours`
+
+```
+rho(peak,  hours)       0.938      <- the confound
+rho(hours, completion) -0.950      partial | peak   -0.629
+rho(peak,  completion) -0.923      partial | hours  -0.296
+```
+
+Stratified by total hours, `peak` orders inconsistently: rho = -0.525, -0.162, **+0.800**,
+**0.000**, -0.600 across five bands (mode is a live confound at n=4 per band, so these refute
+nothing — but they support nothing either). And **no threshold is demonstrated**: only 6 of 28
+routes reach `peak` 100, and the band **178-231 contains zero routes**. The clean gap between the
+failing pair (232/236) and their comparables (170/177) is a hole in the sample. A cliff in
+(177, 232] and a smooth gradient across it are indistinguishable on this corpus.
+
+## `conc` was considered as a second column and REFUSED
+
+`conc = peak / (9 x the route's own mean hours-per-leg)` — shape with route length divided out —
+separates the failing pair better than `peak` does: **2.43 / 2.45 against a corpus maximum of
+1.85 everywhere else.** It is still not worth printing. Its partial correlation with completion
+holding hours is **+0.211 — the wrong sign**, so once size is controlled, more concentration is
+if anything associated with BETTER completion. Its raw rho is -0.698 against `peak`'s -0.923. It
+inverts badly in the middle of the range (conc 1.71 -> 67.78%, conc 1.55 -> 68.58%, against conc
+1.17 -> 17.15%). And the comb refutes it more directly than it refutes `peak`: the comb takes
+`conc` from 2.43 to 1.14 — below the corpus median — and still does not beat the variant that
+leaves it at 2.43. Its entire apparent advantage is a two-point separation at the top of a
+28-route sample, which is exactly the kind of evidence this addendum exists to discount.
+
+## What `peak` is still for
+
+Noticing. It is the only printed column that separates gate 9's failing routes from their
+comparables, and that is worth a column — a route it flags is a route to go and measure. It is
+not a quantity to tune against, and no acceptance test may be written as a `peak` threshold.

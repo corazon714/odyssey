@@ -91,6 +91,16 @@ tense ("the worst route has sat at 4.3–4.8%"). Replaced with a statement about
 and an explicit note about why the old wording was a defect, since results move and comments
 do not.
 
+**Then the column's own interpretation was falsified and corrected** — ADR 0044's addendum, its
+own commit, before any Phase 4 work. The comb permutation took `peak` from 232 to 109 and gained
+**less** than the variant that left `peak` at 232 (8.64% vs 9.32%, 1.7 SE apart). Add a partial
+correlation of only −0.296 once `hours` is held, inconsistent ordering within hours-strata, and
+an **empty 178–231 band** — so the clean-looking gap is a hole in the sample, not a cliff — and
+`peak` is a **FLAG, not a dial**. It still earns its column as the only one that separates the
+failing routes from their comparables. It must never appear in an acceptance test as a threshold.
+`conc` was considered as a second column and refused: its partial correlation holding hours is
+**+0.211, the wrong sign**.
+
 ### Handed forward — **PHASE 4 ITEM #1**
 
 - **THE MONTAGE SPACING CONSTRAINT. First thing in Phase 4, and nothing else in its commit.**
@@ -108,10 +118,54 @@ do not.
   **Order when it lands:** `leg-plan.ts` → `pnpm test:engine` → `pnpm sim:diff -- --runs=2000` on
   BOTH packs → regenerate `docs/sim-baseline-corpus.md` → `--runs=280000 --by-route` →
   `pnpm geo:verify` (route structure moved) → `pnpm golden:update`, reviewing the diff.
-  **Read first:** ADR 0044, ADR 0026 D4, ADR 0039.
-- **The corpus cannot validate that fix.** One corridor supplies both breaches, so any change
-  that clears gate 9 is validated on n=1. Fix the generator collapse first (ADR 0043's
-  `rungReached`, returned and read by nothing) or accept n=1 knowingly and say so.
+  **Read first:** ADR 0044 **including its addendum**, ADR 0026 D4, ADR 0039.
+
+  **ACCEPTANCE CRITERION — three parts, and completion alone is NOT enough.**
+
+  1. **Completion at `--runs=280000 --by-route`** on `route.illicit.r1dlxpt5`, reported with its
+     SE. Clearing the 3% floor is necessary, not sufficient.
+  2. **The morale-floor share** — the fraction of runs whose morale reaches 0. It tracked every
+     intervention cleanly where completion alone did not, and it is the meter ADR 0044 identified
+     as binding.
+  3. **The ending histogram, compared against a healthy comparable** (`rskpfno` or `r1gjd3s6`).
+
+  **Why part 3 is not optional.** The two permutations in ADR 0044's addendum reach statistically
+  identical completion — 9.32% and 8.64%, 1.7 SE apart — through **different failure mixes**:
+  morale floor 35.9% / collapse 31.9% against 51.3% / 17.6%. **Collapse differs by 1.8x at the
+  same completion.** One fix leaves players starving out slowly, the other leaves them
+  collapsing; a single completion figure cannot tell them apart, and design pillar 1 says a bad
+  outcome must be interesting rather than punishing. Two fixes with the same number are not
+  interchangeable.
+
+  **NOT a `peak` threshold.** ADR 0044's addendum retired that reading: halving `peak` (232 → 109
+  via the comb) bought nothing over leaving it at 232, `peak`'s partial correlation with
+  completion holding hours is only −0.296, and the band 178–231 contains zero routes so no cliff
+  is demonstrated. `peak` flags a route to go and measure. It is not a quantity to tune against.
+
+  **SCOPE, STATED HONESTLY: this is a GATE FIX, NOT A ROUTE FIX.** Every permutation of
+  `r1dlxpt5`'s own legs tops out near **9%** against `r1gjd3s6`'s 16.51%. The permutation family
+  holds the leg multiset fixed, so roughly half the 14pp gap lives in **which legs exist** — nine
+  legs at 23–30 h here against a milder spread there — and no rearrangement can reach it. Expect
+  the spacing constraint to take this route from 2.32% to somewhere near 9%: clear of the floor
+  by ~20 SE, and **still an outlier at about half its comparable.** Say so when it ships. The
+  separate follow-up that could close the rest is **montage SELECTION and path GRANULARITY** —
+  18 path edges for 16,983 km against 23–32 on the healthy 48-leg routes, which is what gives
+  montage nine consecutive segments to collapse in the first place. That is the same root as
+  ADR 0043's generator collapse, and it is item #2.
+
+  _(A real `planLegs` change also re-allocates legs, so it may move the multiset as well as the
+  order — in a direction the permutation experiment cannot predict. The ~9% is an estimate from
+  the order-only family, not a promise.)_
+
+- **PHASE 4 ITEM #2 — montage SELECTION and path GRANULARITY**, the half of the gap a spacing
+  constraint cannot reach. `illicit` detours around controls onto the coarsest long-edge path,
+  which is how Beira-Aktobe's routes carry 16,983 km on 18 edges; montage then collapses each
+  2,238 km segment to one leg clamped at `MAX_MONTAGE_HOURS`. Same root as ADR 0043's generator
+  collapse. Do it after #1 and measure it against the same three-part criterion.
+- **The corpus cannot validate either fix.** One corridor supplies both breaches — the two
+  breaching routes share 88.9% of their edges — so any change that clears gate 9 is validated on
+  n=1. Fix the generator collapse first (ADR 0043's `rungReached`, returned and read by nothing)
+  or accept n=1 knowingly and say so in the commit.
 - **`world-tick.ts:111-136` is wrong in a THIRD way** — "completion is a near-deterministic
   function of that one number" is false within a stratum. Still not touched, deliberately: the
   comment justifies `HOURS_PER_HUNGER_DAMAGE` / `HOURS_PER_STARVING_DAMAGE`, and ADR 0044's

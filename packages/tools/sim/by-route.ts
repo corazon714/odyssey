@@ -37,10 +37,30 @@ import { type SimRun } from './run-one.ts';
  * hours within 4.7% — and 7.1x apart in completion, and finding out why cost a whole session.
  *
  * Total hours is the better predictor BETWEEN routes of different lengths. It is blind WITHIN a
- * set whose totals are alike, and a floor gate reads exactly there: drain is charged per hour
- * while recovery arrives per leg, so a route that concentrates its hours into a few legs pays
- * more for the same total. `peak` is that concentration. Both columns are printed because a
- * route can fail on either and the two want different fixes.
+ * set whose totals are alike, and a floor gate reads exactly there: gate 9's four comparables
+ * span 490-513 hours and 2.32-16.51% completion, and `peak` is the only printed column that
+ * separates them.
+ *
+ * ## `peak` IS A FLAG, NOT A DIAL. Read this before tuning anything against it
+ *
+ * It says "this route's hours are not spread like its comparables'". It does **not** say how
+ * much completion a given reduction buys, and the measurement that would license that reading
+ * has been made and came back negative (ADR 0044's addendum):
+ *
+ *   - **Halving it bought nothing.** Two permutations of the same route, same multiset of legs,
+ *     10,000 runs each: relocating the montage block left `peak` at 232 and reached 9.32%, while
+ *     spreading the block into a comb took `peak` to 109 and reached 8.64%. A 2.1x difference in
+ *     `peak` for a 1.7 SE difference in completion. The engine responds to WHERE hours sit
+ *     against the meters and the wear knee, which only one of those two changes.
+ *   - **Most of its corpus correlation is borrowed from `hours`.** rho(peak, hours) = 0.938;
+ *     rho(peak, completion) = -0.923 falls to a partial of **-0.296** once hours is held. Within
+ *     hours-strata it orders inconsistently, and two of five strata run backwards.
+ *   - **No threshold is demonstrated.** Only 6 of 28 routes reach `peak` 100, and the band
+ *     178-231 contains ZERO routes. The clean-looking gap between the failing pair and their
+ *     comparables is a hole in the sample, not a measured cliff.
+ *
+ * So: use it to notice a route, then measure that route. An acceptance test written as a `peak`
+ * threshold would be pinning a number this column has not earned.
  *
  * Every per-route figure in ADR 0041 and `docs/phase-3-verification.md` was produced by a
  * scratchpad harness that was then thrown away, which is why the same measurement kept being
@@ -129,10 +149,12 @@ export type RouteStat = {
    * stretch, alongside `hours`, which is its total.
    *
    * **Both are printed and neither substitutes for the other**: a route can be unfinishable
-   * because it is long or because one stretch of it is brutal, and the two failures need
-   * different fixes. `hours` is the better predictor BETWEEN routes of different lengths;
-   * this one discriminates WITHIN a set whose totals are alike, which is the case a floor gate
-   * has to read and the case `hours` alone is blind to.
+   * because it is long or because one stretch of it is brutal. `hours` is the better predictor
+   * BETWEEN routes of different lengths; this one separates a set whose totals are alike, which
+   * is the case a floor gate has to read and the case `hours` alone is blind to.
+   *
+   * **A flag, not a dial** — see the header. It identifies a route worth measuring; it does not
+   * predict what a change to it buys, and a permutation that halved it gained nothing.
    *
    * Derived from the same `legHours` fold as `hours`, at the STARTING mode, so the two are
    * commensurable by construction and `peak <= hours` always holds.
