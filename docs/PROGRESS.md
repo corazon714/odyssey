@@ -7,16 +7,16 @@
 
 ## C0-C4b — **every Phase 3 gate can now be RUN. Gate 9 does not PASS.**
 
-C0-C3 are **pushed**, HEAD `21855c8` on `dev`. **C4 and C4b are UNCOMMITTED in the tree** — the
-human commits. Uncommitted files:
+**ALL OF C0-C4b IS COMMITTED AND PUSHED**, HEAD `5dafade` on `dev`, tree clean. This paragraph
+said "C4 and C4b are UNCOMMITTED in the tree — the human commits" and listed the files; that was
+true when it was written and false by the time it was pushed, which is the one staleness a §12
+entry cannot afford — the next session reads it and goes looking for work that is not there.
+The three commits that landed them:
 
 ```
-NEW  packages/tools/sim/by-route.ts                 · __tests__/by-route.test.ts (16 tests)
-MOD  packages/tools/sim/{cli,parse-args,run-many,load-pack}.ts
-MOD  packages/tools/sim/__tests__/{pairing,report,sim}.test.ts
-MOD  packages/engine/src/index.ts                   (exports `legHours`)
-MOD  docs/sim-baseline-corpus.md                    (grid 23x5 -> 28x5, re-sampled in whole)
-NEW  docs/adr/0042-*.md · docs/adr/0043-*.md · this entry · CLAUDE.md §1/§5/§9
+8f25bc8  feat(sim): --by-route makes gate 9 measurable by a committed command
+efca918  fix(sim): a sixth endpoint pair, and a constraint that did not do its job
+5dafade  docs: the session record — every Phase 3 gate runs, gate 9 does not pass
 ```
 
 ### Shipped this session — what WORKS, and the command that proves each

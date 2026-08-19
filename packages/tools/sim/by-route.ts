@@ -4,7 +4,7 @@ import { type SimSummary } from './run-many.ts';
 import { type SimRun } from './run-one.ts';
 
 /**
- * `pnpm sim -- --pack=corpus --runs=230000 --by-route` — the ONLY command that can measure
+ * `pnpm sim -- --pack=corpus --runs=280000 --by-route` — the ONLY command that can measure
  * `docs/phase-3-dod.md` gate 9.
  *
  * ## Why this is a SEPARATE OUTPUT MODE and not a section of the report

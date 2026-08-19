@@ -167,7 +167,7 @@ packages/tools/                                                      ✅
   content-lint/             19 rules inc. 10 GEO_*, file:line:col    ✅ CI job
   content-stats/            counts + 4-axis coverage report          ✅
   imagegen/ · i18n-check/                                              (empty)
-docs/                       adr/0001-0041 · engine-spec · PROGRESS   ✅
+docs/                       adr/0001-0043 · engine-spec · PROGRESS   ✅
   phase-3-dod.md            the NINE phase gates, runnable           ✅ §7
   phase-3-verification.md   the measured handoff — 4 findings, 0 fixed ✅
   enforcement.md            what enforces each §2 rule               ✅

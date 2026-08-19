@@ -200,10 +200,23 @@ catches everything they cannot see, including a transitive one.
 ### 9. NO ROUTE BELOW 3% COMPLETION
 
 ```bash
-pnpm sim -- --pack=corpus --runs=250000 --by-route
+pnpm sim -- --pack=corpus --runs=280000 --by-route
 ```
 
 **Pass:** the worst route's completion is at or above 3%, **reported with its standard error**.
+
+**280,000 is derived, not round, and it is the only count this gate may be run at.** The corpus
+grid is **28 routes × 5 policies = 140 cells**, and a floor is a claim about the WORST CELL, so
+the count has to divide evenly into the grid or the marginal routes are sampled at a different
+depth from the rest: `280000 / 140 = 2000` runs per cell exactly. Two earlier numbers circulated —
+250,000 here and 230,000 in `by-route.ts`'s header — and **neither divides**: 250,000 predates the
+sixth endpoint pair (ADR 0043) and leaves 1,785.7 per cell, 230,000 leaves 1,642.9. Both were
+corrected to 280,000 rather than kept as "close enough", because a fractional cell depth is how
+the sampling-stride defect of ADR 0038 stayed invisible. **If `CORPUS_PAIRS` changes, this number
+changes with it** — recompute it as `routes × 5 × 2000` and update all three sites together.
+
+Use `--runs=28000` (200/cell) while iterating: it resolves a 10pp+ contrast in ~27 s and cannot
+resolve anything nearer the floor than about ±1pp. Confirm at 280,000 only. It writes nothing.
 
 This is the surviving half of ADR 0041's acceptance (the `|Kendall tau| < 0.6` clause was refuted
 by construction and dropped — `worn` is a monotone reparametrisation of the hour axis, so no knee
@@ -212,9 +225,9 @@ anywhere can break a rank correlation). A route nobody can finish under any play
 4.8%, a **margin as thin as 4.1 standard errors**, while pooled completion reads a comfortable
 42.7%. Print the SE or the gate is decorative.
 
-> **`--by-route` DOES NOT EXIST YET.** It is built at C4 and this gate cannot run until then. When
-> it is built it must ship as a **separate output mode, on the `--json` precedent** — not as an
-> extra section appended to the standard report. `packages/tools/sim/diff-report.ts` compares the
+> **`--by-route` SHIPPED at C4** (`packages/tools/sim/by-route.ts`, ADR 0042), so this gate runs
+> today and is the last of the nine to become measurable. It shipped as a **separate output mode,
+> on the `--json` precedent** — not as an extra section appended to the standard report. `packages/tools/sim/diff-report.ts` compares the
 > two reports **by line index**, so an appended section offsets every line beneath it and a
 > formatting change alone would force BOTH baselines to regenerate. That is the same class of
 > false positive ADR 0032 exists to prevent.
