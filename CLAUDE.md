@@ -44,7 +44,11 @@ The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 >
 > **Every one of `docs/phase-3-dod.md`'s nine gates can now be RUN**, gate 9 included, since
 > `--by-route` shipped (ADR 0042). **Gate 9 does not PASS.** Being able to measure a gate and
-> clearing it are different things, and PROGRESS is where the current reading lives.
+> clearing it are different things, and PROGRESS is where the current reading lives. Its failure
+> is **explained** since **ADR 0044**: drain is charged per HOUR and recovery arrives per LEG, so
+> a contiguous montage WALL — 232 of 509 hours in nine consecutive legs — is lethal at a total
+> the same route survives when spread. It is **one corridor sampled twice** (the two breaching
+> routes share 88.9% of their edges), so gate 9 and ADR 0043's generator collapse are one bug.
 >
 > **`docs/PROGRESS.md` is the authority on current state and this paragraph is not.**
 > `docs/engine-spec.md` Part II is the authority on what the engine does, written from the code.
@@ -167,7 +171,7 @@ packages/tools/                                                      ✅
   content-lint/             19 rules inc. 10 GEO_*, file:line:col    ✅ CI job
   content-stats/            counts + 4-axis coverage report          ✅
   imagegen/ · i18n-check/                                              (empty)
-docs/                       adr/0001-0043 · engine-spec · PROGRESS   ✅
+docs/                       adr/0001-0044 · engine-spec · PROGRESS   ✅
   phase-3-dod.md            the NINE phase gates, runnable           ✅ §7
   phase-3-verification.md   the measured handoff — 4 findings, 0 fixed ✅
   enforcement.md            what enforces each §2 rule               ✅

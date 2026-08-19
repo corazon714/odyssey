@@ -5,6 +5,117 @@
 
 ---
 
+## D0 — **gate 9's failure is EXPLAINED. It is one corridor, not two routes.**
+
+Committed on `dev`. Two commits: `675d37a` (docs only — one run count for gate 9) and this one.
+**No engine change, no content change, no constant moved, both baselines untouched.**
+
+### The finding — `docs/adr/0044` is the authority and this is a pointer
+
+> **Drain is charged per HOUR; recovery arrives per LEG. So survivability is set by the LOCAL
+> hours-per-leg, and `route.illicit.r1dlxpt5` bills 232 of its 509 hours inside NINE CONSECUTIVE
+> LEGS (8–16).** Its montage block is contiguous; `r1gjd3s6` spreads the same 509 hours over
+> legs 2, 3, 26 and 36–45. 67% of `r1dlxpt5`'s population dies between leg 8 and leg 16 against
+> 22% of `r1gjd3s6`'s. The binding meter is **morale**, and it is binary across the four
+> comparables: median first floor at **leg 14** on both breaching routes, **never** on both
+> healthy ones.
+
+**Proved causally, not by correlation.** A permutation of `r1dlxpt5` holds every multiset
+invariant by construction — same `legKm` multiset, same 509 hours, same montage count, same
+`legLocations`, same beats — and carries `legKm`/`legLocations`/`montageLegs`/`beatSchedule`
+together so a beat stays on the leg it was scheduled against. Coherence asserted, not assumed.
+10,000 runs per variant:
+
+| variant                        | completion |  Δ vs base | morale floor |
+| ------------------------------ | ---------: | ---------: | -----------: |
+| base (as generated)            |      2.56% |          — |        60.9% |
+| **montage wall moved LAST**    |  **9.60%** | **+21 SE** |    **35.7%** |
+| CTRL — beats permuted only     |      2.75% |    +0.8 SE |        61.4% |
+| CTRL — locations permuted only |      2.69% |    +0.6 SE |        65.6% |
+| _reference_ `r1gjd3s6`         |     15.95% |          — |        36.2% |
+
+Both controls null; the hour permutation moves 7.04pp at 21 SE, and lands on the reference's
+morale-floor share (35.7% vs 36.2%) — a quantity nothing was tuned toward.
+
+**Q1 AND Q2 ARE ONE BUG.** The two breaching routes **share 16 of 18 edges and 18 of 19 nodes —
+88.9% overlap**. Gate 9 fails on ONE corridor sampled twice, and the second sample exists only
+because Beira-Aktobe's generator collapsed to rung 3 (ADR 0043) and could not supply an
+alternative. `acceptByDiversity` is not at fault: 88.9% is inside the 90% ceiling it was asked
+to enforce. The corridor is coarse — **18 path edges for 16,983 km** against 23–32 on the healthy
+48-leg routes — and a coarse path is what gives montage nine consecutive segments to collapse.
+
+**Eliminated, each by measurement:** the harsh-weather threshold (46/48 vs 45/48 eligible legs);
+`legLocations` and event-pool starvation (`uneventfulLegs` and `fallbackLegs` are **0.00 on every
+route** — the relaxation ladder never engages); the beat schedule (null control); and realized-vs-
+static hours (max realized 520 against 509 static, so the routes were genuinely comparable).
+
+**What the finding does NOT claim.** Total hours is still the better GLOBAL predictor
+(ρ = −0.947 over 28 routes, −0.929 stratified to the 48-leg cap) against the worst-9-leg-window's
+−0.915 / −0.900. The window wins only WITHIN a stratum — which is where a floor gate reads, and
+where total hours ranks both ends of the four comparables wrong.
+
+### Gate 9, re-measured on this tree
+
+`pnpm sim -- --pack=corpus --runs=280000 --by-route` — **FAIL, 2 routes below 3.00%**,
+`r1dlxpt5` 2.32% (−4.5 SE), `r16kyujq` 2.81% (−1.1 SE). Byte-for-byte the figures C4b recorded;
+nothing this session moved it, which is the point.
+
+### Half-done / handed forward
+
+- **THE FIX IS NAMED AND NOT MADE.** `planLegs` picks montage by dullness alone; nothing stops
+  it taking nine consecutive segments. A **spacing constraint** — refuse a segment adjacent to
+  one already montaged while any unmontaged candidate remains — breaks the wall into a comb at
+  no cost to the montage budget. Not made here because it moves `legKm` on every corpus route,
+  therefore the corpus baseline, therefore gate 9 itself, and it must not be measured on the run
+  that discovered the problem. `packages/engine/src/route/leg-plan.ts`, `byDullness` /
+  `protectedFromMontage`.
+- **The corpus cannot validate that fix.** One corridor supplies both breaches, so any change
+  that clears gate 9 is validated on n=1. Fix the generator collapse first or accept n=1 knowingly.
+- **`--by-route` cannot see what decides its own verdict.** It prints total hours, which is blind
+  inside the stratum the gate reads. A `peak` column (worst 9-leg window) is ~15 lines in
+  `by-route.ts` plus a test, is baseline-neutral because the mode returns before `formatReport`,
+  and would have made this session's finding readable off the gate's own output. **Proposed, not
+  taken** — awaiting a call.
+- **`world-tick.ts:111-136` is now wrong in a THIRD way** — "completion is a near-deterministic
+  function of that one number" is false within a stratum. Still not touched, deliberately: the
+  comment justifies `HOURS_PER_HUNGER_DAMAGE` / `HOURS_PER_STARVING_DAMAGE`, and ADR 0044's
+  finding is that **no dial is implicated at all** (the same constants give 2.56% and 9.60% on
+  the same multiset of legs), so re-deriving 44/22 would be tuning against a route-shape defect.
+  Rewrite it when the shape fix lands, against the route set that fix produces.
+- **`by-route.ts:24`** still reads "the worst route has sat at 4.3–4.8%, a margin measured at 4.1
+  standard errors" in the present tense, written before gate 9 failed. Same reason for leaving it.
+- Everything C4b handed forward is untouched: the five dead outcomes behind `random`-only choices,
+  and the four findings in `docs/phase-3-verification.md`.
+
+### Next step — ONE task
+
+> **Decide whether Phase 3 closes with gate 9 red and ADR 0044 as the explanation, or whether the
+> montage spacing constraint lands first.**
+>
+> They are genuinely different phases of work. The finding is complete and defensible on its own:
+> a red gate with a measured cause, a named fix, and an owner is a closeable state. The fix is a
+> route-generation change that moves `legKm` corpus-wide — new corpus baseline, re-measured gate
+> 9, and a re-run of ADR 0043's generator question, because a comb-shaped montage may change how
+> many routes Beira-Aktobe yields.
+>
+> **If the fix lands first**, do it in this order and nothing else in the same commit:
+> `leg-plan.ts` spacing constraint → `pnpm test:engine` → `pnpm sim:diff -- --runs=2000` on BOTH
+> packs → regenerate `docs/sim-baseline-corpus.md` → `--runs=280000 --by-route` → `pnpm geo:verify`
+> (route structure moved). Expect the goldens to move: `legKm` feeds `stateDigest`.
+>
+> **If it does not**, ADR 0044 plus this entry is the handoff, and the `peak` column on
+> `--by-route` is worth taking first so the next session reads the cause off the gate.
+
+### DoD
+
+`pnpm typecheck` clean · `pnpm lint` clean · `pnpm test` green (86 files, 1,847 vitest + 3 jest) ·
+`pnpm content:lint` 0 errors, 1 warning (`MISSING_IMAGE_MANIFEST`, pre-existing) ·
+`pnpm format:check` clean. Documentation only — **no `sim:diff` owed, no golden touched, neither
+baseline written.** Every measurement in this entry came from throwaway scratchpad harnesses and
+from the committed `--by-route` command, which writes nothing.
+
+---
+
 ## C0-C4b — **every Phase 3 gate can now be RUN. Gate 9 does not PASS.**
 
 **ALL OF C0-C4b IS COMMITTED AND PUSHED**, HEAD `5dafade` on `dev`, tree clean. This paragraph
