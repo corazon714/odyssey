@@ -8,7 +8,8 @@
   "types": "./schema/index.ts",
   "exports": {
     ".": "./schema/index.ts",
-    "./loader": "./loader/index.ts"
+    "./loader": "./loader/index.ts",
+    "./geo/*": "./geo/*"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

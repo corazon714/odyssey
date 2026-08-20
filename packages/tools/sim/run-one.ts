@@ -4,12 +4,14 @@ import {
   createRngCursors,
   createRunInit,
   createRunState,
+  dueBeatSlot,
   resolveChoice,
   stateDigest,
   unresolvedThreads,
   type ContentPack,
   type EndingId,
   type EventId,
+  type RouteState,
 } from '@odyssey/engine';
 import { type FixtureScenario } from './load-pack.ts';
 import { UNIVERSAL_CHOICE_PREFIX } from '@odyssey/engine';
@@ -34,8 +36,48 @@ export type SimRun = {
   readonly days: number;
   readonly endings: readonly EndingId[];
   readonly firedEvents: readonly EventId[];
+  /**
+   * Legs on which the director actually produced a selection — THE GATE-DECISION POPULATION.
+   *
+   * **`legs` is not this number, and the difference is not cosmetic.** `legs` is
+   * `state.route.legIndex`, a final INDEX, while `quietLegs`, `forcedFireLegs` and
+   * `uneventfulLegs` are all counted once per selection. The two agree on the ordinary run,
+   * which is why the gap survived review: the run normally ends on an `advanceLeg` that returns
+   * `selection === null` (arrival or a failure verdict), so the last leg index is reached and
+   * contributes no selection, and `selections === legs`.
+   *
+   * They disagree when the run ends inside `resolveChoice` — a choice whose effects cross a
+   * failure threshold, or unlock a terminal ending. That leg WAS selected on, the loop then
+   * exits without another `advanceLeg`, and `selections === legs + 1`. MEASURED at 2,000 runs:
+   * 20 of 2,000 fixture runs and 315 of 2,000 corpus runs, i.e. a 0.06% / 0.59% error in any
+   * rate that divides a per-selection count by `legs`.
+   *
+   * A run that ends before its first selection (legs 0, immediate arrival or failure) has zero
+   * of these, correctly: it made no gate decision at all. `summarise`'s `Math.max(1, legs)` term
+   * would score it as one leg.
+   */
+  readonly selections: number;
   readonly uneventfulLegs: number;
   readonly fallbackLegs: number;
+  /**
+   * Legs the quiet-leg gate silenced (ADR 0029 D4). DESIGNED silence, and its own counter
+   * rather than a fold into `uneventfulLegs`: `uneventful` is the relaxation ladder coming up
+   * empty, which is a CONTENT GAP, and the `Empty-pool fallbacks` / `Uneventful legs` pair is
+   * the only instrument in the report that can see one. At a 30% quiet share, folding them
+   * would bury a starvation signal under a number six times its size.
+   *
+   * It is also the term that makes three denominators honest again — see `summarise`.
+   */
+  readonly quietLegs: number;
+  /**
+   * Legs the gate never saw: a due beat slot or a due queue entry forces a fire (ADR 0029 D3).
+   *
+   * The realised quiet share is `(1 − P) × (1 − forcedFireShare)`, not `(1 − P)`, so this
+   * number BOUNDS what any `BASE_EVENT_ODDS` can ever produce. Decision 3 estimated it from
+   * the ADR 0027 schedule rather than measuring it; measuring it is a deliverable of M3.12a
+   * precisely because every quiet-ratio target in Decision 7 is set against it.
+   */
+  readonly forcedFireLegs: number;
   readonly queueFires: number;
   /** Legs where the director attached a complication. Measures ATTACH_PERCENT against reality. */
   readonly complicatedLegs: number;
@@ -44,10 +86,16 @@ export type SimRun = {
    * 08-DIVERSITY-SYSTEMS D1 is actually about: "a typical check should pull 3-7". A check
    * pulling under two is drawing nothing the registry exists to provide, and it is invisible
    * without counting — the roll still happens and the report still looks healthy.
+   *
+   * Counted over `resolution.chips` (the collapsed render list) since M3.11, not over
+   * `resolution.modifiers` (the audit trail). The band is a budget on the SCREEN.
    */
   readonly checksRolled: number;
   readonly chipsTotal: number;
   readonly checksUnderTwoChips: number;
+  /** Checks pulling more chips than the 3-7 legibility band allows, and the worst one. */
+  readonly checksOverBand: number;
+  readonly maxChips: number;
   /**
    * Universal choices, offered vs taken. BOTH, because either alone misleads: a row offered
    * everywhere and never picked is clutter, and a row picked far more often than it is offered
@@ -73,6 +121,8 @@ export type SimRun = {
     readonly health: number;
     readonly morale: number;
     readonly energy: number;
+    readonly hunger: number;
+    readonly hygiene: number;
   }[];
   readonly turnCapHit: boolean;
   readonly error: string | null;
@@ -104,13 +154,18 @@ export function runOne(
 
   let state = created.state;
   const firedEvents: EventId[] = [];
+  let selections = 0;
   let uneventfulLegs = 0;
   let fallbackLegs = 0;
+  let quietLegs = 0;
+  let forcedFireLegs = 0;
   let queueFires = 0;
   let complicatedLegs = 0;
   let checksRolled = 0;
   let chipsTotal = 0;
   let checksUnderTwoChips = 0;
+  let checksOverBand = 0;
+  let maxChips = 0;
   let choicesOffered = 0;
   let universalOffered = 0;
   let picks = 0;
@@ -128,12 +183,19 @@ export function runOne(
     health: number;
     morale: number;
     energy: number;
+    hunger: number;
+    hygiene: number;
   }[] = [];
   const CHECKPOINT_LEGS = new Set([5, 15, 25]);
   let turns = 0;
 
   while (state.status !== 'ended' && turns < MAX_TURNS) {
     turns += 1;
+
+    // Captured BEFORE the call. `advanceLeg` rewrites `beatSchedule` on its way out, and the
+    // forced-fire reconstruction below needs the schedule the GATE saw, not the one the leg
+    // left behind. Cheap: a `RouteState` is deeply readonly, so this is an alias, not a copy.
+    const routeBefore: RouteState = state.route;
 
     const advanced = advanceLeg(state, pack);
     if (!advanced.ok) return blank(seed, route, policyName, `advanceLeg: ${advanced.error.code}`);
@@ -149,14 +211,51 @@ export function runOne(
         health: state.resources.health,
         morale: state.resources.morale,
         energy: state.resources.energy,
+        hunger: state.resources.hunger,
+        hygiene: state.resources.hygiene,
       });
     }
 
     const selection = advanced.selection;
+    // A null selection is a leg that ENDED the run — arrival or a failure verdict, both checked
+    // before the gate. It never reached the gate, so it is neither forced nor gateable and is
+    // counted in neither instrument below.
     if (selection === null) continue;
 
-    if (selection.kind === 'uneventful') {
-      uneventfulLegs += 1;
+    // Counted HERE — after the null guard and before either instrument below — so it is the
+    // exact population `forcedFireLegs` and `quietLegs` partition, by construction rather than
+    // by an argument that has to stay true as this loop changes.
+    selections += 1;
+
+    // FORCED FIRE, RECONSTRUCTED FROM OUTSIDE THE LOOP (ADR 0029 D3).
+    //
+    // `advanceLeg` does not report it, and adding a field to `AdvanceLegResult` is an engine
+    // change this milestone does not get to make. Both halves of its disjunction are visible
+    // from here, exactly:
+    //
+    //   BEAT — `dueBeatSlot` reads `route.beatSchedule` and the leg index and nothing else, and
+    //   nothing mutates the schedule between the caller's state and the gate (`advanceBeatSchedule`
+    //   runs AFTER selection). So the pre-call route with the post-call leg index is the same
+    //   input the gate was handed.
+    //
+    //   QUEUE — `due.length > 0` iff `selection.fromQueue`: `choose` tries the queue first and
+    //   `rng.pick` returns null only on an empty array, so a non-empty `due` always yields a
+    //   queue fire. Reading the outcome is cheaper than rebuilding a predicate context here and
+    //   it cannot disagree with what actually happened.
+    //
+    // Still exact once M3.12b sets a real base: a quiet leg is by definition NOT forced, so its
+    // `due` was empty and the `fromQueue` this cannot read is a false already known.
+    const legIndex = state.route.legIndex;
+    const forced =
+      dueBeatSlot(routeBefore, legIndex) !== null ||
+      (selection.kind === 'event' && selection.fromQueue);
+    if (forced) forcedFireLegs += 1;
+
+    // `quiet` (ADR 0029 D4) is DESIGNED silence and is deliberately NOT counted as uneventful:
+    // folding it in destroys the one instrument that can see a content gap.
+    if (selection.kind !== 'event') {
+      if (selection.kind === 'uneventful') uneventfulLegs += 1;
+      if (selection.kind === 'quiet') quietLegs += 1;
       continue;
     }
 
@@ -188,8 +287,14 @@ export function runOne(
     }
     if (resolved.resolution !== null) {
       checksRolled += 1;
-      chipsTotal += resolved.resolution.modifiers.length;
-      if (resolved.resolution.modifiers.length < 2) checksUnderTwoChips += 1;
+      // `chips`, not `modifiers`: the band is a PILLAR-2 budget on what the result screen asks
+      // the player to hold at once, and since M3.11 that is the collapsed list. Counting the
+      // audit trail here would measure a number no screen shows.
+      const chips = resolved.resolution.chips.length;
+      chipsTotal += chips;
+      if (chips < 2) checksUnderTwoChips += 1;
+      if (chips > 7) checksOverBand += 1;
+      maxChips = Math.max(maxChips, chips);
     }
     if (resolved.outcome === null) noOutcomeChoices += 1;
     for (const applied of resolved.applied) {
@@ -208,13 +313,18 @@ export function runOne(
     days: state.clock.day,
     endings: state.unlockedEndings,
     firedEvents,
+    selections,
     uneventfulLegs,
     fallbackLegs,
+    quietLegs,
+    forcedFireLegs,
     queueFires,
     complicatedLegs,
     checksRolled,
     chipsTotal,
     checksUnderTwoChips,
+    checksOverBand,
+    maxChips,
     choicesOffered,
     universalOffered,
     picks,
@@ -249,13 +359,18 @@ function blank(
     days: 0,
     endings: [],
     firedEvents: [],
+    selections: 0,
     uneventfulLegs: 0,
     fallbackLegs: 0,
+    quietLegs: 0,
+    forcedFireLegs: 0,
     queueFires: 0,
     complicatedLegs: 0,
     checksRolled: 0,
     chipsTotal: 0,
     checksUnderTwoChips: 0,
+    checksOverBand: 0,
+    maxChips: 0,
     choicesOffered: 0,
     universalOffered: 0,
     picks: 0,

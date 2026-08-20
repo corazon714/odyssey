@@ -17,6 +17,25 @@
  * reports. `GEO_UNDECLARED_BRIDGE` is a warning with a budget, never a per-edge error.
  */
 
+/**
+ * How many nodes a component needs before it counts as a LANDMASS rather than a fragment.
+ *
+ * ADR 0036 replaced "the graph is exactly one component" with "every component is a landmass",
+ * because the old rule made a world map impossible — no overlay row can land-connect the
+ * Americas to Eurasia — and so quietly capped the game at one continent.
+ *
+ * **Calibrated, not chosen.** Measured over the Afro-Eurasia slice
+ * (`--bbox=-18,-35,180,72`, 805 nodes, 49 components): the largest component holds 692 nodes
+ * and the next five hold 20, 15, 10, 7 and 6. There is a two-order gap and 40 sits inside it —
+ * comfortably below the smallest continental quota (`oceania` 55, so Australia qualifies as its
+ * own landmass) and double the largest thing the edge builder actually produced by accident.
+ *
+ * Re-measure it whenever the bbox or the quotas move. A floor that admits a fragment ships a
+ * place a player can be routed into and stranded on, which is the failure ADR 0024 named and
+ * ADR 0036 kept.
+ */
+export const MIN_LANDMASS_NODES = 40;
+
 export type ConnectivityEdge = {
   readonly a: number;
   readonly b: number;

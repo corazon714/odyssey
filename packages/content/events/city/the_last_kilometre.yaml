@@ -1,0 +1,139 @@
+id: city.the_last_kilometre
+category: city
+tags: [city, social, money]
+priority: beat
+beatType: finale
+tensionBand: [0.4, 1]
+maxOccurrences: 1
+image: city/the_last_kilometre
+# Every corpus route finishes at a city node, and a destination is somewhere people live. The
+# finale slot has NO SLACK, so this list is the whole of what it can land on — kept to three
+# settled types rather than opened up, because an arrival in open country is not an arrival.
+context:
+  locationTypes: [city, town, village]
+choices:
+  # THE VERDICT ON THE RUN, and the reason this is an event rather than a screen.
+  # `checkRunEnd` says "an ending unlocked by the finale event wins; otherwise the run arrived
+  # without one" — so `ending.arrival_triumphant` and `ending.arrival_hollow` have been declared
+  # and unreachable since Phase 1, and the engine names THIS event as the thing that reaches
+  # them. Four routes to a verdict, and NEITHER VERDICT DEPENDS ON A SINGLE CHOICE any more.
+  #
+  # WHY THIS CHOICE CANNOT CARRY ONE ALONE, MEASURED. The five policies pick `walk_in_as_you_are`
+  # 11 times of 652 fires (1.7%), and all 11 are `random` — no deliberate policy ever ranks it
+  # first. `greedy-safe` and `risk-taker` take `spend_the_last_of_it`; `greedy-fast` and
+  # `adversarial` take the injected `u:pay_the_asking_price`. `arrival_hollow` hung here alone and
+  # resolved twice in 2,000 runs (0.1%), and the state gate below was blamed for it — WRONGLY:
+  # that gate is OPEN on 281 of 652 fires (43.1%). The choice was the constraint, never the gate.
+  #
+  # THE POOR-RUN DEFENCE IS ALSO REFUTED, and that is why the branch is kept rather than moved.
+  # This is the only choice a player with no cash can take, which would justify hanging an ending
+  # on it if such a player existed in quantity: cash at the finale runs p10 771 / p50 1,784, and
+  # 4 fires of 652 (0.6%) hold under the 40 `spend_the_last_of_it` asks. Four runs in two thousand
+  # is a door worth leaving open and not a load-bearing one, so `nothing_left_of_you` stays HERE
+  # and the same verdict is reachable from the choice players actually take.
+  - id: walk_in_as_you_are
+    outcomes:
+      - id: nothing_to_declare
+        weight: 3
+        effects:
+          - { op: advanceTime, hours: 1 }
+          - { op: resource, key: morale, delta: 1 }
+      - id: nothing_left_of_you
+        weight: 2
+        requires:
+          any:
+            - { resource: health, lte: 3 }
+            - { resource: morale, lte: 3 }
+        effects:
+          - { op: unlockEnding, id: ending.arrival_hollow }
+          - { op: resource, key: morale, delta: -1 }
+          - { op: advanceTime, hours: 1 }
+
+  - id: spend_the_last_of_it
+    hiddenUnless: { resource: cash, gte: 40 }
+    costs:
+      - { op: resource, key: cash, delta: -40 }
+    outcomes:
+      - id: clean_shirt_clean_story
+        weight: 3
+        effects:
+          - { op: resource, key: hygiene, delta: 4 }
+          - { op: resource, key: reputation, delta: 1 }
+          - { op: resource, key: morale, delta: 2 }
+          - { op: advanceTime, hours: 2 }
+      # "Arrived with resources and reputation intact" is the declared meaning of the ending,
+      # and INTACT is `gte: 0` — undamaged — rather than `gte: 1`, which would demand you had
+      # actively built a reputation on a road that mostly costs you one.
+      - id: upright_and_solvent
+        weight: 2
+        requires:
+          all:
+            - { resource: health, gte: 6 }
+            - { resource: morale, gte: 6 }
+            - { resource: reputation, gte: 0 }
+        effects:
+          - { op: unlockEnding, id: ending.arrival_triumphant }
+          - { op: resource, key: hygiene, delta: 4 }
+          - { op: resource, key: reputation, delta: 1 }
+          - { op: resource, key: morale, delta: 1 }
+          - { op: advanceTime, hours: 2 }
+      # THE OTHER VERDICT, ON THE SAME CHOICE, GATED THE OTHER WAY. `upright_and_solvent` above
+      # asks health >= 6 AND morale >= 6; this asks health <= 3 OR morale <= 3. The two gates
+      # cannot both be open, so one choice yields whichever verdict the STATE has earned — which
+      # is the fix: the ending now follows the run's condition rather than a choice nobody picks.
+      #
+      # WEIGHT 2 IS `upright_and_solvent`'s, DERIVED AND NOT FITTED. That 2-against-3 is the
+      # event's own statement of how often a qualifying state converts to a verdict rather than a
+      # plain good arrival — 40%. Giving the hollow branch the same 2 says the event has no
+      # preference between its two verdicts, and lets the GATES decide the rates: 43.1% of fires
+      # are battered against roughly a quarter that clear the triumphant gate, so hollow is
+      # expected to land somewhat ABOVE `arrival_triumphant`'s 1.6%. Weight 1 would have matched
+      # that number exactly and would have been fitting to it — the corpus saying more runs limp
+      # in than stride in is a reading of the wear curve, not something to flatten.
+      #
+      # The 40 cash BOUGHT the wash, so `hygiene` and the point of morale are paid as on the
+      # other two outcomes. What is withheld is `reputation`: arriving with nothing left to trade
+      # on is the whole difference from `upright_and_solvent`. Hours are 2 like its siblings, so
+      # `timeCost` is unchanged at 2.0 and `greedy-fast` cannot shift on this edit alone.
+      - id: the_shirt_was_the_easy_part
+        weight: 2
+        requires:
+          any:
+            - { resource: health, lte: 3 }
+            - { resource: morale, lte: 3 }
+        effects:
+          - { op: unlockEnding, id: ending.arrival_hollow }
+          - { op: resource, key: hygiene, delta: 4 }
+          - { op: resource, key: morale, delta: 1 }
+          - { op: advanceTime, hours: 2 }
+
+  - id: find_who_you_were_sent_to
+    check:
+      skill: streetwise
+      dc: 12
+      tags: [crime, navigate, social, perception]
+    outcomes:
+      - id: they_were_expecting_you
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: flag, id: owed_a_favour }
+          - { op: resource, key: reputation, delta: 1 }
+          - { op: resource, key: morale, delta: 2 }
+          - { op: advanceTime, hours: 2 }
+      - id: a_shutter_and_a_name
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: advanceTime, hours: 5 }
+          - { op: resource, key: morale, delta: -1 }
+      # Arriving hunted is an arrival, and it is a hollow one. Pillar 1: the bad outcome opens
+      # the ending rather than deleting the run.
+      - id: recognised_before_you_knock
+        weight: 1
+        onCheck: failure
+        requires: { flag: wanted }
+        effects:
+          - { op: unlockEnding, id: ending.arrival_hollow }
+          - { op: resource, key: heat, delta: 2 }
+          - { op: advanceTime, hours: 4 }

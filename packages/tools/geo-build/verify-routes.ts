@@ -2,6 +2,7 @@ import {
   ROUTE_PROFILES,
   costFor,
   edgeAt,
+  generateRoutes,
   hasMode,
   nodeAt,
   nodeId,
@@ -14,20 +15,33 @@ import {
 } from '@odyssey/engine';
 
 import { DIVERSITY_PASS_THRESHOLD } from './audit-diversity.ts';
+import {
+  classifyDiversity,
+  endpointDegree,
+  structuralFloorPercent,
+  type DiversityCause,
+} from './route-structure.ts';
 
 /**
  * Phase 3 route verification, against the committed artifacts.
  *
  * ## What this can and cannot answer, and why
  *
- * It measures the GRAPH and the PATHS — the only two things that exist. Legs, montage legs,
- * in-game days, cash cost, risk band, events fired, memory chains and completion rate are all
- * properties of milestones that have not shipped: `leg-plan`, `leg-locations`, `beat-schedule`,
- * `route-preview`, `materialise-route` and `generate-routes` are six files that are not on disk,
- * `RouteState` has no `legKm` or `montageLegs`, and nothing feeds a generated route to the sim.
- * Printing those columns would mean inventing them, so they are absent rather than estimated.
+ * It measures the GRAPH, the PATHS, and — since M3.10 — the PREVIEW the preparation screen would
+ * show for each of them. The header here used to say legs, montage legs, in-game days and cash
+ * were unmeasurable because six modules were not on disk. All six shipped; `previewsFor` reads
+ * them through `generateRoutes`, which is the same call `sim/load-pack.ts` makes (ADR 0034), so
+ * the columns are the game's own numbers rather than a second estimate of them.
  *
- * Everything below is measured from `selectPaths` and the edges it returns.
+ * **What is still absent is absent for a different reason.** Events fired, memory chains and
+ * completion rate are functions of the CONTENT PACK as well as of the route, and
+ * `pnpm sim --pack=corpus` measures them off the code path the game runs. A second copy here
+ * would drift from the one anybody acts on.
+ *
+ * **There is no risk column and there must not be one.** `RoutePreview` has no risk field, no
+ * `GeoNode` or `GeoEdge` carries one, and CLAUDE.md §11 forbids deriving one from where a node
+ * happens to be. What a risk band would have to be built from is printed instead — crossings,
+ * hardest terrain, ferry and tolled hops, and the profile — as the physical facts they are.
  */
 
 export type NameLookup = ReadonlyMap<string, number>;
@@ -112,6 +126,13 @@ export type PairReport = {
   /** Worst pairwise overlap between any two returned routes, by distance. */
   readonly maxOverlap: number;
   readonly diversityOk: boolean;
+  /** Edges on the graph incident to each endpoint. A 1 forces its single edge into every route. */
+  readonly fromDegree: number;
+  readonly toDegree: number;
+  /** Lower bound on `maxOverlap` set by the edges every route must use. See `route-structure`. */
+  readonly floorPercent: number;
+  /** Whether a breach is the graph's shape or the filter's doing. */
+  readonly cause: DiversityCause;
   /** Profiles that could not reach the destination without relaxation. */
   readonly refused: readonly RouteProfile[];
   /**
@@ -163,6 +184,11 @@ export function verifyPair(
         illicit.hardest <= other.hardest,
     );
 
+  const floorPercent = structuralFloorPercent(
+    graph,
+    result.paths.map((selected) => selected.path),
+  );
+
   return {
     label,
     from: nameOf[from] ?? '?',
@@ -171,7 +197,85 @@ export function verifyPair(
     rungReached: result.rungReached,
     maxOverlap,
     diversityOk: result.paths.length < 2 || maxOverlap <= DIVERSITY_PASS_THRESHOLD,
+    fromDegree: endpointDegree(graph, from),
+    toDegree: endpointDegree(graph, to),
+    floorPercent,
+    cause: classifyDiversity(
+      result.paths.length,
+      maxOverlap,
+      floorPercent,
+      DIVERSITY_PASS_THRESHOLD,
+    ),
     refused,
     illicitDominates,
   };
+}
+
+/**
+ * What the preparation screen would show for each route between a pair.
+ *
+ * Read through `generateRoutes` rather than by re-deriving `planLegs` here, so these are the
+ * numbers the game produces rather than a parallel calculation of them.
+ *
+ * **The seed does not reach any field below**, which is why one fixed value is honest rather than
+ * a hidden variable: `materialiseRoute` computes `segments` and `plan` before the seed is used,
+ * and passes it only to `deriveBeatSchedule`. Leg count, montage legs, distance, hours and cash
+ * are therefore identical under every seed; `RouteStart`'s departure hour and weather are not,
+ * and are not reported here.
+ */
+export const PREVIEW_SEED = 'geo-verify';
+
+export type PreviewFacts = {
+  readonly profile: RouteProfile;
+  readonly totalKm: number;
+  readonly legCount: number;
+  readonly montageLegCount: number;
+  /** Expected in-game hours at the profile's starting mode, jitter included. */
+  readonly travelHours: number;
+  readonly crossings: number;
+  readonly hasFerry: boolean;
+  /** Advisory preparation budget. `RouteStart.cash` starts the player at 130% of it. */
+  readonly recommendedCash: number;
+  readonly startingMode: string;
+};
+
+/**
+ * Whether the `illicit` route is also the cheapest to prepare for.
+ *
+ * **The companion measurement to `illicitDominates`, and the one that says what "strictly better"
+ * is being measured ON.** `illicitDominates` compares three GEOMETRIC facts — distance, crossings,
+ * hardest ground — and geometry is precisely where `illicit` is expected to win: its cost function
+ * is `distanceKm / 5` plus penalties for crossings and populated ground, so it is already close to
+ * a distance-minimiser that dodges border posts. Finding it short and border-light is close to
+ * tautological, and a dominance count built only on those three overstates the problem.
+ *
+ * What geometry cannot see is that `illicit` is priced at 125% of a plain route by `PROFILE_COST`,
+ * refuses train and ferry as ticketed, and starts the run `vehicleLegal: false`. Cash is the one
+ * of those three that is a comparable NUMBER on every route, so it is the one added here. A route
+ * that is shorter, flatter, crosses fewer borders AND costs less to prepare is dominant in a sense
+ * no cost function disagrees with; one that merely wins on geometry is making a trade the
+ * geometric test cannot represent.
+ */
+export function illicitCashDominates(previews: readonly PreviewFacts[]): boolean {
+  const illicit = previews.find((preview) => preview.profile === 'illicit');
+  const others = previews.filter((preview) => preview.profile !== 'illicit');
+  return (
+    illicit !== undefined &&
+    others.length > 0 &&
+    others.every((other) => illicit.recommendedCash < other.recommendedCash)
+  );
+}
+
+export function previewsFor(graph: GeoGraph, from: number, to: number): readonly PreviewFacts[] {
+  return generateRoutes(graph, from, to, PREVIEW_SEED).plans.map((plan) => ({
+    profile: plan.preview.profile,
+    totalKm: plan.preview.totalKm,
+    legCount: plan.preview.legCount,
+    montageLegCount: plan.preview.montageLegCount,
+    travelHours: plan.preview.travelHours,
+    crossings: plan.preview.crossings,
+    hasFerry: plan.preview.hasFerry,
+    recommendedCash: plan.preview.recommendedCash,
+    startingMode: plan.start.transportMode,
+  }));
 }

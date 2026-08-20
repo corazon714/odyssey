@@ -131,6 +131,8 @@ describe('the registry actually resolves against real state', () => {
         totalKm: 100,
         beatSchedule: [],
         legLocations: ['border_crossing', 'roadside'],
+        legKm: [50, 50],
+        montageLegs: [],
       } as never),
     );
     if (!created.ok) throw new Error(`route rejected: ${created.error.code}`);

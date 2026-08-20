@@ -4,9 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { createContentPack } from '../../content/content-pack.ts';
 import { eventId } from '../../ids/content-ids.ts';
+import { wearBandAt, worn } from '../../loop/wear-curve.ts';
 import { SAVE_VERSION } from '../../state/create-run-state.ts';
 import { type RunState } from '../../state/run-state.ts';
 import { stateDigest } from '../../state/state-digest.ts';
+import { validateRoute } from '../../state/validate-route.ts';
 import { loadMiniPack } from '../../__tests__/support/load-fixtures.ts';
 import { migrateSave } from '../migrate-save.ts';
 import { type Migration } from '../migration.ts';
@@ -124,7 +126,11 @@ describe('migrateSave', () => {
     const loaded = readSave('save-v1-loaded.json');
     const result = migrateSave(loaded);
     if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
-    expect(result.state).toEqual(readSave('save-v4-loaded.json'));
+    // DERIVED from SAVE_VERSION, not the literal `save-v5-loaded.json` this used to name. The
+    // literal silently pinned the ladder's top rung: bumping SAVE_VERSION left this comparing
+    // today's migration output against the PREVIOUS version's fixture, which fails for a reason
+    // that reads like a broken migration rather than a stale filename.
+    expect(result.state).toEqual(readSave(`save-v${String(SAVE_VERSION)}-loaded.json`));
   });
 
   it('writes complicationId: null onto a save caught mid-event', () => {
@@ -164,6 +170,60 @@ describe('migrateSave', () => {
     const result = migrateSave(readSave('save-v3.json'));
     if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
     expect(result.state.presentation).toEqual({ kind: 'none' });
+  });
+
+  it('v4->v5 WRITES legKm rather than leaving it absent', () => {
+    // The trap `migrate_3_to_4` had to learn, in its second instance. `isRunStateShape` checks
+    // only that `route` is PRESENT (run-state-shape.ts:39), never its fields — so an absent
+    // `legKm` loads clean, reads `undefined`, and turns `route.legKm[i]` into a TypeError
+    // thrown out of a function whose whole contract is that it returns an EngineError.
+    const result = migrateSave(readSave('save-v4.json'));
+    if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
+
+    expect(Object.keys(result.state.route)).toContain('legKm');
+    expect(Object.keys(result.state.route)).toContain('montageLegs');
+    expect(result.state.route.montageLegs).toEqual([]);
+  });
+
+  it('v4->v5 computes the CORRECT distance for a v4 save, not a placeholder', () => {
+    // A v4 save was produced by an engine whose every leg covered totalKm/legCount, so this is
+    // not a guess at what the route meant — it is what that run was actually doing. That is the
+    // property which makes the bump safe to ship to a player mid-journey, and it is why the
+    // migrated save must replay identically rather than merely load.
+    const result = migrateSave(readSave('save-v4.json'));
+    if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
+
+    const route = result.state.route;
+    expect(route.legKm).toHaveLength(route.legCount);
+    expect(route.legKm.reduce((a, b) => a + b, 0)).toBe(route.totalKm);
+    expect(validateRoute(route)).toBeNull();
+  });
+
+  it('v5->v6 WRITES the travel clock rather than leaving it absent', () => {
+    // Third instance of `migrate_3_to_4`'s trap, and the worst of the three: `wear.hours` is
+    // read on the FIRST tick, `worn(undefined + hours)` is NaN, and clampResources writes a NaN
+    // through because it compares false against both bounds. `isRunStateShape` now checks the
+    // number specifically, which is why an absent key is refused rather than loaded.
+    const result = migrateSave(readSave('save-v5.json'));
+    if (!result.ok) throw new Error(`unexpected failure: ${result.error.code}`);
+
+    expect(Object.keys(result.state)).toContain('wear');
+    expect(typeof result.state.wear.hours).toBe('number');
+    expect(result.state.wear.chipKey).toBeNull();
+  });
+
+  it('v5->v6 starts the travel clock at zero, which cannot make a live run harsher', () => {
+    // There is no recoverable value — the mode at each past leg and the per-leg jitter are both
+    // gone — so the migration is choosing between guesses. Zero is the only guess that leaves a
+    // migrated run draining at exactly the rate the build it was saved from drained at.
+    const result = migrateSave(readSave('save-v5.json'));
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.state.wear.hours).toBe(0);
+
+    // ...and zero is genuinely inside the identity band, so the first leg after the upgrade is
+    // charged its full span. Derived from the constant: the claim is about the BAND, not 160.
+    expect(worn(result.state.wear.hours)).toBe(result.state.wear.hours);
+    expect(wearBandAt(result.state.wear.hours)).toBe('full');
   });
 
   it('rewrites `money` inside a PERSISTED predicate tree, not just in resources', () => {
@@ -337,8 +397,37 @@ describe('isRunStateShape', () => {
     expect(isRunStateShape({ ...save, rngCursors: cursors })).toBe(false);
   });
 
+  it('rejects a save whose travel clock is present but empty', () => {
+    // `wear: {}` passes an "is it an object" check and then reads `undefined` on the first
+    // tick, which is the silent-NaN failure the exhaustive resource loop was added for.
+    const save = loadSave(SAVE_VERSION);
+    expect(isRunStateShape({ ...save, wear: {} })).toBe(false);
+    expect(isRunStateShape({ ...save, wear: { hours: Number.NaN, chipKey: null } })).toBe(false);
+  });
+
+  it('rejects a travel clock missing only its chipKey', () => {
+    // The half of `wear` the guard did not check. `migrate_5_to_6` writes `chipKey` rather
+    // than omitting it precisely so this cannot happen, and then nothing enforced it: an
+    // absent key reads `undefined`, which is `!== null` at every guard site, so the result
+    // screen renders a chip keyed on the literal string "undefined".
+    const save = loadSave(SAVE_VERSION);
+    expect(isRunStateShape({ ...save, wear: { hours: 12 } })).toBe(false);
+    expect(isRunStateShape({ ...save, wear: { hours: 12, chipKey: 7 } })).toBe(false);
+    // ...and the two legal shapes still load.
+    expect(isRunStateShape({ ...save, wear: { hours: 12, chipKey: null } })).toBe(true);
+    expect(isRunStateShape({ ...save, wear: { hours: 12, chipKey: 'world.wear.mid' } })).toBe(true);
+  });
+
   it('rejects each missing top-level branch', () => {
-    for (const key of ['clock', 'route', 'resources', 'flags', 'history', 'pendingEvents']) {
+    for (const key of [
+      'clock',
+      'wear',
+      'route',
+      'resources',
+      'flags',
+      'history',
+      'pendingEvents',
+    ]) {
       const save = loadSave(SAVE_VERSION);
       delete save[key];
       expect(isRunStateShape(save), `accepted a save with no ${key}`).toBe(false);

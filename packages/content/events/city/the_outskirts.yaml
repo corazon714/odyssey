@@ -1,0 +1,82 @@
+id: city.the_outskirts
+category: city
+tags: [city, road, risk]
+priority: beat
+beatType: approach
+# The approach slot lands at ~83% of the route, so the run is late and usually strained.
+tensionBand: [0.4, 1]
+maxOccurrences: 1
+image: city/the_outskirts
+# NO locationTypes on purpose. `approach` is a CURVE beat — beat-schedule.ts leaves it
+# unconstrained because it is about WHEN, not where — and its three-leg window is 24 roadside
+# legs to 15 settled ones across the corpus. Declaring the settled half would make the beat
+# unfillable on the two thirds of its own window that are open road.
+choices:
+  - id: push_straight_in
+    outcomes:
+      - id: through_before_the_traffic
+        weight: 3
+        effects:
+          - { op: advanceTime, hours: 2 }
+          - { op: resource, key: energy, delta: -1 }
+      - id: an_hour_of_roundabouts
+        weight: 2
+        effects:
+          - { op: advanceTime, hours: 5 }
+          - { op: resource, key: energy, delta: -2 }
+          - { op: resource, key: morale, delta: -1 }
+
+  # Food and fuel, NOT a wash — deliberately. The finale one beat later is where cash buys
+  # hygiene and reputation, and two adjacent beats selling the identical cash-for-presentation
+  # trade is the duplication the style guide is about. This one is the last services before the
+  # ring road, and it pays into the two meters the last stretch actually burns.
+  - id: stop_at_the_last_services
+    hiddenUnless: { resource: cash, gte: 20 }
+    costs:
+      - { op: resource, key: cash, delta: -20 }
+    outcomes:
+      - id: strip_lights_and_a_hot_plate
+        weight: 1
+        effects:
+          - { op: resource, key: hunger, delta: -3 }
+          - { op: resource, key: energy, delta: 2 }
+          - { op: advanceTime, hours: 2 }
+
+  - id: lose_what_you_should_not_have
+    hiddenUnless: { item: contraband, gte: 1 }
+    outcomes:
+      - id: into_the_water
+        weight: 1
+        effects:
+          - { op: item, id: contraband, countDelta: -1, condition: null, container: null }
+          - { op: resource, key: heat, delta: -2 }
+          - { op: resource, key: morale, delta: -1 }
+          - { op: flag, id: burned_a_bridge }
+
+  - id: find_out_which_way_in
+    check:
+      skill: streetwise
+      dc: 12
+      tags: [crime, navigate, perception]
+    outcomes:
+      - id: the_back_road
+        weight: 3
+        onCheck: success
+        effects:
+          - { op: advanceTime, hours: 1 }
+          - { op: resource, key: morale, delta: 1 }
+      - id: the_long_way_round
+        weight: 3
+        onCheck: failure
+        effects:
+          - { op: advanceTime, hours: 4 }
+          - { op: resource, key: energy, delta: -2 }
+          - { op: flag, id: took_the_long_way }
+      - id: waved_down_on_the_approach
+        weight: 1
+        onCheck: failure
+        requires: { resource: heat, gte: 4 }
+        effects:
+          - { op: resource, key: heat, delta: 1 }
+          - { op: flag, id: papers_questioned }
+          - { op: advanceTime, hours: 3 }

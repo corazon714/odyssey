@@ -2,6 +2,7 @@ import { type LocationType } from '../../../content/location-type.ts';
 import { edgeId, nodeId, routeId } from '../../../ids/content-ids.ts';
 import { type BeatSlot } from '../../beat-slot.ts';
 import { type RouteState } from '../../route-state.ts';
+import { uniformSplit } from '../../uniform-split.ts';
 
 /**
  * A fixture route. Phase 1 takes the route as caller-supplied input, so tests and the sim
@@ -19,15 +20,25 @@ export function makeRoute(overrides: Partial<RouteState> = {}): RouteState {
     totalKm: 900,
     beatSchedule: makeBeats(),
     legLocations: [],
+    legKm: [],
+    montageLegs: [],
     ...overrides,
   };
 
-  // Keep legLocations in step with legCount unless a test sets it deliberately. Without this
-  // every `makeRoute({ legCount: n })` would fail validation for the wrong reason, and the
-  // test that meant to exercise a beat range would report a location mismatch instead.
-  return overrides.legLocations === undefined
-    ? { ...merged, legLocations: defaultLocations(merged.legCount) }
-    : merged;
+  // Keep legLocations and legKm in step with legCount unless a test sets them deliberately.
+  // Without this every `makeRoute({ legCount: n })` would fail validation for the wrong reason,
+  // and the test that meant to exercise a beat range would report a location or distance
+  // mismatch instead. `legKm` is derived from the MERGED legCount and totalKm, so overriding
+  // either one alone still produces a route whose legs sum to its distance.
+  return {
+    ...merged,
+    legLocations:
+      overrides.legLocations === undefined
+        ? defaultLocations(merged.legCount)
+        : merged.legLocations,
+    legKm:
+      overrides.legKm === undefined ? uniformSplit(merged.totalKm, merged.legCount) : merged.legKm,
+  };
 }
 
 export function makeBeats(): BeatSlot[] {

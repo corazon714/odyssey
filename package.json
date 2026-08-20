@@ -20,7 +20,7 @@
     "content:lint": "node packages/tools/content-lint/cli.ts",
     "content:stats": "node packages/tools/content-stats/cli.ts",
     "geo:audit": "node packages/tools/geo-build/cli.ts",
-    "geo:build": "node packages/tools/geo-build/cli.ts --stage=all --real --bbox=-12,36,30,60",
+    "geo:build": "node packages/tools/geo-build/cli.ts --stage=all --real --bbox=-18,-35,180,72",
     "geo:diversity": "node packages/tools/geo-build/cli.ts --stage=diversity --real",
     "geo:verify": "node packages/tools/geo-build/cli.ts --stage=verify --real",
     "sim": "node packages/tools/sim/cli.ts",

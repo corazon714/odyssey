@@ -17,5 +17,23 @@
   "events.road.the_hitchhiker.out.watched_in_the_mirror.v2": "You do not slow down this time, and you do not look, and it bothers you rather more than the first one did.",
 
   "events.road.the_hitchhiker.choice.leave_them_at_the_junction": "Put them out at the junction",
-  "events.road.the_hitchhiker.out.parted_badly": "You stop somewhere that is not anywhere and say you are turning off. They know you are not. Neither of you argues about it."
+  "events.road.the_hitchhiker.out.parted_badly": "You stop somewhere that is not anywhere and say you are turning off. They know you are not. Neither of you argues about it.",
+
+  "events.road.the_first_hour.title": "The First Hour",
+  "events.road.the_first_hour.body": "The bag has been packed twice and is no lighter. Outside it is the colour of not-yet, and the road out of town is one you have taken a hundred times to get somewhere else. Everything after the first junction is new. You have been ready for twenty minutes.",
+
+  "events.road.the_first_hour.choice.go_now": "Go now",
+  "events.road.the_first_hour.out.moving_before_you_decided_to": "You are moving before you have decided you are moving, which turns out to be the only way it was ever going to happen.",
+  "events.road.the_first_hour.out.forty_kilometres_to_remember_it": "Forty kilometres out you work out what is still on the table by the door. It is not important. It bothers you for the rest of the morning.",
+
+  "events.road.the_first_hour.choice.buy_what_you_are_short_of": "Buy what you are short of",
+  "events.road.the_first_hour.out.stocked_and_slower": "Water, something to eat that will keep, and a receipt you fold into a pocket you will not find again. It costs most of the morning and it is the right call.",
+
+  "events.road.the_first_hour.choice.leave_the_heavy_things": "Leave the heavy things behind",
+  "events.road.the_first_hour.out.everything_in_one_bag": "Half of it goes back on the shelf. What is left fits in one bag and weighs nothing, and there is now nothing to fall back on.",
+
+  "events.road.the_first_hour.choice.ask_someone_who_has_done_it": "Ask somebody who has done it",
+  "events.road.the_first_hour.out.two_useful_things": "He runs it most months. He tells you two things that are obvious and one that is not, and the one that is not is worth the hour.",
+  "events.road.the_first_hour.out.everyone_has_a_version": "Four people, four routes, four confident accounts of ground none of them has covered since the year before last.",
+  "events.road.the_first_hour.out.the_man_who_knows_a_man": "There is a man who knows a man, and the introduction costs what an introduction costs. You are fairly sure you have bought nothing at all."
 }

@@ -1,6 +1,11 @@
 # 0026 — A leg is a session: `legKm`, montage, and the cost in hours
 
-- **Status:** Accepted
+- **Status:** Accepted; Decisions 2–3 implemented at **M3.7** and Decision 6's hours table at
+  **M3.8a**, both 2026-08-12 — see the two addenda at the end. Montage SELECTION and leg SIZING
+  (Decision 4) remain design-only until M3.9. **Decision 6's incoherence is live and open**: it
+  moved the fixture baseline at M3.8a and still has no owner. **The jitter literal in Decision 6
+  is corrected as of C1, 2026-08-14** — this document's "±1 hour on a 5-hour leg is texture" is
+  now what the code does; it was not. See the C1 addendum at the end.
 - **Date:** 2026-08-09
 - **Relates to:** ADR 0006 (run-state shape), ADR 0014 (world-tick drift), ADR 0016/0017 (the two prior save bumps)
 - **Bumps:** `SAVE_VERSION` 4 → 5
@@ -183,6 +188,11 @@ Jitter stays absolute (`nextInt(-1, 2, 'worldTick')`, one call per leg, draw cou
 unmoved): ±1 hour on a 5-hour leg is texture, ±20% on a 30-hour montage is noise that would make two
 identical montages read as different mechanics.
 
+> **The literal in that sentence contradicts the rest of it, and the sentence was right.**
+> `nextInt` is inclusive at both ends, so `(-1, 2)` is not ±1 — it draws `{-1, 0, 1, 2}`. Corrected
+> to `nextInt(-1, 1, 'worldTick')` at C1; the "one call per leg, draw count unchanged, cursor
+> unmoved" clause still holds, since only the bound moved. See the C1 addendum at the end.
+
 A 600 km car montage is 13 hours against a 90 km leg's 5. Clock, `progressKm`, hunger, energy and
 health all scale **with no new code** — that is the argument for the hours model over a montage
 multiplier, which would have to be applied six times and kept in sync with six thresholds. Two
@@ -258,3 +268,167 @@ Recorded rather than worked around.
   `legCount × round(totalKm/legCount)`, not `totalKm` (2140/24 → 24×89 = 2136). Harmless in play,
   but "the `apply-world-effects.ts:115` clamp can never fire from the world tick" is **already**
   false today for round-up routes. Scope that test to fresh runs on generated routes, or drop it.
+
+---
+
+## Addendum — implemented at M3.7 (2026-08-12)
+
+Decisions 2 and 3 shipped: `RouteState` carries `legKm` and `montageLegs`, `SAVE_VERSION` is 5,
+and `migrate_4_to_5` is appended. **Values are uniform everywhere** — M3.9 replaces them.
+
+**The prediction held exactly.** All nine golden digests moved and nothing else did:
+`contentVersion`, `choiceSequence`, `expectedHistoryKeys`, `expectedLegs` and `expectedEndings`
+are byte-identical, and both sim baselines report "No change". That digests-only signature is what
+distinguishes a save-format bump from a behaviour change, and this ADR predicted it as the cheap
+place to find out otherwise.
+
+### Deviation: the allocator is cumulative-floor, NOT largest-remainder
+
+Decision 3 above says `uniformSplit` is "largest-remainder, exact sum". It is not, and the
+sentence should be read as superseded by this paragraph.
+
+**Largest-remainder is ill-defined on a uniform split.** Every leg has the identical remainder, so
+ranking them is a tie across the whole array and the allocator's output depends entirely on
+whatever tie-break the sort happens to use — which is a nondeterminism surface in a value that
+feeds `stateDigest`, and the exact class of thing ADR 0005 §3 exists to keep out of this engine.
+Decision 5 had already rejected largest-remainder for `arrivalLegOfEdge` on the same grounds
+("requires ranking float remainders with exact ties on any equal-length run"); Decision 3 simply
+did not notice it was specifying the thing Decision 5 threw out.
+
+So `uniformSplit` is **cumulative-floor** — `floor((i+1)·total/n) − floor(i·total/n)` — matching
+Decision 5. Two further reasons, and the second is the one that matters later:
+
+- The sum is exact **by construction** rather than by correction. The series telescopes to
+  `floor(total)`, so there is no fix-up pass that a refactor can drop while the tests still pass.
+- The remainder **spreads** instead of clumping at the front. That is cosmetic while nothing reads
+  `legKm`, and it stops being cosmetic at M3.8: `legHours` divides `legKm` by speed, so a
+  front-loaded remainder would put a deterministic duration bump on the opening legs of every
+  route in the game. There is a test asserting the spread, not just the sum.
+
+This is the same allocator Decision 5 chose for `arrivalLegOfEdge`, for the same family of reason.
+
+### Deviations from the Consequences section, both minor
+
+- The two new `ENGINE_ERROR_CODES` are `route/leg-distance-mismatch` and
+  `route/montage-out-of-range`, as named here. **`montage-out-of-range` also carries the
+  ascending/unique violation**, which this ADR implied in the type comment but did not name a code
+  for; folding it in kept the count at the two members promised rather than inventing a third.
+- The `legKm` **length** check returns `route/leg-count-mismatch`, reusing the code `legLocations`
+  already uses for the identical failure. That is why three checks landed against two new codes.
+- **The extra hand-built mid-route v4 save was not needed and was not added.** That instruction
+  was inherited from v3→v4, whose branch (`presentation.kind === 'event'`) no fixture reached.
+  `migrate_4_to_5` has no branch — every save has a route — and `save-v4.json` is _already_
+  mid-route at `legIndex: 7` of `legCount: 24`, so the v1→v5 chain exercises it on real values.
+  Two tests assert the outcome rather than the fact it ran: that the keys are WRITTEN rather than
+  left absent, and that the result sums to `totalKm` and passes `validateRoute`.
+
+### The caveat in the last bullet was real, and no test was written against it
+
+`world-tick.ts:126` still applies `Math.round(totalKm/legCount)` per leg, so a v4 run's
+accumulated `progressKm` was built at a rate summing to `legCount × round(totalKm/legCount)`
+rather than `totalKm` — 24 × 89 = 2136 against 2140 on the illicit fixture. M3.7 did not change
+`world-tick.ts` at all, so this is unchanged and still true. **M3.8a is where it goes away**, when
+the hours model replaces that line; until then, do not write the test this ADR warned about.
+
+---
+
+## Addendum — implemented at M3.8a (2026-08-12), and Decision 6 is no longer hypothetical
+
+Decision 6's hours table shipped as `loop/leg-hours.ts`; `HOURS_PER_LEG` is gone from
+`world-tick.ts`, and `world-tick.ts:126`'s `Math.round(totalKm/legCount)` is gone with it — a leg
+now advances `progressKm` by its own `legKm`, so a completed run lands on `totalKm` to the
+kilometre.
+
+**The structural claim held.** `worldTick` needed no new code to make drain proportional: it was
+already denominated in hours, so clock, hunger, energy, health and `progressKm` all scaled by
+themselves the moment hours became a function of distance.
+
+`MIN_LEG_HOURS` was specified as a per-mode table and **collapses to the constant 1**. Every mode
+except `foot` already carries an overhead of 2 or more, so the floor can only ever bite on a very
+short walk (`mulDivRound(1, 1, 4)` is 0). A second table that must agree with the first was not
+worth shipping to say that.
+
+### ⚠ The fixture baseline moved, and this ADR predicted it would not
+
+The Consequences section above, and the phase plan, both said `docs/sim-baseline.md` must not move
+at this milestone — with the plan adding that if it did, "the hours calibration is wrong and that
+is a spec bug rather than a finding."
+
+**The calibration is not wrong. The prediction was.** It was derived by checking the three fixture
+routes' STARTING modes — car 62 km → 4+1 = 5, truck 89/90 → 4+2 = 6, bus 86/87 → 3+2 = 5, all
+exactly reproducing the flat table they replaced. What it did not consider is that transport mode
+**changes mid-run**: `__fixtures__/events/transit/bus_ejection.yaml:49,64` sets `mode: foot` on
+two outcomes. A leg planned at 86 km by bus, once walked, costs `0 + mulDivRound(86, 1, 4)` = 22
+hours, capped at 12 — against the old flat `foot: 9`. Every walked leg became 33% more expensive.
+
+That is **exactly the incoherence Decision 6 describes**, which was written as a future concern and
+given no owner. It has one now.
+
+**The three fixtures isolate the three cases perfectly**, which is the most useful thing about the
+result:
+
+| fixture   | mode       | what moved                                                      |
+| --------- | ---------- | --------------------------------------------------------------- |
+| `short`   | car        | **nothing** — 62 km is exactly `round(620/10)`, hours identical |
+| `illicit` | truck      | **digest only** — `progressKm` 89/90 vs a flat 89; no behaviour |
+| `scenic`  | bus → foot | legs 11→8/9, one ending `gave_up`→`collapsed`, choices diverged |
+
+And the corpus baseline reports **"No change"**, because no corpus event sets `field: 'mode'` —
+every `op: transport` there is `condition`. Same routes, same engine, different event sets: the
+mode change is the entire cause, demonstrated rather than argued.
+
+### What was decided, and by whom
+
+Accepting the movement and rebaselining, rather than tuning a constant to protect the control.
+The alternatives were weighed and rejected: capping `foot` at 9 hours would have preserved the
+baseline by choosing a number to fit a fixture rather than because it is right, and would have left
+the same divergence latent for every other mode change; recomputing `legKm` on a mode change is the
+proper fix and moves `legCount` mid-run, which rebases the beat schedule — the exact problem
+leg-as-time-slice was rejected for in Decision 1.
+
+Completion is **unchanged at 31.2%** and median legs and in-game days are unmoved; what moved is
+the failure MIX — `failure_collapsed` 35.8% → 39.0%, `failure_gave_up` 33.0% → 29.8%, health leg-5
+p10 9 → 8. Making walking expensive should move exactly those and nothing else, and it did.
+
+**Decision 6 still needs a phase.** What this milestone adds is evidence: the incoherence is not a
+tail case, it is reachable by one shipped event on one of three fixture routes, and it is worth
+3.2pp of the failure distribution when it fires.
+
+---
+
+## Addendum — C1, 2026-08-14: the jitter is now the ±1 this document specified
+
+Decision 6 above states the design intent in words — _"±1 hour on a 5-hour leg is texture"_ — and
+then writes the call as `nextInt(-1, 2, 'worldTick')` in the same sentence. Those are not the same
+distribution. `Rng.nextInt` is inclusive at both ends, so the shipped draw ran over `{-1, 0, 1, 2}`
+with a mean of **+0.5 hours per leg**, and `docs/adr/0014` carries the identical claim ("the ±1
+hour jitter on travel time") against the identical code.
+
+Two documents specifying ±1, one implementation drawing four values, and neither ever compared:
+that is the whole failure. `LEG_JITTER_MAX` is now `1`, the realised draw set is exactly
+`{-1, 0, 1}`, and `world-tick.test.ts` pins the realised SET rather than the constants' sum — the
+sum being a restatement of the constants that would have agreed with the original bug. The full
+account, including the verification that the new test fails at the old bound, is the C1 addendum
+to `docs/adr/0014`.
+
+### What it cost this ADR's own numbers
+
+Decision 6's hours table calibrates `legHours` so that _"the fixture baseline must move by nothing
+at this step"_. That calibration was sound; the jitter sitting underneath it was not, and it
+inflated every route uniformly by `legCount / 2` hours — 11 on the 22-leg corpus route, 24 on each
+of the 48-leg ones, measured across all 25 corpus routes.
+
+**Measured drop in `preview.travelHours`, HEAD → C1, on the full corpus route set:** exactly
+`ceil(legCount / 2)` on all 25 routes, with zero violations. The prediction under test was the
+cleaner `legCount / 2`, and it held on the 16 even-leg routes and deviated by exactly +0.5 h on the
+9 odd-leg ones. That deviation is not in the tick — the tick's mean really does fall by exactly
+0.5 h per leg — it is `route-preview.ts`'s `mulDivRound` rounding half AWAY FROM ZERO into an
+INTEGER `travelHours` field, which under the old asymmetric bounds could not represent the
+half-hour that an odd leg count implies. At symmetric bounds the correction term is exactly 0 for
+every leg count, odd or even, so the field is now exact and the artefact cannot recur.
+
+`route-preview.ts` needed no edit to follow the fix, and that is the property Decision 6 was
+written to buy: the preview derives its correction from `LEG_JITTER_MIN + LEG_JITTER_MAX` rather
+than carrying a copy of the distribution, so `MIN + MAX` became 0 and the term went to zero on its
+own. **Do not now replace that call with the constant `0`** — a zero-valued expression that derives
+its zero is not the same object as a zero, and the next person to move a bound will find out which.

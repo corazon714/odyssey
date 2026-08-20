@@ -1,6 +1,7 @@
 import { evaluatePredicate } from '../predicate/evaluate-predicate.ts';
 import { type PredicateContext } from '../predicate/predicate-context.ts';
 import { type CheckTag } from './check-tag.ts';
+import { collapseChips } from './collapse-chips.ts';
 import { DEFAULT_TUNABLES, mulDivRound, type ModifierTunables } from './modifier-tunables.ts';
 import { type ModifierRegistry, type RegistryModifier } from './registry-modifier.ts';
 import {
@@ -31,6 +32,10 @@ import {
  *                  DR to operate on.
  *   6   clamp    — last, with the reduction attributed back so the chips still sum to the
  *                  total.
+ *
+ * A seventh step, `collapseChips`, groups the finished rows by `sourceKind` for the RESULT
+ * SCREEN. It is not part of the balance contract and cannot be: it runs after the total is
+ * computed and nothing reads it back. See `collapse-chips.ts`.
  *
  * Everything is integer. See `modifier-tunables.ts` for why that is a replay requirement and
  * not a style preference.
@@ -117,7 +122,11 @@ export function resolveModifiers(
   let total = 0;
   for (const modifier of resolved) total += modifier.delta;
 
-  return { modifiers: resolved, total, suppressed };
+  // ── 7. presentation only — group by sourceKind for the result screen ────────────────────
+  // Strictly after the total is computed, over rows that are already final, so it cannot reach
+  // the arithmetic. It is computed here rather than at the call site so `chips` can never
+  // disagree with `modifiers`: one function owns both.
+  return { modifiers: resolved, chips: collapseChips(resolved), total, suppressed };
 }
 
 function appliesToCheck(row: RegistryModifier, check: CheckLike): boolean {

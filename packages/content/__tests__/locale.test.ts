@@ -3,7 +3,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  CHIP_OVERFLOW_LABEL_KEY,
   CONTAINER_KINDS,
+  MODIFIER_SOURCE_KINDS,
   SKILL_KEYS,
   type Choice,
   type GameEvent,
@@ -83,6 +85,8 @@ const requiredKeys = (): readonly string[] => [
   ...universalChoices.flatMap((row) => choiceKeys(row.choice)),
   ...SKILL_KEYS.map((skill) => `check.modifier.skill.${skill}`),
   ...CONTAINER_KINDS.map((kind) => `check.modifier.container.${kind}`),
+  ...MODIFIER_SOURCE_KINDS.map((kind) => `check.kind.${kind}`),
+  CHIP_OVERFLOW_LABEL_KEY,
 ];
 
 describe('the en locale', () => {
@@ -128,6 +132,25 @@ describe('the en locale', () => {
       ...CONTAINER_KINDS.map((kind) => `check.modifier.container.${kind}`),
     ];
     expect(synthesised.filter((key) => !locale.has(key))).toEqual([]);
+  });
+
+  it('resolves the collapsed-chip label for EVERY sourceKind', () => {
+    // `collapseChips` mints `check.kind.<sourceKind>` whenever two or more rows of one kind fold
+    // into a single chip, and nothing in the corpus mentions those keys either — the vocabulary
+    // is a closed enum in the engine, not something an author writes. A missing one ships a raw
+    // key to the result screen exactly where the collapse was supposed to make it legible.
+    const kindKeys = MODIFIER_SOURCE_KINDS.map((kind) => `check.kind.${kind}`);
+    expect(kindKeys.filter((key) => !locale.has(key))).toEqual([]);
+    // Anti-vacuous: an empty vocabulary would pass the line above.
+    expect(kindKeys.length).toBe(12);
+  });
+
+  it('resolves the overflow chip the seven-chip bound mints', () => {
+    // Same hole again, one level up: `collapseChips` folds everything past the sixth kind into
+    // one chip labelled `check.overflow`, and no author writes that key either. The key is read
+    // from the engine rather than spelled here so the two cannot drift apart.
+    expect(locale.has(CHIP_OVERFLOW_LABEL_KEY)).toBe(true);
+    expect(CHIP_OVERFLOW_LABEL_KEY).toBe('check.overflow');
   });
 
   it('resolves every key the shipped content can ask for, from any source', () => {

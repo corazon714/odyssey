@@ -42,6 +42,29 @@ export function isRunStateShape(value: unknown): value is RunState {
   }
 
   /**
+   * `wear.hours` is checked for being a NUMBER, not merely for `wear` being present.
+   *
+   * The branch loop above would accept `wear: {}`, and that is the silently-catastrophic case
+   * this guard exists for, in its third instance after the rng cursors and the resource keys:
+   * `worn(undefined + hours)` is `NaN`, every `spanPoints` over it is `NaN`, and
+   * `clampResources` writes a NaN straight through because it compares false against both
+   * bounds. The run would continue with meters that are not numbers.
+   *
+   * **`chipKey` is checked too, and it was not — `migrate_5_to_6`'s own docstring names the
+   * failure this leaves open and the guard did not implement it.** An absent key reads
+   * `undefined`, which is `!== null` at every guard site, so a save one field short renders a
+   * chip whose label is the string "undefined" on the first screen after the load. The window
+   * is real but narrow: `advanceLeg` and `worldTick` both rewrite the field, so it closes on
+   * the first tick — which is exactly the shape of bug that survives a manual test.
+   */
+  const wear = save['wear'];
+  if (wear === null || typeof wear !== 'object' || Array.isArray(wear)) return false;
+  const wearHours = (wear as Record<string, unknown>)['hours'];
+  if (typeof wearHours !== 'number' || Number.isNaN(wearHours)) return false;
+  const wearChip = (wear as Record<string, unknown>)['chipKey'];
+  if (wearChip !== null && typeof wearChip !== 'string') return false;
+
+  /**
    * Resources and skills are checked EXHAUSTIVELY, for the same reason the rng cursors are.
    *
    * The docstring above justifies the cursor loop by "a missing cursor is silently

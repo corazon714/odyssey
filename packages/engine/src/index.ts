@@ -60,6 +60,12 @@ export {
   type LocalModifier,
 } from './modifiers/resolve-modifiers.ts';
 export {
+  collapseChips,
+  CHIP_OVERFLOW_LABEL_KEY,
+  MAX_MODIFIER_CHIPS,
+  type ModifierChip,
+} from './modifiers/collapse-chips.ts';
+export {
   EMPTY_RESOLUTION,
   type ModifierResolution,
   type ResolvedModifier,
@@ -207,8 +213,10 @@ export { NO_PRESENTATION, type Presentation } from './state/presentation.ts';
 export {
   clampResources,
   createResources,
+  playerGain,
   RESOURCE_BOUNDS,
   RESOURCE_KEYS,
+  RESOURCE_POLARITY,
   type ResourceKey,
   type Resources,
 } from './state/resources.ts';
@@ -259,6 +267,26 @@ export {
   type SelectOptions,
   type SelectionResult,
 } from './director/select-event.ts';
+// The quiet-leg gate (ADR 0029). `BASE_EVENT_ODDS` and `EVENT_ODDS_MULTIPLIERS` are frozen
+// RECORDS, not arrays, which is why they can be exported here at all: the conformance sweep's
+// L2 classifies every array the barrel exports, and an odds pair is not a content vocabulary.
+export {
+  applyOddsFactors,
+  BASE_EVENT_ODDS,
+  EVENT_ODDS_MULTIPLIERS,
+  fireProbability,
+  type EventOdds,
+  type EventOddsFactor,
+} from './director/event-odds.ts';
+export {
+  eventGate,
+  legOddsFactors,
+  quietGateParams,
+  quietHistoryEntry,
+  QUIET_GATE_REASON_KEY,
+  QUIET_JOURNAL_KEY,
+  type QuietGateVerdict,
+} from './director/quiet-gate.ts';
 export * from './director/scoring-constants.ts';
 export {
   contextAffinity,
@@ -340,6 +368,13 @@ export {
   type SelectedPath,
 } from './route/select-paths.ts';
 export {
+  generateRoutes,
+  type GenerateRoutesResult,
+  type RoutePlan,
+  type RouteStart,
+} from './route/generate-routes.ts';
+export { type RoutePreview } from './route/route-preview.ts';
+export {
   collectComplications,
   EMPTY_COMPLICATIONS,
   PHASE_1_COMPLICATION_SOURCES,
@@ -354,6 +389,30 @@ export { runSkillCheck } from './loop/run-skill-check.ts';
 export { searchCheck } from './loop/search-check.ts';
 export { checkRunEnd, type RunEndVerdict } from './loop/check-run-end.ts';
 export { worldTick } from './loop/world-tick.ts';
+// `legHours` is the ONE definition of what a leg costs in time. Exported so the sim's
+// `--by-route` mode can state a route's hour content from the same function the tick bills
+// from, rather than keeping a second copy of the overhead and speed tables — the failure
+// `route-preview.ts` describes at length for the jitter distribution, one file over.
+export { legHours } from './loop/leg-hours.ts';
+// The wear curve. `FULL_UNTIL` is exported because it is the dial the sweep turns, and it must
+// be ONE named constant rather than three call sites for that to be a one-line change.
+export {
+  FULL_UNTIL,
+  MID_SPAN,
+  wearBandAt,
+  wearHistoryEntry,
+  wearRatePercent,
+  worn,
+} from './loop/wear-curve.ts';
+export {
+  createWear,
+  isWearNote,
+  WEAR_BANDS,
+  wearChipKey,
+  wearJournalKey,
+  type WearBand,
+  type WearState,
+} from './state/wear-state.ts';
 export { locationAtLeg } from './state/route-state.ts';
 
 export {

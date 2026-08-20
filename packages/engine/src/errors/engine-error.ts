@@ -12,6 +12,8 @@
 export const ENGINE_ERROR_CODES = [
   'route/empty',
   'route/leg-count-mismatch',
+  'route/leg-distance-mismatch',
+  'route/montage-out-of-range',
   'route/beat-out-of-range',
   'route/duplicate-beat-leg',
   'save/version-too-new',

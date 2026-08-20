@@ -120,7 +120,25 @@ export function filterEvent(
     }
   }
 
-  // 6. cooldown.
+  // 6. cooldown. WALL-CLOCK LEGS, INCLUDING QUIET ONES — a decision, not an oversight.
+  //
+  //    ADR 0029's quiet-leg gate splits `legIndex - lastLeg` into two possible meanings, and
+  //    `recency` (scoring-factors.ts) took the other one. The two are not inconsistent; they
+  //    are asked different questions.
+  //
+  //    `cooldownLegs` is AUTHORED CONTENT in a field whose name is its unit, and every value in
+  //    the pack was written by a human against that name — 2 on the fillers, 10 on the storm, 12
+  //    on `authority.the_file_catches_up`. Those are world statements: this storm does not recur
+  //    for ten legs of TRAVEL, whatever the director happened to show in between. A quiet leg
+  //    still costs time, distance and wear (`world-tick.ts:22` says so for the existing case),
+  //    so it burns cooldown exactly as a loud one does. Reinterpreting the number without
+  //    renaming the field would silently change what twelve authored values mean, which is the
+  //    kind of drift `packages/content/schema/` owns and ADR 0009 exists to prevent.
+  //
+  //    The montage case is what settles it rather than merely permitting it. A montage stretch
+  //    is quiet BY DESIGN (ADR 0026), so a fired-event unit would freeze every cooldown across
+  //    it — the player emerges from days of summarised travel and meets the same border event
+  //    they left, because "nothing fired in between". The fiction says a week passed. Legs.
   if (!relax.cooldown && memory !== undefined && event.cooldownLegs > 0) {
     const since = state.route.legIndex - memory.lastLeg;
     if (since < event.cooldownLegs) {

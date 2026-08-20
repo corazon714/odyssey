@@ -20,6 +20,7 @@ const DEFAULTS: SimOptions = {
   policies: [],
   diff: false,
   json: false,
+  byRoute: false,
   // DEFAULTS TO FIXTURE so `sim:diff` keeps comparing like with like. The fixture pack is the
   // stable control the golden runs are built on; the corpus is the thing under development.
   pack: 'fixture',
@@ -31,6 +32,7 @@ export function parseArgs(argv: readonly string[]): ParseResult {
   const policies: PolicyName[] = [];
   let diff = false;
   let json = false;
+  let byRoute = false;
   let pack = DEFAULTS.pack;
 
   for (const arg of argv) {
@@ -51,6 +53,15 @@ export function parseArgs(argv: readonly string[]): ParseResult {
     // chain fires in the right sequence rather than merely firing.
     if (rawKey === '--json') {
       json = true;
+      continue;
+    }
+    // The per-route completion table — `docs/phase-3-dod.md` gate 9's measurement, and a THIRD
+    // output mode rather than a section appended to the report. `diff-report.ts` compares by
+    // line index, so an extra section in the standard report would offset every line beneath it
+    // and force both baselines to regenerate for a formatting change (ADR 0032). See
+    // `by-route.ts`.
+    if (rawKey === '--by-route') {
+      byRoute = true;
       continue;
     }
     if (rawValue === null) return { ok: false, message: `${rawKey} needs a value` };
@@ -86,7 +97,24 @@ export function parseArgs(argv: readonly string[]): ParseResult {
     }
   }
 
-  return { ok: true, options: { runs, seed, policies, diff, json, pack } };
+  /**
+   * ONE OUTPUT PER INVOCATION, refused rather than silently ranked.
+   *
+   * `--json` already exits before the `--diff` block in `cli.ts`, so `--json --diff` quietly
+   * ignores the diff — a pre-existing wart, and not one to reproduce a second time. A
+   * `--by-route` run has no baseline to diff against (that is the whole point of it being a
+   * separate mode) and its table is not the trace `--json` emits, so both combinations are
+   * mistakes about what the command will do. Saying so beats printing one of the three and
+   * letting the reader assume they got the other.
+   */
+  if (byRoute && diff) {
+    return { ok: false, message: '--by-route has no baseline to diff against; drop --diff' };
+  }
+  if (byRoute && json) {
+    return { ok: false, message: '--by-route and --json are two different outputs; pick one' };
+  }
+
+  return { ok: true, options: { runs, seed, policies, diff, json, byRoute, pack } };
 }
 
 /** Accepts both `--runs=10` and `--runs 10` is NOT supported — one form, no ambiguity. */

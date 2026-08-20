@@ -51,12 +51,20 @@ export {
   buildGeoEdge,
   buildGeoNode,
   geoEdgeSchema,
+  geoEdgesFileSchema,
   geoNodeSchema,
+  geoNodesFileSchema,
+  geoOverlaySchema,
   populationBandSchema,
   seasonalitySchema,
   serviceKindSchema,
   terrainKindSchema,
+  type GeoBundle,
+  type GeoEdgesFile,
   type GeoNodeRecord,
+  type GeoNodesFile,
+  type GeoOverlay,
+  type GeoOverlayLink,
 } from './geo.ts';
 
 export { predicateSchema, type TersePredicate } from './predicate.ts';

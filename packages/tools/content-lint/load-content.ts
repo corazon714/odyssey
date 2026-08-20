@@ -4,11 +4,13 @@ import {
   loadComplications,
   loadDeclarations,
   loadEvents,
+  loadGeo,
   loadModifiers,
   loadUniversalChoices,
   type ContentIssue,
   type Declarations,
 } from '@odyssey/content/loader';
+import { type GeoBundle } from '@odyssey/content';
 import {
   type ComplicationRegistry,
   type GameEvent,
@@ -38,6 +40,12 @@ export type ContentBundle = {
   readonly locale: ReadonlyMap<string, string> | null;
   /** images/manifest.json refs, or null when the manifest does not exist. */
   readonly images: ReadonlySet<string> | null;
+  /**
+   * The parsed geo graph, or null when `geo/` holds no files — which is a legitimate state, not
+   * a finding (`load-geo.ts`). Graph rules go silent on null; the text-scanning §11 rules do
+   * NOT, because they must survive the file failing to parse.
+   */
+  readonly geo: GeoBundle | null;
   readonly issues: readonly LintIssue[];
 };
 
@@ -61,6 +69,9 @@ export function loadContent(root: string): ContentBundle {
   const complications = loadComplications(root);
   issues.push(...complications.issues.map(toLint));
 
+  const geo = loadGeo(root);
+  issues.push(...geo.issues.map(toLint));
+
   return {
     root,
     events: events.events,
@@ -70,6 +81,7 @@ export function loadContent(root: string): ContentBundle {
     complications: complications.complications,
     locale: readLocale(join(root, 'i18n', 'en')),
     images: readImageManifest(join(root, 'images', 'manifest.json')),
+    geo: geo.geo,
     issues,
   };
 }

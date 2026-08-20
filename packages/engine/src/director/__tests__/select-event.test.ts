@@ -12,6 +12,7 @@ import { type RunState } from '../../state/run-state.ts';
 import { makeRoute } from '../../state/__tests__/support/make-route.ts';
 import { loadMiniPack } from '../../__tests__/support/load-fixtures.ts';
 import { filterEvent } from '../hard-filters.ts';
+import { QUIET_JOURNAL_KEY } from '../quiet-gate.ts';
 import { selectEvent } from '../select-event.ts';
 
 const { events, registries } = loadMiniPack();
@@ -163,5 +164,68 @@ describe('hard filters', () => {
     if (verdict.eligible) return;
     // requires is checked before the beat gate and before context, deliberately.
     expect(verdict.reasonKey).toBe('director.reject.requires');
+  });
+
+  describe('cooldown is WALL-CLOCK legs, and a quiet leg burns it (ADR 0029 addendum)', () => {
+    /**
+     * THE UNIT DECISION, PINNED. `recency` moved to a window over fired events at M3.12a and
+     * this deliberately did not, so the split needs a test or it is a comment somebody will
+     * "tidy up". `cooldownLegs` is AUTHORED content in a field named for its unit; a montage
+     * stretch is quiet by design (ADR 0026), and a fired-event unit would freeze cooldowns
+     * across it — the player would emerge from a week of summarised travel into the same event
+     * they left.
+     *
+     * `filler.roadside_quiet` is chosen because cooldown is the ONLY gate it can fail: no
+     * `requires`, no declared context, `filler` priority so the beat gate is skipped. A verdict
+     * from it is a verdict about cooldown and nothing else.
+     */
+    const event = find('filler.roadside_quiet');
+
+    /** Fired at leg 0, then `legs` legs pass with EVERY one of them silenced by the gate. */
+    const afterQuietLegs = (legs: number): RunState =>
+      makeState({
+        route: { ...makeRoute(), legIndex: legs },
+        eventMemory: { [event.id]: { count: 1, lastLeg: 0, lastChoiceId: null } },
+        history: [
+          {
+            legIndex: 0,
+            day: 0,
+            eventId: event.id,
+            choiceId: null,
+            textKey: 'k',
+            params: {},
+            tags: [],
+          },
+          ...Array.from({ length: legs }, (_, i) => ({
+            legIndex: i + 1,
+            day: 0,
+            eventId: null,
+            choiceId: null,
+            textKey: QUIET_JOURNAL_KEY,
+            params: {},
+            tags: [],
+          })),
+        ],
+      });
+
+    it('has a cooldown to test', () => {
+      // Anti-vacuous: `cooldownLegs: 0` skips the gate entirely and both cases below would pass.
+      expect(event.cooldownLegs).toBeGreaterThan(0);
+    });
+
+    it('still rejects one leg short, with nothing but quiet legs in between', () => {
+      const state = afterQuietLegs(event.cooldownLegs - 1);
+      const verdict = filterEvent(event, state, PACK, ctxFor(state));
+      expect(verdict.eligible).toBe(false);
+      if (verdict.eligible) return;
+      expect(verdict.reasonKey).toBe('director.reject.cooldown');
+    });
+
+    it('clears on the leg the author asked for, though NOTHING fired in between', () => {
+      // The half that would fail under a fired-event reading: zero draws have happened since,
+      // so a draws-denominated cooldown would still be blocking here. Legs is what it counts.
+      const state = afterQuietLegs(event.cooldownLegs);
+      expect(filterEvent(event, state, PACK, ctxFor(state)).eligible).toBe(true);
+    });
   });
 });

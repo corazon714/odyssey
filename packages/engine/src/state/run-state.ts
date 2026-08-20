@@ -18,6 +18,7 @@ import { type RouteState } from './route-state.ts';
 import { type RunStatus } from './run-status.ts';
 import { type Skills } from './skills.ts';
 import { type TransportState } from './transport-state.ts';
+import { type WearState } from './wear-state.ts';
 
 /**
  * The complete state of one run. Everything about a run is reproducible from
@@ -47,6 +48,11 @@ export type RunState = {
   readonly rngCursors: RngCursors;
 
   readonly clock: ClockState;
+  /**
+   * The TRAVEL clock, which is not `clock` and cannot be derived from it — the drain curve's
+   * own accumulator. See `wear-state.ts` for why the derivation was checked and refused.
+   */
+  readonly wear: WearState;
   readonly weather: string;
 
   readonly route: RouteState;

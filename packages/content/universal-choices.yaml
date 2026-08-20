@@ -311,6 +311,56 @@
         - { op: flag, id: made_a_scene }
         - { op: resource, key: heat, delta: 1 }
 
+# ── recovery: the only row that puts morale back, and the only one on a cooldown ─────────
+
+# COST: eight hours, a one-in-four chance the night leaves you worse than the road — the only
+# row here whose downside takes the very meter it exists to restore — and a six-leg cooldown.
+#
+# THE COOLDOWN IS THE PRICE, AND THAT IS A MEASUREMENT RATHER THAN A PREFERENCE. The obvious
+# cost for a rest row is HOURS, and the engine charges nothing for them: `advanceTime` moves
+# the wall clock, `worldTick` bills each leg's own span against that clock, and a gap between
+# two legs is never billed at all (ADR 0040 states this as a property of `spanPoints`). Cash
+# is no better — the doomed routes START with the most of it and die holding 96% of it. So the
+# only real limiter available to a row that restores the binding meter is how OFTEN it may be
+# taken, which is what `rested_recently` is. `hunger` was tried as the always-paid cost and
+# REMOVED: it moves runs onto the 22-hour starvation rung early and cost 3.1pp of collapse.
+#
+# `morale <= 5` IS TARGETING, NOT FLAVOUR. Ungated, a per-event morale row pays out in
+# proportion to how many events a run survives to see, so it rewards the runs that were already
+# completing — measured at +8 to +14pp on the routes above 70% and NEGATIVE on the seven that
+# need it. The gate is what stops the relief landing where it is not needed.
+#
+# `cat:rest` ONLY, AND THAT IS A CEILING THIS CORPUS IMPOSES. `filler.the_hours_between` has
+# two authored choices, so it has two injection slots, held by `use_an_item` (45) and
+# `share_what_you_have` (20) — and `share_what_you_have` is the corpus's ONLY always-available
+# morale row on exactly the empty legs where morale dies. There is no priority that puts a
+# 16th row into a two-slot event without evicting it: above 20 takes its slot, below 20 does
+# not make the cut. Measured, taking it costs route 23 2.8pp and puts it under the 3% floor.
+# So this row stops at `cat:rest`, where it evicts only `pay_the_asking_price` (four other
+# hosts). It does no measurable work at 13 events and is sized to do it at 20. See ADR 0041.
+- id: stop_and_rest
+  appliesTo: [cat:rest, rest]
+  family: recover
+  priority: 60
+  requires:
+    all:
+      - { noFlag: rested_recently }
+      - { resource: morale, lte: 5 }
+  outcomes:
+    - id: slept_and_ate
+      weight: 3
+      effects:
+        - { op: flag, id: rested_recently, ttlLegs: 6 }
+        - { op: resource, key: morale, delta: 2 }
+        - { op: resource, key: energy, delta: 1 }
+        - { op: advanceTime, hours: 8 }
+    - id: the_night_was_worse_than_the_road
+      weight: 1
+      effects:
+        - { op: flag, id: rested_recently, ttlLegs: 6 }
+        - { op: resource, key: morale, delta: -1 }
+        - { op: advanceTime, hours: 8 }
+
 # ── the thing in your bag ───────────────────────────────────────────────────────────────
 
 # COST: the item is CONSUMED. Permanent inventory loss for a one-event benefit.

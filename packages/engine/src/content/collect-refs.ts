@@ -1,7 +1,9 @@
 import { type Effect } from '../effects/effect.ts';
 import { EMPTY_MODIFIER_REGISTRY, type ModifierRegistry } from '../modifiers/registry-modifier.ts';
 import { type Predicate } from '../predicate/predicate.ts';
-import { type GameEvent } from './game-event.ts';
+import { type Choice, type GameEvent } from './game-event.ts';
+import { type ComplicationRegistry } from './registry-complication.ts';
+import { type UniversalChoiceRegistry } from './universal-choice.ts';
 
 /**
  * Walk every predicate and effect in a pack and collect the content ids it references.
@@ -145,6 +147,8 @@ export type FlagUsage = {
 export function collectFlagUsage(
   events: readonly GameEvent[],
   registry: ModifierRegistry = EMPTY_MODIFIER_REGISTRY,
+  universalChoices: UniversalChoiceRegistry = [],
+  complications: ComplicationRegistry = [],
 ): FlagUsage {
   const written = new Set<string>();
   const read = new Set<string>();
@@ -171,28 +175,44 @@ export function collectFlagUsage(
     if (effect.op === 'scheduleEvent' && effect.requires !== null) walkP(effect.requires);
   };
 
-  for (const event of events) {
-    walkP(event.requires);
-    for (const choice of event.choices) {
-      walkP(choice.requires);
-      if (choice.hiddenUnless !== null) walkP(choice.hiddenUnless);
-      for (const cost of choice.costs) walkE(cost);
-      if (choice.skillCheck !== null) {
-        for (const modifier of choice.skillCheck.modifiers) {
-          if (modifier.when !== null) walkP(modifier.when);
-        }
-      }
-      for (const outcome of choice.outcomes) {
-        walkP(outcome.requires);
-        for (const effect of outcome.effects) walkE(effect);
+  const walkChoice = (choice: Choice): void => {
+    walkP(choice.requires);
+    if (choice.hiddenUnless !== null) walkP(choice.hiddenUnless);
+    for (const cost of choice.costs) walkE(cost);
+    if (choice.skillCheck !== null) {
+      for (const modifier of choice.skillCheck.modifiers) {
+        if (modifier.when !== null) walkP(modifier.when);
       }
     }
+    for (const outcome of choice.outcomes) {
+      walkP(outcome.requires);
+      for (const effect of outcome.effects) walkE(effect);
+    }
+  };
+
+  for (const event of events) {
+    walkP(event.requires);
+    for (const choice of event.choices) walkChoice(choice);
   }
 
   // Same omission, and here it is worse: a flag READ only by a registry modifier would be
   // reported as written-but-never-read, a false positive on the most valuable line in the
   // sim report.
   for (const row of registry) walkP(row.when);
+
+  // THE OTHER TWO REGISTRIES, and leaving them out was a live false-POSITIVE rather than a
+  // gap. `events` here is the RAW pack — `content-lint` walks what the loader returned, not
+  // what `createContentPack` injected — so a flag that lives entirely in `universal-choices`
+  // or `complications` is invisible to both directions of the asymmetry above. The failure is
+  // not symmetric with the modifier case: `FLAG_READ_NEVER_WRITTEN` is an ERROR, so a flag
+  // written only by a universal row and read by a modifier fails CI on correct content. It
+  // had never fired only because every flag either registry touches today is also touched by
+  // an event, which is a property of a 13-event corpus and not of the rule.
+  for (const row of universalChoices) walkChoice(row.choice);
+  for (const row of complications) {
+    walkP(row.requires);
+    if (row.addsChoice !== null) walkChoice(row.addsChoice);
+  }
 
   const sorted = (set: ReadonlySet<string>): string[] =>
     [...set].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));

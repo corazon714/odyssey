@@ -23,15 +23,48 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.5 (2026-08-12).** Steps **5-7 RUN**
-> against a real corpus — 13 events, 137 modifiers, 25 complications, 15 universal choices, a
-> complete `en` locale, `content:lint` clean. **Step 2 now routes on real geography** and its
-> diversity gate PASSES (median 59% against a 70% ceiling) — but it has NO CALLER: the route is
-> still caller-supplied via `RunInit.route`, and legs, days, cost and risk do not exist until
-> M3.7-M3.9. Steps 1, 3 and 4 do not exist. Three of §9's four registries are live.
+> # Status: Phases 1, 2A, 2B and **3** are CLOSED. **PHASE 3 CLOSED WITH GATE 9 RED.**
+>
+> **`docs/phase-3-closeout.md` is the closing artefact — read it before starting Phase 4.** Eight
+> of the nine gates pass; **gate 9 FAILS** on `route.illicit.r1dlxpt5` (2.32%, −4.5 SE) and
+> `route.illicit.r16kyujq` (2.81%, −1.1 SE), and is expected to keep failing until Phase 4
+> item #1 lands. **Closing was a scheduling decision, not a pass**, for the reason the closeout
+> states: the fix moves `legKm` corpus-wide, therefore the baseline, therefore gate 9 itself, and
+> a fix validated by a measure that changed in the same commit is not validated.
+>
+> Phase 3 covered M3.1–M3.12a plus the un-numbered recovery milestone (2026-08-14) and an
+> adversarial verification pass. **The milestone-by-milestone history is `docs/PROGRESS.md`; it
+> is not repeated here.** Two of its outputs bind current work: `BASE_EVENT_ODDS` is fenced at
+> `1:0` (M3.12a), and the wear curve ships at `SAVE_VERSION` 6 (ADR 0040/0041).
+>
+> Steps **5-7 RUN** against a real corpus — 17 events, 137 modifiers, 25 complications,
+> 16 universal choices, a complete `en` locale, `content:lint` clean (1 warning,
+> `MISSING_IMAGE_MANIFEST`). **Every one of the six beat types is fillable** as of C3, so
+> `pack.unfillableBeatTypes` is empty and beat fill is **48.5%** against a structural ceiling of
+> 100%, rather than 28.2% against 55.8%. **Step 2 routes on real geography** (ADR 0033) and its
+> diversity gate exits 0 at **median 53% (n = 747), p90 87%** — **but the median is not the
+> finding**: **one** named pair still breaches the ceiling (Chongjin–Jeju City 80%, and it is
+> **structural** — a degree-1 endpoint whose floor alone is 71%). The genuine filter defect that
+> sat beside it, Valencia–Palermo, **was closed at C2** and now passes at 63%. Generation is
+> COMPLETE and **the corpus sim runs on generated routes** (ADR 0034) — six endpoint pairs, five
+> profiles, **28 routes** (ADR 0043); the APP still supplies `RunInit.route`. Steps 1, 3 and 4 do
+> not exist. Three of §9's registries are live.
+>
+> **Every one of `docs/phase-3-dod.md`'s nine gates RUNS**, gate 9 included, since `--by-route`
+> shipped (ADR 0042). Gate 9's failure is **explained** by **ADR 0044**: drain is charged per
+> HOUR and recovery arrives per LEG, so a contiguous montage WALL — 232 of 509 hours in nine
+> consecutive legs — is lethal at a total the same route survives when spread. It is **one
+> corridor sampled twice** (the two breaching routes share 88.9% of their edges), so gate 9 and
+> ADR 0043's generator collapse are **one bug**, carried forward as closeout items #1 and #2.
+>
+> **`peak` on `--by-route` is a FLAG, not a dial** — ADR 0044's addendum falsified the stronger
+> reading with a permutation that halved it and gained nothing. **No acceptance test may be
+> written as a `peak` threshold**, and the carry-forward criterion is three parts: completion
+> with its SE, the morale-floor share, and the ending histogram against a healthy comparable.
 >
 > **`docs/PROGRESS.md` is the authority on current state and this paragraph is not.**
 > `docs/engine-spec.md` Part II is the authority on what the engine does, written from the code.
+> **`docs/phase-3-dod.md` is the authority on what closing Phase 3 requires.**
 
 ---
 
@@ -114,7 +147,7 @@ These have caused real damage in similar projects when broken. Do not "improve" 
 ## 3. Repository layout
 
 **Target** layout. `(planned)` = does not exist on disk; `(empty)` = only a `.gitkeep`. Do not
-assume a `(planned)` path exists — create it in the phase that needs it. Verified 2026-08-12.
+assume a `(planned)` path exists — create it in the phase that needs it. Verified 2026-08-14.
 
 ```
 apps/mobile/                Expo app (UI only — no game rules here)
@@ -128,29 +161,33 @@ packages/engine/            Pure TS game engine                      ✅
   src/predicate/            requires-DSL, 28 kinds + reason trace     ✅
   src/effects/              effect-DSL applier, 15 ops               ✅
   src/content/              GameEvent, ContentPack, the 2 registries ✅ ADR 0021/0022
-  src/director/             filters, scoring, ladder, beats, tension ✅
+  src/director/             filters · scoring · ladder · beats · tension · quiet gate ✅ ADR 0029
   src/{queue,loop,migrate}/ consequence queue · advanceLeg/resolveChoice/replayRun · saves  ✅
   src/modifiers/            check tags, registry, resolution pipeline ✅ ADR 0015
-  src/route/                geo graph · Dijkstra · Yen · diversity   ✅ ADR 0025/0030/0031
+  src/route/                graph · Dijkstra · Yen · legs · beats · gen ✅ 0025/0026/0027
 packages/content/                                                    ✅
-  events/                   13 seed events, grouped by category      ✅
+  events/                   17 seed events, grouped by category      ✅
   __fixtures__/events/      the 9 Phase 1 fixtures, frozen, UNLINTED ✅ ADR 0022
-  modifiers · complications · universal-choices .yaml   137 · 25 · 15   ✅
+  modifiers · complications · universal-choices .yaml   137 · 25 · 16   ✅
   flags/items/npcs/traits/endings.yaml   declaration registries      ✅
-  schema/ · loader/         Zod + terse->canonical · YAML w/ file:line:col   ✅ ADR 0009
+  schema/ · loader/         Zod + terse->canonical · YAML w/ file:line:col   ✅ ADR 0009/0033
   i18n/en/                  complete — 157 event keys + 146 chip keys ✅
-  geo/{nodes,edges}.gen.json   263 nodes · 404 edges · 1 component   ✅ `pnpm geo:build`
-  geo/overlay.json          the ONE hand-edited geo file — 42 rows   ✅ moves to .yaml in M3.6
+  geo/{nodes,edges}.gen.json   692 nodes · 1,215 edges · 1 component ✅ `pnpm geo:build`
+  geo/overlay.yaml          the ONE hand-edited geo file — 8 rows    ✅ ADR 0033
   geo/sources.lock.json     source URLs · licences · hash pin        ✅ ADR 0024
   i18n/{tr,ru,de}/ · images/                                            (empty)
   images/manifest.json      image spec -> asset mapping                 (planned)
 packages/tools/                                                      ✅
   shared/ · sim/            helpers · headless sim                  ✅
   geo-build/                derive · borders · rail · verify · audit ✅ ADR 0024/0030/0031
-  content-lint/             15 rules, file:line:col, --fix           ✅ CI job
+  content-lint/             19 rules inc. 10 GEO_*, file:line:col    ✅ CI job
   content-stats/            counts + 4-axis coverage report          ✅
   imagegen/ · i18n-check/                                              (empty)
-docs/                       adr/0001-0032 · engine-spec · PROGRESS   ✅
+docs/                       adr/0001-0045 · engine-spec · PROGRESS   ✅
+  phase-3-dod.md            the NINE phase gates, runnable           ✅ §7
+  phase-3-closeout.md       PHASE 3 CLOSED, GATE 9 RED — read first  ✅
+  phase-3-verification.md   the measured handoff — 4 findings, 0 fixed ✅
+  geo-data-licensing.md     source licences and attribution          ✅ ADR 0024
   enforcement.md            what enforces each §2 rule               ✅
   stack-notes.md            the dependency traps, in full            ✅
   content-style-guide.md    how to author; registry-vs-event         ✅
@@ -223,6 +260,7 @@ pnpm content:stats            # counts by category/tag/check-tag + a 4-axis cove
 pnpm sim -- --runs=20000      # headless balance simulation (fixture pack)                 ✅
 pnpm sim -- --pack=corpus     # sim against packages/content/ — the REAL registries         ✅
 pnpm sim -- --json            # per-run TRACE (fired events + picks in order) not the report ✅
+pnpm sim -- --by-route        # per-route completion + SE + peak — gate 9. Writes nothing    ✅
 pnpm sim:diff -- --runs=2000  # vs the pack's baseline. REFUSES another count — see DoD 6  ✅
 pnpm golden:update            # regenerate golden-runs.json from the engine — REVIEW the diff ✅
 pnpm geo:audit [-- --real]    # candidate pool vs the ADR 0024 budget; writes nothing        ✅
@@ -236,6 +274,11 @@ pnpm i18n:{check,pseudo}      # key coverage, length audit, pseudo-localization 
 
 If a command in this list does not exist yet, that means the corresponding phase has not shipped.
 Do not invent an alternative — say so.
+
+> **`--json`, `--by-route` and the default report are THREE MUTUALLY EXCLUSIVE output modes**, and
+> `parse-args.ts` refuses the combinations rather than silently ranking them. `--by-route` returns
+> before `formatReport` is called, so it cannot write `reports/` and cannot move either baseline —
+> which is the whole reason it is a mode and not a report section (`docs/adr/0042`).
 
 ---
 
@@ -275,6 +318,12 @@ A change is not done until all of these pass:
 
 State the DoD results explicitly at the end of your response. Do not claim something passes
 without having actually run it.
+
+> **The PHASE gate is `docs/phase-3-dod.md`** — the nine gates Phase 3 must clear before it
+> closes, each naming a command that runs today and a pass condition readable off its output.
+> The list above is the per-TASK gate and every task still owes it; the phase file is additional,
+> not a substitute. It lives in the repo so it can be reviewed in a diff and run in CI, which is
+> exactly what the previous copy — in a plan file outside git — could not be.
 
 > **Items 1–3 are enforced at commit time**, not left to good intentions: the PreToolUse
 > hook `.claude/hooks/gate-commit.mjs` blocks `git commit` when the checks for the packages
@@ -319,7 +368,7 @@ An **Outcome** = `{ weight, requires?, textKey|textVariants[], effects[], schedu
 **Diversity is combinatorial, not authored.** Four registries multiply a small corpus into a
 large play space, declared once rather than per event: **`modifiers.yaml`** ✅ 137 (check
 modifiers, injected by check tag) · **`complications.yaml`** ✅ 25 (situational layers on a
-selected event) · **`universal-choices.yaml`** ✅ 15 (choices injected by tag match) ·
+selected event) · **`universal-choices.yaml`** ✅ 16 (choices injected by tag match) ·
 `quirks.yaml` **(planned)** (NPC traits that register as modifiers).
 
 Writing a modifier or complication into one event's YAML, when it belongs in a registry, is the

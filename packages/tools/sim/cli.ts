@@ -2,9 +2,15 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findWorkspaceRoot } from '../shared/workspace-root.ts';
+import { formatByRoute } from './by-route.ts';
 import { diffReports, runCountOf } from './diff-report.ts';
 import { formatReport } from './format-report.ts';
-import { loadCorpusPack, loadFixturePack, loadFixtureScenarios } from './load-pack.ts';
+import {
+  loadCorpusPack,
+  loadCorpusScenarios,
+  loadFixturePack,
+  loadFixtureScenarios,
+} from './load-pack.ts';
 import { parseArgs } from './parse-args.ts';
 import { runMany } from './run-many.ts';
 
@@ -25,7 +31,7 @@ const parsed = parseArgs(process.argv.slice(2));
 if (!parsed.ok) {
   console.error(`sim: ${parsed.message}`);
   console.error(
-    'usage: pnpm sim -- --runs=1000 [--seed=base] [--policy=random ...] [--pack=fixture|corpus] [--diff] [--json]',
+    'usage: pnpm sim -- --runs=1000 [--seed=base] [--policy=random ...] [--pack=fixture|corpus] [--diff] [--json] [--by-route]',
   );
   process.exit(1);
 }
@@ -55,17 +61,48 @@ if (loaded !== null && loaded.issues.length > 0) {
 }
 
 const pack = loaded === null ? loadFixturePack() : loaded.pack;
-// Routes stay the fixture set for now. They are generic overland routes with start blocks, and
-// route GENERATION is Phase 2B `engine/src/route/` — so a corpus-specific route file would be
-// inventing the thing that milestone exists to build. Revisit when the seed corpus lands: a
-// corpus whose beat types the fixture routes never schedule would report a misleading fill rate.
-const scenarios = loadFixtureScenarios();
+
+// M3.10a: the corpus finally runs on GENERATED routes rather than borrowing the fixture's.
+// Until now a corpus whose beat types the fixture routes never schedule reported a misleading
+// fill rate — the ceiling was 38.5% and nothing said so in the report.
+//
+// The fixture pack keeps its hand-written routes, deliberately and permanently: it is the
+// control the golden runs are built on, and a control that regenerates itself from the geo
+// slice is not a control.
+const corpusRoutes = parsed.options.pack === 'corpus' ? loadCorpusScenarios() : null;
+if (corpusRoutes !== null && corpusRoutes.issues.length > 0) {
+  console.error(`sim: corpus routes did not generate (${String(corpusRoutes.issues.length)}):`);
+  for (const issue of corpusRoutes.issues) console.error(`  ${issue}`);
+  process.exit(1);
+}
+const scenarios = corpusRoutes === null ? loadFixtureScenarios() : corpusRoutes.scenarios;
 
 // The one sanctioned wall-clock read outside the app's system-clock adapter is here, in a
 // build-time tool that is not the engine — it measures the harness, never the run.
 const startedAt = performance.now();
 const summary = runMany(pack, scenarios, parsed.options);
 const elapsedMs = Math.round(performance.now() - startedAt);
+
+// GATE 9's MEASUREMENT, and it returns BEFORE `formatReport` is ever called.
+//
+// That ordering is the point rather than an optimisation: this mode cannot touch the standard
+// report, cannot write `reports/sim-latest-<pack>.md`, and therefore cannot move either
+// baseline. `diff-report.ts` compares by line index, so a per-route section appended to the
+// report would offset every line under it and force both baselines to regenerate for what is
+// only a formatting change — the false positive ADR 0032 exists to prevent, which is why
+// `docs/phase-3-dod.md` gate 9 specifies the `--json` precedent by name.
+if (parsed.options.byRoute) {
+  // eslint-disable-next-line no-console -- the table IS this command's output.
+  console.log(
+    formatByRoute(summary, scenarios, {
+      seed: parsed.options.seed,
+      runs: parsed.options.runs,
+      pack: parsed.options.pack,
+      elapsedMs,
+    }),
+  );
+  process.exit(summary.errors.length > 0 || summary.turnCapHits > 0 ? 1 : 0);
+}
 
 const report = formatReport(summary, pack, {
   seed: parsed.options.seed,

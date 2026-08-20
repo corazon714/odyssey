@@ -45,7 +45,22 @@ export type SelectionResult =
        */
       readonly complication: RegistryComplication | null;
     }
-  | { readonly kind: 'uneventful'; readonly reasonKey: string; readonly params: TextParams };
+  | { readonly kind: 'uneventful'; readonly reasonKey: string; readonly params: TextParams }
+  /**
+   * DESIGNED SILENCE, and emphatically NOT a reuse of `uneventful` (ADR 0029 D4).
+   *
+   * The two arms are shape-identical and mean opposite things: `uneventful` is the ladder
+   * coming up empty — a CONTENT GAP — and `quiet` is the odds gate deciding this leg has
+   * nothing in it. Folding them together would destroy the `Empty-pool fallbacks` /
+   * `Uneventful legs` pair, which is the only instrument in the sim that can see a content gap
+   * at all; at a 30% quiet share the starvation line would read as noise around a number six
+   * times its size.
+   *
+   * `selectEvent` never returns this. The gate runs BEFORE selection — a quiet leg does not
+   * ATTEMPT the ladder, which is exactly why it cannot fall back — so `advanceLeg` is the only
+   * producer. The arm lives here because this is the type the loop reports its decision in.
+   */
+  | { readonly kind: 'quiet'; readonly reasonKey: string; readonly params: TextParams };
 
 export type SelectOptions = {
   readonly complicationSources: readonly ComplicationSource[];

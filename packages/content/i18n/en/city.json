@@ -13,5 +13,40 @@
   "events.city.the_address_that_moved.out.sent_the_wrong_way": "He is certain, and he is wrong, and you find that out at the far end of a long road.",
 
   "events.city.the_address_that_moved.choice.pay_a_kid_to_take_you": "Pay someone to walk you there",
-  "events.city.the_address_that_moved.out.straight_there": "It costs less than the hour would have and takes six minutes. You are led there without a word and left at the door."
+  "events.city.the_address_that_moved.out.straight_there": "It costs less than the hour would have and takes six minutes. You are led there without a word and left at the door.",
+
+  "events.city.the_outskirts.title": "The Outskirts",
+  "events.city.the_outskirts.body": "Warehouses, then a builder's yard, then the first traffic lights in four days. The city announces itself in reverse: the ugly edge first, the part on the postcard somewhere behind it. Whatever the road has done to you is about to be visible under proper lighting.",
+
+  "events.city.the_outskirts.choice.push_straight_in": "Push straight in",
+  "events.city.the_outskirts.out.through_before_the_traffic": "You get in ahead of whatever the evening does to these roads, and it is almost anticlimactic.",
+  "events.city.the_outskirts.out.an_hour_of_roundabouts": "Three roundabouts, two of them twice, and a sign for the centre that points at a wall.",
+
+  "events.city.the_outskirts.choice.stop_at_the_last_services": "Stop at the last services",
+  "events.city.the_outskirts.out.strip_lights_and_a_hot_plate": "Strip lights, a hot plate, and a queue of people who all did the same thing you did to get here. You eat properly for the first time in days.",
+
+  "events.city.the_outskirts.choice.lose_what_you_should_not_have": "Get rid of the package",
+  "events.city.the_outskirts.out.into_the_water": "It goes into the water at the edge of a builder's yard and that is the end of it. Somebody, at some point, is going to want a conversation about that.",
+
+  "events.city.the_outskirts.choice.find_out_which_way_in": "Find the way in",
+  "events.city.the_outskirts.out.the_back_road": "There is a service road behind the depots that the map does not commit to. It works.",
+  "events.city.the_outskirts.out.the_long_way_round": "The obvious way in has been closed for months, and the diversion was signposted by somebody who enjoyed it.",
+  "events.city.the_outskirts.out.waved_down_on_the_approach": "A hand goes up on the hard shoulder, and there is a long, unhurried look at your documents while the traffic goes past.",
+
+  "events.city.the_last_kilometre.title": "The Last Kilometre",
+  "events.city.the_last_kilometre.body": "The street is in the grid you have been carrying in your head for weeks and it is narrower than the version in there. Somebody is unloading crates. Somebody else is arguing on a balcony. None of it knows how far you have come, and there is no reason it should.",
+
+  "events.city.the_last_kilometre.choice.walk_in_as_you_are": "Walk in as you are",
+  "events.city.the_last_kilometre.out.nothing_to_declare": "You arrive. It takes about four minutes and nobody marks the occasion, which is broadly what arriving is.",
+  "events.city.the_last_kilometre.out.nothing_left_of_you": "You get there. Whatever was supposed to be waiting at the end of it does not appear to have travelled with you.",
+
+  "events.city.the_last_kilometre.choice.spend_the_last_of_it": "Spend the last of it",
+  "events.city.the_last_kilometre.out.clean_shirt_clean_story": "A shirt, a wash and twenty minutes. It buys nothing you could point at and it changes every conversation you have for a week.",
+  "events.city.the_last_kilometre.out.upright_and_solvent": "You walk in on your own feet, fed, clean, owing nobody, and knowing exactly what the road cost because you paid all of it yourself. Very few finish it this way.",
+  "events.city.the_last_kilometre.out.the_shirt_was_the_easy_part": "The shirt fits and the wash was worth having, and neither reaches whatever the road took out of you on the way here. You arrive presentable. That is all you arrive.",
+
+  "events.city.the_last_kilometre.choice.find_who_you_were_sent_to": "Find who you were sent to",
+  "events.city.the_last_kilometre.out.they_were_expecting_you": "They were told to expect you a fortnight ago and had stopped believing it. There is food, and a bed, and a favour banked for later.",
+  "events.city.the_last_kilometre.out.a_shutter_and_a_name": "A shutter down and a name that means nothing to anybody on the street. You sit on the step for a while.",
+  "events.city.the_last_kilometre.out.recognised_before_you_knock": "Somebody clocks you from across the road before you reach the door, and starts walking the other way rather fast."
 }

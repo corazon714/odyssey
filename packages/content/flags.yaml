@@ -104,6 +104,13 @@
   lifetime:
     ttlLegs: 6
 
+# ── condition ───────────────────────────────────────────────────────────────────────────
+- id: rested_recently
+  description: You have slept and eaten properly in the last few legs; suppresses a second stop.
+  category: condition
+  lifetime:
+    ttlLegs: 6
+
 # ── companions ──────────────────────────────────────────────────────────────────────────
 # `companion` is a MODIFIER SOURCE KIND with no state behind it: `RunState` has no companion
 # field, and preparation is Phase 3. These two flags are what the kind keys on until it does.

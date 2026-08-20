@@ -6,6 +6,7 @@ import { modeMask, type GeoEdge } from '../geo-edge.ts';
 import { createGeoGraph, type GeoGraph } from '../geo-graph.ts';
 import { type GeoNode } from '../geo-node.ts';
 import { serviceMask } from '../geo-services.ts';
+import { DIVERSITY_RUNGS, overlapPercent } from '../route-diversity.ts';
 import { MIN_CANDIDATE_ROUTES, selectPaths } from '../select-paths.ts';
 import { idx, loadMiniGraph } from './support/load-geo-mini.ts';
 
@@ -134,6 +135,33 @@ describe('selectPaths', () => {
     );
     expect(b.rungReached).toBe(a.rungReached);
     expect(b.shortfall).toEqual(a.shortfall);
+  });
+
+  it('POST-CONDITION: no returned pair breaches the rung it was accepted at, either way round', () => {
+    // The same property `route-diversity.test.ts` asserts on the filter, re-asserted through the
+    // LADDER on every pair of the mini graph — because the rung decides the threshold, and a fix
+    // that held inside `acceptByDiversity` but leaked as `selectPaths` escalated would be worth
+    // nothing. `verifyPair` maximises exactly this quantity over ordered pairs, so `geo:verify`
+    // and the filter can no longer report different numbers for the same pair.
+    for (let from = 0; from < GRAPH.nodes.length; from += 1) {
+      for (let to = 0; to < GRAPH.nodes.length; to += 1) {
+        if (from === to) continue;
+        const result = selectPaths(GRAPH, from, to);
+        const threshold = DIVERSITY_RUNGS[result.rungReached]?.maxOverlapPercent;
+        expect(threshold).toBeDefined();
+        if (threshold === undefined) continue;
+        for (const a of result.paths) {
+          for (const b of result.paths) {
+            if (a === b) continue;
+            const worst = Math.max(
+              overlapPercent(GRAPH, a.path, new Set(b.path.edges)),
+              overlapPercent(GRAPH, b.path, new Set(a.path.edges)),
+            );
+            expect(worst).toBeLessThanOrEqual(threshold);
+          }
+        }
+      }
+    }
   });
 
   it('keeps the profile that produced each path', () => {

@@ -11,28 +11,30 @@ import { type GeoGraph } from './geo-graph.ts';
  * short urban edges out of thirty are different journeys, and two sharing one 900 km trunk edge
  * are the same journey wearing different endpoints. The player experiences kilometres.
  *
- * ## Asymmetric, normalised by the CANDIDATE's own length
+ * ## The measure is directional; the GUARANTEE is not
  *
- * Correct in both directions, which Jaccard is not:
+ * `overlapPercent(x, y)` normalises by `x`'s own length, so it is not symmetric, and the asymmetry
+ * is the point — it is what tells a truncation from a detour:
  *
- * - a short candidate lying wholly inside a long accepted route reads 100% and is rejected — it
- *   is a truncation, not an alternative;
- * - a long candidate containing a short accepted route plus a 600 km detour reads low and is
- *   accepted, because it *is* a different journey. Jaccard would reject it.
+ * - a short route lying wholly inside a long one reads 100% *in that direction* — it is a
+ *   truncation, not an alternative;
+ * - the same pair read the other way reads low, because the long route really does spend most of
+ *   itself on ground the short one never sees. Jaccard collapses both into one middling number.
+ *
+ * A one-DIRECTION check is therefore not a per-pair guarantee, and until this fix the filter made
+ * one anyway: it only ever measured a new candidate against what was already accepted, so an
+ * accepted route could be swallowed by a route admitted *after* it and nothing ever looked. The
+ * threshold below now bounds **`max(overlap(a,b), overlap(b,a))`** over every accepted pair, which
+ * is exactly the number `verifyPair` reports. See `acceptByDiversity` and ADR 0025 Decision 5.
  */
 export const DIVERSITY_MAX_PERCENT = 70;
 
 /**
  * Overlap of `candidate` with an edge set, as an integer percentage of the candidate's distance.
  *
- * **Pass the UNION of every accepted route's edges.** Checking the union subsumes checking each
- * accepted route pairwise — the union is a superset, so its shared distance is never smaller —
- * and it is the check that catches the case pairwise misses: a candidate sharing a different 45%
- * with each of two accepted routes is 90% covered and is not an alternative to either.
- *
- * (ADR 0025 Decision 5 specifies computing both and rejecting on the larger. The larger is
- * always the union, so the pairwise pass is redundant; the union check is kept and the
- * redundancy is recorded rather than implemented.)
+ * The edge set is whatever the caller is asking about, and `acceptByDiversity` asks twice with
+ * different sets — the UNION of everything accepted, and then each accepted route's edges on its
+ * own. Both are needed and neither subsumes the other; the doc comment there says why.
  */
 export function overlapPercent(
   graph: GeoGraph,
@@ -91,6 +93,31 @@ export type DiversityVerdict<T> = {
  *
  * Generic over the item so the caller can carry a profile label alongside the path without this
  * module knowing what a profile is.
+ *
+ * ## Two checks, in two directions, and they are not the same check
+ *
+ * **FORWARD — how much of the candidate is already covered — is measured against the UNION.**
+ * The union is what catches the case pairwise misses: a candidate sharing a different 45% with
+ * each of two accepted routes is 90% covered and is an alternative to neither. Pairwise would
+ * wave it through twice.
+ *
+ * **REVERSE — how much of each accepted route the candidate would swallow — is measured
+ * PAIRWISE.** This is the direction the filter never looked in before, and the reason
+ * `geo:verify` could report 85% on a pair the filter believed it had held to 70%: the accepted
+ * route is normalised by ITS OWN length, so no measurement taken while it was the candidate can
+ * stand in for this one. Chongjin-Jeju City accepted `safest` at 1,724 km and then a 2,573 km
+ * backfill; the backfill read 53% against `safest`, `safest` read 80% inside the backfill, and
+ * only the first number was ever computed.
+ *
+ * **The reverse check is pairwise and NOT a second union, deliberately.** A union in reverse —
+ * "how much of this accepted route is covered by everything else together" — is a strictly
+ * stronger claim than the one `verifyPair` measures. It would reject far more, push far more
+ * pairs up the rung ladder into Yen backfill (~95% of `selectPaths`' cost), and buy a guarantee
+ * nothing asks for. Pairwise in reverse makes the filter's guarantee exactly equal to the
+ * reported metric, which is the property worth having.
+ *
+ * The post-condition, which `route-diversity.test.ts` asserts directly: for every accepted pair
+ * `(a, b)`, `max(overlap(a,b), overlap(b,a)) <= maxOverlapPercent`.
  */
 export function acceptByDiversity<T>(
   graph: GeoGraph,
@@ -100,20 +127,34 @@ export function acceptByDiversity<T>(
   limit: number,
 ): DiversityVerdict<T> {
   const accepted: T[] = [];
+  const acceptedPaths: GeoPath[] = [];
   const rejected: { item: T; overlapPercent: number }[] = [];
   const acceptedEdges = new Set<number>();
 
   for (const candidate of candidates) {
     if (accepted.length >= limit) break;
     const path = pathOf(candidate);
-    const overlap = accepted.length === 0 ? 0 : overlapPercent(graph, path, acceptedEdges);
+    let worst = acceptedPaths.length === 0 ? 0 : overlapPercent(graph, path, acceptedEdges);
+
+    // The reverse pass. Both directions are always computed, so the number reported on a
+    // rejection is the worst overlap actually seen rather than whichever one was tested first —
+    // design pillar 2 applied to the filter's own reasoning.
+    if (acceptedPaths.length > 0) {
+      const candidateEdges = new Set(path.edges);
+      for (const acceptedPath of acceptedPaths) {
+        const swallowed = overlapPercent(graph, acceptedPath, candidateEdges);
+        if (swallowed > worst) worst = swallowed;
+      }
+    }
+
     // `>` and not `>=`: the brief says "sharing >70%", so a candidate at exactly the threshold
     // is admitted. An off-by-one here silently costs one route on every tie.
-    if (overlap > maxOverlapPercent) {
-      rejected.push({ item: candidate, overlapPercent: overlap });
+    if (worst > maxOverlapPercent) {
+      rejected.push({ item: candidate, overlapPercent: worst });
       continue;
     }
     accepted.push(candidate);
+    acceptedPaths.push(path);
     for (const edgeIdx of path.edges) acceptedEdges.add(edgeIdx);
   }
 

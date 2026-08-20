@@ -122,6 +122,12 @@ export default tseslint.config(
       'apps/mobile/android/**',
       'apps/mobile/.expo/**',
       'packages/content/images/generated/**',
+      // Git worktrees the agent harness creates — a SEPARATE CHECKOUT, which lints itself.
+      // Linting into one is not merely redundant, it reports false errors: the `basePath`
+      // blocks below are anchored at this root, so `apps/mobile/app/_layout.tsx` inside a
+      // worktree misses the expo-router default-export exception and fails a rule it passes
+      // in its own tree. Paired with the `.git` check in scripts/check-no-nested-eslint-config.mjs.
+      '.claude/worktrees/**',
     ],
   },
 

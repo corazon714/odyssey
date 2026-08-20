@@ -19,7 +19,7 @@ import {
   settlementTypeOf,
   terrainDifficultyOf,
 } from './compute-attributes.ts';
-import { analyseConnectivity, degreeHistogram } from './connectivity.ts';
+import { analyseConnectivity, degreeHistogram, MIN_LANDMASS_NODES } from './connectivity.ts';
 import { haversineKm, type EpsilonLedger } from './geodesy.ts';
 import { cellNeighbourhood } from './grid.ts';
 import { markUnavoidable, type ConnectivityEdge } from './mark-unavoidable.ts';
@@ -67,6 +67,9 @@ export type SliceResult = {
   readonly artifacts: Artifacts;
   readonly selection: SelectionResult;
   readonly connectivity: ReturnType<typeof analyseConnectivity>;
+  /** Nodes removed because they sat in a component too small to be a landmass (ADR 0036). */
+  readonly droppedFragmentNodes: number;
+  readonly droppedFragmentCount: number;
   readonly degrees: readonly number[];
   readonly terrainTally: ReadonlyMap<string, number>;
   readonly rejectedForWater: number;
@@ -323,15 +326,54 @@ export function buildSlice(input: SliceInput): SliceResult {
     unavoidable.has(i) ? { ...edge, unavoidable: true } : edge,
   );
 
-  const connectivity = analyseConnectivity(allNodes.length, linked);
+  // ── ADR 0036: drop fragments ─────────────────────────────────────────────────────────
+  //
+  // A component below `MIN_LANDMASS_NODES` is an island the selector reached and the edge
+  // builder could not connect. It cannot be ferried in automatically — the overlay's rule is
+  // that a `ferries` row names a crossing that REALLY OPERATES, and inventing forty-eight of
+  // them would ship fiction as geography — so the scalable half of ADR 0036's "join it or drop
+  // it" is the drop, and a human promotes any individual island to a ferry row by hand.
+  //
+  // **This is a no-op when there are no fragments**, which is what keeps the shipped 263-node
+  // slice byte-identical: `dropped` is empty, `remap` is the identity, and every array is
+  // rebuilt with the same contents in the same order.
+  const preliminary = analyseConnectivity(allNodes.length, linked);
+  const dropped = new Set<number>();
+  for (const component of preliminary.components) {
+    if (component.length >= MIN_LANDMASS_NODES) continue;
+    for (const nodeIdx of component) dropped.add(nodeIdx);
+  }
+
+  const remap = new Map<number, number>();
+  const keptNodes: GeoNode[] = [];
+  allNodes.forEach((node, i) => {
+    if (dropped.has(i)) return;
+    remap.set(i, keptNodes.length);
+    keptNodes.push(node);
+  });
+
+  const keptEdges: GeoEdge[] = [];
+  const keptLinked: { readonly a: number; readonly b: number }[] = [];
+  linked.forEach((link, i) => {
+    const a = remap.get(link.a);
+    const b = remap.get(link.b);
+    const edge = edges[i];
+    if (a === undefined || b === undefined || edge === undefined) return;
+    keptLinked.push({ a, b });
+    keptEdges.push(edge);
+  });
+
+  const connectivity = analyseConnectivity(keptNodes.length, keptLinked);
 
   return {
-    nodes: allNodes,
-    edges,
+    nodes: keptNodes,
+    edges: keptEdges,
+    droppedFragmentNodes: dropped.size,
+    droppedFragmentCount: preliminary.componentCount - connectivity.componentCount,
     artifacts: writeArtifacts(
-      allNodes,
+      keptNodes,
       (node) => extras.get(String(node.id)) ?? { name: null, lat: 0, lng: 0 },
-      edges,
+      keptEdges,
     ),
     selection,
     connectivity,

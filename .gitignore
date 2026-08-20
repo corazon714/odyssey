@@ -55,3 +55,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Personal Claude Code overrides. CLAUDE.md section 3: `.claude/` is committed on purpose so the
+# guardrails are shared, but this file is per-developer and must not be. It was committed once, at
+# 63278eb, by a `git add -A` that swept it up because nothing here excluded it.
+.claude/settings.local.json

@@ -35,7 +35,12 @@ export function undeclaredReferences(bundle: ContentBundle): readonly LintIssue[
     );
   }
 
-  const usage = collectFlagUsage(bundle.events, bundle.modifiers);
+  const usage = collectFlagUsage(
+    bundle.events,
+    bundle.modifiers,
+    bundle.universalChoices,
+    bundle.complications,
+  );
   for (const id of [...usage.written, ...usage.read]) {
     if (declared.flag.has(id)) continue;
     issues.push(error('UNDECLARED_FLAG', 'flags.yaml', `flag \`${id}\` is used but not declared`));
@@ -64,7 +69,12 @@ export function undeclaredReferences(bundle: ContentBundle): readonly LintIssue[
  * it — these two checks exist to make that report rare, not to replace it.
  */
 export function orphanFlags(bundle: ContentBundle): readonly LintIssue[] {
-  const usage = collectFlagUsage(bundle.events, bundle.modifiers);
+  const usage = collectFlagUsage(
+    bundle.events,
+    bundle.modifiers,
+    bundle.universalChoices,
+    bundle.complications,
+  );
   const declared = new Set<string>(bundle.declarations.flags.map((d) => d.id));
 
   return [

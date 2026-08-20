@@ -109,6 +109,24 @@ describe('advanceBeatSchedule', () => {
     expect(update.beatSchedule.filter((s) => s.status === 'filled')).toHaveLength(1);
   });
 
+  it('a quiet leg cannot slide or expire anything (ADR 0029 D3)', () => {
+    // The rewritten invariant at the top of `advanceBeatSchedule`. A quiet leg reaches this
+    // function with `filledType: null`, and it can only BE quiet on a leg with no open slot —
+    // `advanceLeg` checks `dueBeatSlot` before it draws the gate. So the schedule is untouched,
+    // and the beat-miss rate keeps measuring content rather than starting to measure the odds.
+    const route = routeWith(slot({ legIndex: 5, slackLegs: 2 }));
+    const quietLeg = 9; // outside the window, which is what "no open slot" means here
+    expect(dueBeatSlot(route, quietLeg)).toBeNull();
+
+    const update = advanceBeatSchedule(route, quietLeg, null);
+    expect(update).toEqual({
+      beatSchedule: route.beatSchedule,
+      filled: null,
+      slid: [],
+      expired: [],
+    });
+  });
+
   it('is pure', () => {
     const route = routeWith(slot());
     const before = JSON.stringify(route);

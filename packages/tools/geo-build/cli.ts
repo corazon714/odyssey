@@ -2,8 +2,9 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { loadGeoOverlay } from '@odyssey/content/loader';
+import { MIN_LANDMASS_NODES } from './connectivity.ts';
 import { findWorkspaceRoot } from '../shared/workspace-root.ts';
-import { type Overlay } from './apply-overlay.ts';
 import { auditDiversity, formatDiversity, graphFromArtifacts } from './audit-diversity.ts';
 import { benchmark, formatBenchmark, formatVerification } from './report-verify.ts';
 import { readNames } from './verify-routes.ts';
@@ -32,7 +33,8 @@ import { scoreCandidates } from './score-candidates.ts';
 
 const ROOT = findWorkspaceRoot(dirname(fileURLToPath(import.meta.url)));
 const CACHE_DIR = join(ROOT, '.geo-cache');
-const GEO_DIR = join(ROOT, 'packages', 'content', 'geo');
+const CONTENT_DIR = join(ROOT, 'packages', 'content');
+const GEO_DIR = join(CONTENT_DIR, 'geo');
 const LOCK_PATH = join(GEO_DIR, 'sources.lock.json');
 const FIXTURE = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -86,8 +88,7 @@ function main(argv: readonly string[]): number {
     );
     const { byName, nameOf } = readNames(nodesJson, graph);
     process.stdout.write(formatVerification(graph, byName, nameOf));
-    const timings = benchmark(graph, 200);
-    process.stdout.write(`${formatBenchmark(graph, timings.length, timings)}\n`);
+    process.stdout.write(`${formatBenchmark(graph, benchmark(graph, 200))}\n`);
     return 0;
   }
 
@@ -157,6 +158,22 @@ function generate(
 ): number {
   const read = (name: string): string => readFileSync(join(CACHE_DIR, name), 'utf8');
 
+  // The overlay goes through `packages/content`'s loader rather than a local `JSON.parse` +
+  // `as Overlay`. The cast was the whole risk: a hand-edited file with a misspelled key or a
+  // dropped `reason` typechecked perfectly and silently did nothing. `loadGeoOverlay` validates
+  // it against `geoOverlaySchema` and reports file:line:col — and `loadGeo` is deliberately NOT
+  // used here, because this function WRITES the two artifacts it would insist on parsing.
+  const overlay = loadGeoOverlay(CONTENT_DIR);
+  if (overlay.data === null) {
+    for (const found of overlay.issues) {
+      process.stderr.write(
+        `${found.file}:${String(found.line)}:${String(found.column)}  ${found.message}\n`,
+      );
+    }
+    process.stderr.write('\ngeo-build: overlay.yaml did not parse. Nothing was written.\n');
+    return 1;
+  }
+
   const slice = buildSlice({
     candidates,
     regions: readRegions(read('ne_10m_admin_0_countries.geojson')),
@@ -164,7 +181,7 @@ function generate(
     terrainGeoJson: read('ne_10m_geography_regions_polys.geojson'),
     railLines: readLines(read('ne_10m_railroads.geojson')),
     quota: SETTLEMENT_QUOTA,
-    overlay: JSON.parse(readFileSync(join(GEO_DIR, 'overlay.json'), 'utf8')) as Overlay,
+    overlay: overlay.data,
     ledger,
   });
 
@@ -189,10 +206,24 @@ function generate(
 
   // Fail closed. More than one component means a node no route can reach, and a second
   // component is not a curiosity — it is a map the player can be stranded on. ADR 0024.
-  if (slice.connectivity.componentCount !== 1) {
+  // ADR 0036: several components are legal, one per LANDMASS. Fail on FRAGMENTS — an island the
+  // selector reached and the edge builder could not connect ships as a place a player can be
+  // routed into and stranded on, which is the failure ADR 0024 actually named. The component
+  // count was only ever a proxy for it, and it was a proxy that made a world map impossible.
+  const fragments = slice.connectivity.components.filter(
+    (component) => component.length < MIN_LANDMASS_NODES,
+  );
+  if (fragments.length > 0) {
+    const sizes = fragments
+      .map((component) => component.length)
+      .sort((a, b) => b - a)
+      .slice(0, 8)
+      .join(', ');
     process.stderr.write(
-      `\ngeo-build: ${String(slice.connectivity.componentCount)} components. The graph is not ` +
-        'one piece; the overlay must join them before this data is usable.\n',
+      `\ngeo-build: ${String(fragments.length)} fragment(s) below ${String(MIN_LANDMASS_NODES)} ` +
+        `nodes (${sizes}${fragments.length > 8 ? ', …' : ''}). Each is cut off from every ` +
+        'landmass. Join it with a `ferries` row in overlay.yaml, or narrow the bbox so the ' +
+        'selector stops reaching it.\n',
     );
     return 1;
   }
