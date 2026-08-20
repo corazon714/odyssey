@@ -415,6 +415,19 @@ export {
 } from './state/wear-state.ts';
 export { locationAtLeg } from './state/route-state.ts';
 
+// PRESENTATION DERIVATIONS. Abstract vocabularies, never palettes: the engine must not know the
+// word "violet". Every hex value lives in apps/mobile/src/design/. Exported so the app can render
+// from a selector rather than recompute balance thresholds in a component, and so the sim can fold
+// mood occupancy over a corpus — which is what makes mood calibration measurable.
+export {
+  MOOD_IDS,
+  MOOD_OVERLAYS,
+  moodFromState,
+  moodOverlaysFromState,
+  type MoodId,
+  type MoodOverlay,
+} from './presentation/mood.ts';
+
 export {
   MAX_PENDING,
   MAX_PENDING_PER_EVENT,

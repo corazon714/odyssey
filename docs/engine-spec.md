@@ -342,10 +342,65 @@ CHECK_TAGS        social · haggle · deception · intimidate · authority · br
                   medical · navigate · perception · luck        ← 18, ADR 0015
 PREDICATE kinds   28, kind-tagged (ADR 0007)
 ERROR CODES       11, all RETURNED — the engine never throws
+MOOD_IDS          default · night · wanted · desperate · injured · wilderness · urban
+                  border_tension · storm · triumphant          ← presentation, NOT content
+MOOD_OVERLAYS     night · storm                                ← the two that also layer
 ```
 
 `SAVE_VERSION = 4` · `CHECK_DIE_SIDES = 20` · `MAX_PENDING = 32` / 3 per event · 192 barrel
 exports.
+
+### II.1a `moodFromState` — a presentation derivation in the engine
+
+`packages/engine/src/presentation/mood.ts`. Pure, deterministic, reads `RunState` and nothing else.
+
+**Why it is engine code at all.** It branches on nine BALANCE THRESHOLDS (`heat >= 7`,
+`health <= 3`, `cash + bank === 0`, …), and a balance threshold inside a React component is the
+shape CLAUDE.md's app-layer rule exists to forbid. The second reason decided it: with the
+derivation here, the sim can fold mood occupancy over a corpus, so "the exhausted presentation
+would be very nearly always-on" (`docs/phase-3-closeout.md` §6) becomes measurable rather than
+asserted.
+
+**Priority order, highest first.** Terminal state, then threat, then scene, then body, then
+environment, then place:
+
+| # | mood                   | condition                                                       |
+| - | ---------------------- | --------------------------------------------------------------- |
+| 1 | `triumphant`           | `status === 'ended'` AND `ending.arrival_triumphant` unlocked      |
+| 2 | `wanted`               | `heat >= 7`                                                       |
+| 3 | `border_tension`       | leg location is `border_crossing` or `checkpoint`                  |
+| 4 | `desperate`            | `cash + bank === 0` AND (`hunger >= 7` OR `morale <= 2`)            |
+| 5 | `injured`              | `health <= 3`                                                     |
+| 6 | `storm`                | weather in `['rain', 'wind']`                                      |
+| 7 | `night`                | `timeOfDayFor(clock.hour) === 'night'`                             |
+| 8 | `wilderness` / `urban` | leg location is `wilderness` / `city` or `town`                    |
+| 9 | `default`              | —                                                                 |
+
+Four decisions in that table are not obvious and are argued in the file:
+
+- **`wanted` outranks `injured`** because heat is an external escalating threat with a scene
+  attached, while low health is already displayed continuously by the resource meter. If `injured`
+  won, a hurt player at heat 9 would lose the siren exactly when it matters most.
+- **`triumphant` is gated on `status`, and that gate is load-bearing.** Content unlocks arrival
+  variants DURING a run — `check-run-end.ts` filters `unlockedEndings` for them at arrival — so
+  `ending.arrival_triumphant` can sit in the list for twenty legs. Without the gate the world would
+  turn triumphant mid-journey.
+- **`storm` is `['rain', 'wind']`, deliberately NOT `world-tick.ts`'s
+  `HARSH_WEATHER = ['rain', 'wind', 'heat']`.** That is a drain-economy constant the balance sweep
+  may move, and a heat wave is not a storm. Same coupling argument as `WEAR_BANDS`.
+- **`urban` is derived, because there is no `urban` LocationType** — it is `city` or `town`.
+  `village`, `rest_stop`, `station` and `port` map to nothing, and `fog` is a real `WEATHERS`
+  member with nowhere to go. Recorded gaps rather than mislabelling.
+
+**`moodOverlaysFromState`** returns `night` and `storm` a second time, as orthogonal layers, so
+they still tint when outranked — a night border crossing must still look like night. Both are
+therefore in `MOOD_IDS` and in `MOOD_OVERLAYS`, and **a consumer applying both will
+double-darken**; the app's `useMood()` is the single place that resolves them.
+
+**No colour, no asset, no duration lives here.** `MoodId` is an abstract vocabulary; every hex
+value is in `apps/mobile/src/design/`. `MOOD_IDS` is classified `NOT_CONTENT` in the L2 conformance
+sweep, so nothing authored can filter on mood — a `requires: { mood: 'wanted' }` would make the art
+direction unchangeable without a content migration.
 
 ## II.2 Divergences from Part I
 

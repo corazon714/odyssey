@@ -146,6 +146,14 @@ const NOT_CONTENT: Readonly<Record<string, string>> = {
   WEAR_BANDS:
     'drain-economy balance, never authored — an event keyed on how tired the curve thinks ' +
     'you are would couple content to a constant the sweep is about to move',
+  MOOD_IDS:
+    'presentation derivation, never authored — a `requires: { mood: wanted }` would couple ' +
+    'content to a PALETTE decision and make the art direction unchangeable without a content ' +
+    'migration. Same argument as WEAR_BANDS, one layer up: there is deliberately no predicate ' +
+    'kind for it either',
+  MOOD_OVERLAYS:
+    'the two environmental members of MOOD_IDS, returned a second time as orthogonal layers so ' +
+    'night and storm still tint when a threat outranks them. Presentation, never authored',
   DIVERSITY_RUNGS: 'route-generation configuration, not content — the sibling of RELAXATION_RUNGS',
   SCORING_FACTORS: 'director configuration, not content',
   MIGRATIONS: 'save-schema ladder, not content',

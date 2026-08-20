@@ -5,6 +5,62 @@
 
 ---
 
+## D6 — `moodFromState` ships in the ENGINE. Phase 4B has started
+
+> `docs/engine-spec.md` **II.1a** is the authority. `packages/engine/src/presentation/mood.ts`.
+
+Pure, deterministic, reads `RunState` and nothing else. 17 tests. Both sim baselines print
+**No change** and all 1,349 golden-run tests pass — the null result that proves a new selector
+changed no mechanics.
+
+### Why the engine and not the app
+
+It branches on nine BALANCE THRESHOLDS (`heat >= 7`, `health <= 3`, `cash + bank === 0`, ...), and a
+balance threshold in a React component is the shape CLAUDE.md's app-layer rule forbids. The second
+reason is the one that decided it: the sim can now fold mood occupancy over a corpus, so the
+closeout's "an exhausted presentation would be very nearly always-on" becomes measurable.
+
+### Four decisions that were NOT in the plan, each forced by a repo fact
+
+- **There is no `urban` LocationType.** The vocabulary is `border_crossing · checkpoint · city ·
+town · village · roadside · rest_stop · station · port · wilderness`, so `urban` is DERIVED from
+  `city`/`town`. `village` is not urban.
+- **`triumphant` had to be gated on `status`, and the gate is load-bearing.** Content unlocks
+  arrival variants DURING a run — `check-run-end.ts` filters `unlockedEndings` at arrival — so
+  `ending.arrival_triumphant` can sit in the list for twenty legs. Without the gate the world turns
+  triumphant mid-journey. There is a test for exactly that.
+- **`triumphant` fires on ONE ending, not on any arrival.** `ending.arrival_hollow` is "arrived, but
+  spent"; rendering it triumphant would congratulate the player for something the content just
+  called sad. It falls through to `desperate` — the state it arrived in — which is the right screen
+  and is emergent.
+- **`storm` is `['rain','wind']`, NOT `world-tick.ts`'s `HARSH_WEATHER = ['rain','wind','heat']`.**
+  That is a drain-economy constant the sweep may move, and a heat wave is not a storm. Same coupling
+  argument `wear-state.ts` makes about `WEAR_BANDS`.
+
+### Recorded gaps rather than mislabelling
+
+`fog` is a real `WEATHERS` member with nowhere to go in the mood vocabulary. `village`, `rest_stop`,
+`station` and `port` map to no mood. Both are honest holes; inventing a mood for them would be worse.
+
+### The overlay hazard, documented in three places
+
+`night` and `storm` are in `MOOD_IDS` **and** `MOOD_OVERLAYS`, so they still tint when a threat
+outranks them — a night border crossing must still look like night. **A consumer that applies the
+mood theme AND the overlay will double-darken.** `useMood()` must be the single place that resolves
+them, and a test asserts every overlay is also a mood so the warning cannot go stale silently.
+
+### OPEN / NEXT
+
+- **The sim mood-occupancy fold is NOT built.** It is the reason the derivation is in the engine,
+  and without it mood calibration is still an assertion. Next piece of 4B.
+- **No palette exists yet.** `MoodId` is an abstract vocabulary; mood THEMES are app-side and wait
+  on the SE 3 session, since they are the part direction E could still lose.
+- Unchanged: the session needs a phone; ADR 0047 owed; CLAUDE.md now 500 lines against its ~400 cap;
+  carry-forward item #2; the shadow ramp unimplemented; the Android-frost decision is a
+  recommendation rather than an approval.
+
+---
+
 ## D5 — **`expo-blur` does not blur on Android.** The session is an iOS measurement now
 
 > `docs/device-measurement-session.md` **§0** is the correction and the authority.
