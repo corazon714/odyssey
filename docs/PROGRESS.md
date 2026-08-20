@@ -18,6 +18,25 @@ closeout), plus the contradiction sweep.
 **No content change, no constant moved, both baselines untouched.** The only non-comment code in
 the whole sequence is the `peak` column; everything else is documentation or comments.
 
+### Shipped this session — what WORKS, and the command that proves each
+
+| what                                                    | prove it with                                               |
+| ------------------------------------------------------- | ----------------------------------------------------------- |
+| **Gate 9's cause is known** — the hour WALL, ADR 0044   | `pnpm sim -- --pack=corpus --runs=280000 --by-route`        |
+| **`--by-route` prints `peak` next to `hours`**          | same command — `peak` reads 232/236 vs 170/177              |
+| **The peak column moved nothing else**                  | `pnpm test` (8 new tests) + `pnpm sim:diff` on both packs   |
+| **Phase 3's closing artefact exists**                   | `docs/phase-3-closeout.md` — nine gates, run on this tree   |
+| **Gate 9's run count is ONE number in all three files** | `grep -rn "250000\|230000" docs/ packages/` → no hits       |
+| **No doc claims a passing world in the present tense**  | `grep -rn "4\.8%\|42\.7%\|26\.1%" packages/ --include=*.ts` |
+| **CLAUDE.md matches disk**                              | §3 layout, §4 versions, §5 commands, §9 counts all checked  |
+
+The two substantive results, in one line each:
+
+- **The mechanism.** Drain per HOUR, recovery per LEG, so a contiguous montage wall is lethal at
+  a total the same route survives when spread. **Causal at 21 SE with two null controls.**
+- **The retraction.** `peak` is a FLAG, not a dial — the comb permutation halved it and gained
+  nothing. Retired in its own commit **before** the fix it would otherwise have justified.
+
 ### The finding — `docs/adr/0044` is the authority and this is a pointer
 
 > **Drain is charged per HOUR; recovery arrives per LEG. So survivability is set by the LOCAL
@@ -182,38 +201,121 @@ failing routes from their comparables. It must never appear in an acceptance tes
 - Everything C4b handed forward is untouched: the five dead outcomes behind `random`-only choices,
   and the four findings in `docs/phase-3-verification.md`.
 
-### Next step — ONE task
+### Half-done — **NOTHING IS BROKEN OR PARTIAL**
 
-> **Decide whether Phase 3 closes with gate 9 red and ADR 0044 as the explanation, or whether the
-> montage spacing constraint lands first.**
->
-> They are genuinely different phases of work. The finding is complete and defensible on its own:
-> a red gate with a measured cause, a named fix, and an owner is a closeable state. The fix is a
-> route-generation change that moves `legKm` corpus-wide — new corpus baseline, re-measured gate
-> 9, and a re-run of ADR 0043's generator question, because a comb-shaped montage may change how
-> many routes Beira-Aktobe yields.
->
-> **If the fix lands first**, do it in this order and nothing else in the same commit:
-> `leg-plan.ts` spacing constraint → `pnpm test:engine` → `pnpm sim:diff -- --runs=2000` on BOTH
-> packs → regenerate `docs/sim-baseline-corpus.md` → `--runs=280000 --by-route` → `pnpm geo:verify`
-> (route structure moved). Expect the goldens to move: `legKm` feeds `stateDigest`.
->
-> **If it does not**, ADR 0044 plus this entry is the handoff. The `peak` column has already
-> landed, so the next session reads the cause straight off the gate's own output.
+Working tree clean at `fe289aa`. No stub, no `TODO(handoff)`, no half-applied edit, no file left
+mid-refactor. **The only thing "unfinished" is gate 9 itself, and it is a documented carry-forward
+rather than a broken state** — see `docs/phase-3-closeout.md` and items #1/#2 above.
 
-### DoD
+One thing to know before editing anything: the **six-commit sequence contains exactly one
+non-comment code change**, the `peak` column in `packages/tools/sim/by-route.ts`. Everything else
+is documentation or comments, which is why both baselines and all nine goldens are untouched.
+
+### AN UNRECORDED FINDING, measured at session end and NOT acted on
+
+**Gate 9 pools over POLICIES the way the standard report pools over routes.** The grid is 140
+cells (28 routes × 5 policies); the gate reads 28 rows. `by-route.ts`'s own doc comment states
+the principle it breaks: _"a floor is a claim about the worst cell, not about the pool."_
+Measured, 2,000 runs per cell:
+
+| route              | random | greedy-safe | greedy-fast | risk-taker | adversarial | pooled |
+| ------------------ | -----: | ----------: | ----------: | ---------: | ----------: | -----: |
+| `illicit.r1dlxpt5` |  0.25% |   **0.00%** |       5.35% |      7.65% |       0.00% |  2.65% |
+| `illicit.r1gjd3s6` |  0.95% |   **0.00%** |      70.45% |     11.50% |       0.00% | 16.58% |
+| `safest.r2ga6nn`   | 91.50% |     100.00% |     100.00% |     99.75% |      60.10% | 90.27% |
+| `scenic.rss5ost`   | 28.30% |      28.15% |      99.90% |     86.30% |       1.95% | 48.92% |
+
+**`r1gjd3s6` passes gate 9 at +36.4 SE and contains a 0.00% cell.** Its 16.51% is one cell at 70%
+averaged with four at 0-11.5%. `greedy-safe` — the cautious player, NOT the adversarial floor —
+reads 0.00% on both 48-leg illicit routes. If that is real it inverts the game's premise: the
+player who husbands resources dies and the one who ignores them arrives.
+
+**Rule this out first before treating it as a design finding.** `policy.ts` documents a prior
+instrument fault in which the scorer made eating read as a loss and `greedy-safe` actively avoided
+food. It was fixed in `resource-weights.ts`, but a 0.00% cell for the maximin policy is exactly
+that bug's shape. **The first question is whether `greedy-safe` is a player model or still an
+artefact**, and a per-cell floor built on a broken scorer would be a worse instrument than the one
+we have. `adversarial-worst-case` at 0.00% is correct BY DESIGN and must be excluded from any
+floor — the argument for which policies a floor applies to does not exist anywhere and has to be
+written before the gate changes. Measured from a scratchpad harness; **no repo file carries this
+except this paragraph.**
+
+### Next step — ONE task, written for an agent with zero memory of this session
+
+> **Decide `greedy-safe`: player model, or instrument artefact? Then, and only then, decide
+> whether gate 9 becomes a per-CELL floor.**
+>
+> **Why this and not the Phase 4 fix.** Phase 4 item #1's acceptance criterion is measured per
+> route, pooled over five policies. If one of those policies is broken, the criterion is broken,
+> and the fix would be validated against it. **This is upstream of item #1 and cheap; item #1 is
+> expensive and irreversible** (it moves `legKm` corpus-wide, both baselines and all nine
+> goldens). Do the cheap upstream check first.
+>
+> **Reproduce the finding.** There is no committed command for it — build a scratchpad harness
+> that runs one route against one policy at a time. Copy the loop from
+> `packages/tools/sim/run-one.ts` (it is ~90 lines: `advanceLeg` → `selectableChoices` →
+> `policy.choose` → `resolveChoice`), import `POLICIES`/`POLICY_NAMES`/`selectableChoices` from
+> `packages/tools/sim/policy.ts` and `loadCorpusPack`/`loadCorpusScenarios` from
+> `load-pack.ts`, by absolute `file:///` path so pnpm workspace resolution still works from
+> outside the repo. Run `route.illicit.r1gjd3s6` against `greedy-safe` at 2,000 runs. Expect
+> **0.00%**.
+>
+> **Then answer the question.** Dump, for a single `greedy-safe` run on that route, every
+> `(event, choice)` pair it picked and the `weightedGain` score it assigned each option. Read
+> `packages/tools/sim/resource-weights.ts` and `policy.ts`'s `## Resource deltas summed by their
+EFFECT ON THE PLAYER` block first — that block records the exact class of bug being looked for.
+> The question is whether `greedy-safe` is declining recovery it should take. Maximin scoring the
+> WORST outcome of each choice is legitimate and can rationally refuse a good gamble; scoring a
+> meal as a loss is not.
+>
+> **Deliverables:** a verdict with the evidence either way. If artefact → a failing test first,
+> then the fix, then `sim:diff` on both packs (it WILL move; the policy decides choices, and the
+> corpus baseline is an average over policies — regenerate it deliberately and explain the delta).
+> If player model → an ADR recording that the game currently punishes cautious play on long
+> routes, and a decision on whether gate 9 becomes a per-cell floor and over which policies.
+>
+> **Do NOT start Phase 4 item #1 until this resolves.** Read `docs/phase-3-closeout.md` first.
+
+### Open questions for the human
+
+1. **Should the per-cell finding above be written into `docs/phase-3-closeout.md` as
+   carry-forward item #3?** It is currently recorded only in this PROGRESS entry. It was measured
+   after the closeout was committed and I did not amend the artefact without asking.
+2. **Is `greedy-safe` at 0.00% acceptable if it turns out to be real?** That is a design call, not
+   an engineering one. Pillar 4 says no dead ends before the halfway point; a route that is
+   unfinishable under one whole play style may or may not count.
+3. **Does gate 9 become a per-CELL floor, and over which policies?** `adversarial-worst-case` must
+   be excluded by design. `greedy-fast` is documented as an ORACLE rather than a member of the
+   bracket, so arguably also excluded. That leaves `random`, `greedy-safe`, `risk-taker` — but
+   nobody has written that argument down, and writing it is a prerequisite to changing the gate.
+4. **Phase 4 item order.** Closeout says #1 (spacing constraint) then #2 (generator/granularity).
+   But #2 fixes the n=1 problem that makes #1 unvalidatable, so there is a case for reversing
+   them. I did not reverse it unilaterally.
+5. **CLAUDE.md is 453 lines against its own ~400-line cap** (435 at session start). I trimmed the
+   milestone history that PROGRESS duplicates. Further trimming means deleting something a future
+   session may need — say which, or accept the overage.
+
+### DoD — run at session end, every item
 
 `pnpm typecheck` clean · `pnpm lint` clean · `pnpm test` green (86 files, **1,855** vitest +
-3 jest — 1,847 before, +8 for `peak`) · `pnpm content:lint` 0 errors, 1 warning
-(`MISSING_IMAGE_MANIFEST`, pre-existing) · `pnpm format:check` clean.
+3 jest — 1,847 at session start, +8 for `peak`) · `pnpm content:lint` **0 errors, 1 warning**
+(`MISSING_IMAGE_MANIFEST` — pre-existing, expected until the image pipeline ships) ·
+`pnpm format:check` clean.
 
-**`sim:diff` "No change" on BOTH packs** (`--runs=2000`, the count both baselines were generated
-at). Goldens judged by CONTENT: `git diff --stat -- packages/engine` is empty, so no golden can
-have moved and `golden:update` was not run. Neither baseline was written — `--by-route` returns
-before `formatReport`.
+**`sim:diff` "No change" on BOTH packs** at `--runs=2000`, the count both baselines were
+generated at. **Goldens judged by CONTENT, not git status:** the whole-session engine diff
+(`git diff 5dafade..HEAD -- packages/engine/src`) contains **no non-comment lines**, so no golden
+can have moved and `golden:update` was not run. Neither baseline was written — `--by-route`
+returns before `formatReport`. No `reports/` output and no generated image is committed.
 
-Every measurement in the finding came from throwaway scratchpad harnesses and from the committed
-`--by-route` command, which writes nothing.
+New behaviour has a test: the `peak` column shipped with 8 tests, including a baseline-neutrality
+guard **verified failing on a deliberate violation** (widening `km` from 6 to 7 → 1 failed,
+23 passed). Non-obvious decisions have ADRs: **0044** (the mechanism) with its addendum (the
+retraction) and **0045** (a phase may close with a red gate).
+
+**NOT FIXED, AND WE ARE NOT FIXING IT NOW: `docs/phase-3-dod.md` gate 9 FAILS.** Two routes below
+the 3% floor. This is the documented carry-forward described above and in
+`docs/phase-3-closeout.md`, not an oversight.
 
 ---
 
