@@ -5,6 +5,256 @@
 
 ---
 
+## D4 — The lab's session changes and the two lint rules are BUILT
+
+> `docs/device-measurement-session.md` §3's prerequisites are satisfied. **The session can now be
+> run** — it needs a phone, not more code.
+
+### What shipped
+
+| what                                                     | prove it with                                  |
+| -------------------------------------------------------- | ---------------------------------------------- |
+| **`RUN SWEEP`** — 0 → 5 layers, 120 frames each, ~12 s   | open `/dev/motion-lab` on a device             |
+| **The verdict is CODE**, in the session doc's own words  | `pnpm --filter @odyssey/mobile run test`       |
+| **Zero-layer baseline**, which is also the flat design   | the blur-layer dial starts at 0                |
+| **`Sheet` owns `expo-blur`**; nothing else may import it | plant an import outside `src/design/` and lint |
+| **`expo-glass-effect` banned app-wide**                  | same                                           |
+
+### The two guards, verified failing rather than assumed
+
+`docs/enforcement.md`'s house rule was followed: an `expo-blur` import was planted in
+`src/dev/fps-meter.tsx` and an `expo-glass-effect` import in `src/design/sheet.tsx`; **both were
+rejected with their own messages**, both removed, and the legitimate exemption re-confirmed
+(`src/design/sheet.tsx` imports `expo-blur` and lints clean). **Two config blocks, not one** —
+ESLint replaces rule options rather than merging them.
+
+### Design consequence, now enforced rather than intended
+
+`Sheet` is the flat/frosted primitive from `docs/art-direction.md` §7's ladder. **`frosted={false}`
+is a designed state, not a degradation**: E's identity is layering, occlusion and the shuffle, and
+none of that is blur. The flat fill is AUTHORED (`rgba(255,255,255,0.085)` against the frosted
+`0.062`) because a blurred backdrop and a flat one need different alpha to read at the same weight
+— **Phase 4F's contrast test must run over both.**
+
+### What is NOT verified, and it is the interesting half
+
+**The sweep's frame loop has never executed.** On Expo web it starts, renders and holds at
+`step 1/6` forever, because `useFrameCallback` never fires there — `docs/web-preview-traps.md` trap
+2, confirmed by running it rather than assumed. React wiring, the loop prop, the dial and cancel all
+work; the frame-driven stepping does not. **That is why the arithmetic and the verdict are pure
+functions with tests** — a device session cannot be spent debugging them — and why §9 step 4 exists.
+
+### OPEN
+
+- **The session needs a phone.** Nothing else blocks it.
+- **`useReducedMotion()` reported `false` on web** and has never been read on a device.
+- **The shuffle's shadow ramp is still not implemented** — the transitions animate opacity and
+  transform only, so the instrument UNDER-measures E. `elevation` is Android-only and cannot express
+  the ramp; RN 0.86's `boxShadow` is the route and interpolating it per frame is its own problem.
+- **Nothing is committed.** Five boundaries now: (1) `--by-route` instrumentation, (2) the montage
+  constraint + baseline + ADR 0046, (3) the art-direction docs, (4) the 4A spike + deps, (5) the
+  sweep, `Sheet` and the two lint rules.
+
+---
+
+## D3 — The hardware is one **iPhone SE 3**, and the dev machine is **Windows**
+
+> **`docs/device-measurement-session.md` is the plan. `docs/web-preview-traps.md` is the list of
+> things the browser has been lying about.** Both written 2026-08-20.
+
+### The constraint, and what it costs
+
+There is no Android and none is being bought. **An SE 3 cannot clear direction E** — the A15 is a
+flagship-class part and the SE 3's screen has ~1,000,500 px against ~2,592,000 on a budget FHD+
+Android, so it has 2.6x fewer pixels to blur on a much faster GPU. **A failure on it is strong
+evidence; a pass is weak evidence.** The session may record "not disproven"; it may not record
+"pass".
+
+**Windows removes Xcode and Instruments**, so iOS memory profiling has to come from inside the app
+(`HermesInternal.getInstrumentedStats`, unverified) and cold start is only meaningful on a
+`--no-dev --minify` build. Expo Go should avoid needing an EAS build at all — that is step 0.
+
+### What the session CAN settle, and it is more than the art direction
+
+**The Hermes group is the highest-value output and has nothing to do with E**: ADR 0012 §3 has been
+open since Phase 1 and the engine has never executed on Hermes. Golden-run replay, `Intl.PluralRules`
+(`stack-notes.md`), the UI-thread claim behind rejecting three.js, cold start, memory, type and
+touch targets in the hand — all available on SE 3 now.
+
+### Android: evaluated with costs, in the session doc §5
+
+- **Emulator — useless for blur cost, and said so plainly.** Host GPU, no mobile bandwidth, no
+  tiled rendering, no thermal. **But genuinely useful for correctness and appearance**, including
+  trap 5's shadow ramp. Free. Install it; never quote a frame number from it.
+- **AWS Device Farm — the recommended first Android measurement.** $0.17/device-minute after a
+  one-time **1,000 free device-minutes**, so a 30-minute session (~$5.10) is free the first time.
+  A frame reading IS obtainable remotely because the meter computes on-device and prints text;
+  stream encode load biases it pessimistic, which is the safe direction for a floor gate.
+- **Firebase Test Lab** has a free real-device tier but no interactive access — viable only once
+  the lab can run itself, which is why the auto-sweep is a required change.
+- **Buying a Moto G 5G (~$130) or Galaxy A15 5G (~$179) is the honest answer if Android ships**,
+  and pays for itself against BrowserStack's ~$49/mo in under three months. Recorded as a
+  recommendation to accept or reject, not a decision taken.
+
+### The design consequence, and it is the important one
+
+**Build E so it degrades — and the degradation target is NOT F.** E's identity is layering,
+occlusion, the shadow ramp and the shuffle rotation; **blur is a surface finish, not the structure**.
+At `liveBlurLayers: 0` you still have E, without frost. Three rungs: E frosted → E flat → F, and F
+is only reached if E is dead.
+
+Concretely: `liveBlurLayers` is a **token**; a single `<Sheet>` primitive is the only thing allowed
+to import `expo-blur` (lint-enforceable); **the flat tint is AUTHORED, not derived**, because a
+blurred backdrop and a flat fill need different alpha to read at the same weight; and the Phase 4F
+contrast test runs over both palettes. **Cheap now (~half a day inside 4B); the expensive half of a
+retrofit is re-tuning the palette, not finding the imports.**
+
+### OPEN / NEXT
+
+- **The three motion-lab changes in session doc §3 are REQUIRED before the session runs**: a
+  zero-layer setting, mean alongside worst, and an unattended auto-sweep. Not yet built.
+- **Two lint rules proposed in §8**, both to be verified failing on a deliberate violation: ban
+  `expo-glass-effect` in `apps/mobile/**` (iOS-only, works on the one device — the trap), and ban
+  `expo-blur` outside `src/design/**` (enforces the `<Sheet>` rule).
+- **`src/dev/transition-stage.tsx` uses the legacy iOS shadow props plus `elevation`.** RN 0.86
+  ships cross-platform `boxShadow`; the spike should move to it before the shadow ramp is judged.
+
+---
+
+## D2 — Phase 4A: direction **E (Manifest)** chosen PROVISIONALLY, blocked on one measurement
+
+> **`docs/art-direction.md` is the authority. Read §4 before building anything on top of E.**
+
+### The gate that is not yet passed
+
+E's risk is **overdraw** — stacked translucent sheets, each re-reading the framebuffer behind it.
+`backdrop-filter` does not exist in RN, so the real cost is `expo-blur`'s `BlurView`, and the
+working assumption is that **more than two live blur layers breaks the 16.7 ms budget on low-end
+Android**. That is reasoning, not measurement.
+
+**`/dev/motion-lab` is built and answers it.** Pick `shuffle`, raise **blur layers** one at a time,
+replay, and read **`worst frame`** rather than `fps`. The layer count where it crosses ~16.7 ms is
+the ceiling the whole design system inherits. **If that number is 1, E is not buildable as
+specified and the fallback is direction F.**
+
+**NOBODY HAS RUN IT.** `adb devices` reports nothing attached, and nothing in this repo has ever
+executed on hardware (ADR 0012 §3). **A browser cannot substitute**: react-native-web has no
+`BlurView`, so E's entire cost vanishes and the lab reports a useless 60 — verified, that is
+exactly what it did. Someone has to plug in a phone.
+
+### Shipped this session
+
+| what                                                         | prove it with                                         |
+| ------------------------------------------------------------ | ----------------------------------------------------- |
+| **Round 2 bake-off — 3 kinetic directions, 5 panels each**   | open `docs/art-direction-bakeoff.html`                |
+| **The brief's two wrong constraints are retired IN WRITING** | `docs/art-direction.md` §1                            |
+| **The stack answer: Tier 1/2/3, and why Tier 3 is refused**  | `docs/art-direction.md` §2                            |
+| **`/dev/motion-lab` runs and is `__DEV__`-gated**            | `pnpm --filter @odyssey/mobile exec expo start --web` |
+| **The frame meter's arithmetic is tested without a device**  | `pnpm --filter @odyssey/mobile run test` — 7 cases    |
+| **Motion tokens exist and the speed scale computes**         | the lab prints 440 / 220 / 0 ms                       |
+
+### Decisions taken, each with its cost recorded
+
+- **Persistence is `expo-sqlite/kv-store`, not MMKV** — MMKV pulls nitro-modules, ending Expo Go
+  and blocking Rive. Amends CLAUDE.md §4; **ADR 0046 is taken, so this owes ADR 0047.**
+- **`moodFromState` goes in `packages/engine/src/presentation/`** — a derivation over `RunState`,
+  and putting it in the engine is what makes mood occupancy measurable by the sim. Not built yet.
+- **i18next is wired in Phase 4D**, not deferred.
+- **The resource strip is ICON + NUMBER, label on tap.** Eight cells at 375px is ~84px each and no
+  German compound fits — measured in round 1, where `Fahndungsdruck` truncated in all three
+  directions. Pressure gauges (`hunger`, `heat`) are marked by a **hatched track**: a SHAPE
+  difference, so it survives colourblindness.
+- **`peak` is retired** (D1 / ADR 0046).
+
+### Measured, so nobody re-derives it
+
+- German body copy runs **+50%** over English and Russian **+17%** (141 / 165 / 212 px), and it is
+  the SAME in all three directions — the three type pairings are within **2.7%** of each other
+  (Manrope 422 px, Commissioner 411, IBM Plex Sans 413). **The overflow budget is a layout problem,
+  not a type one.** Pillar 5's "≤ 60 words" is an English budget.
+- **Newsreader, Archivo, Archivo Narrow, Courier Prime, Instrument Sans and Special Elite ship no
+  Cyrillic.** Verified against the Google Fonts subset API. The obvious face for a mood is very
+  often the one without it — check every time.
+
+### OPEN
+
+- **The frame-budget measurement.** The blocker. Needs a low-end Android device.
+- **CLAUDE.md is 499 lines against its own ~400-line cap**, and this session added ~30 of them.
+  That is the fifth time it has been raised. Either move §2's enforcement notes and §4's traps out
+  to `docs/enforcement.md` / `docs/stack-notes.md`, or drop the cap and say so.
+- **`expo@57.0.11` → `57.0.14` is available**, plus six other packages. Not taken: the repo pins
+  57.0.11 and CLAUDE.md §4 records that version as verified. Run `npx expo install --check` before
+  moving it.
+- **Nothing is committed.** Boundaries: (1) the `--by-route` instrumentation, (2) the spacing
+  constraint + baseline + ADR 0046, (3) the art-direction docs, (4) the 4A spike + deps.
+
+---
+
+## D1 — **GATE 9 IS GREEN.** Carry-forward item #1 landed. Item #2 has not.
+
+> **`docs/adr/0046` is the authority on this session and this paragraph is a pointer.**
+> `pnpm sim -- --pack=corpus --runs=280000 --by-route` reports **Routes below 3.00%: 0**.
+
+### Shipped this session — what WORKS, and the command that proves each
+
+| what                                                             | prove it with                                                    |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **Montage runs are capped at two, by construction**              | `pnpm exec vitest run --project engine leg-plan`                 |
+| **Gate 9 passes — no route under the 3% floor**                  | `pnpm sim -- --pack=corpus --runs=280000 --by-route`             |
+| **`--by-route` prints `morale@0` + per-route ending histograms** | same command                                                     |
+| **`peak` is gone from the table**                                | same command — no `peak` column                                  |
+| **The fixture baseline and every golden are UNTOUCHED**          | `pnpm sim:diff -- --runs=2000` → `No change`; `pnpm test:engine` |
+| **The corpus baseline was regenerated deliberately**             | `pnpm sim:diff -- --pack=corpus --runs=2000` → `No change`       |
+
+### The result, in three parts because completion alone is not enough
+
+| route      | completion                    | morale@0        | the ending that moved                 |
+| ---------- | ----------------------------- | --------------- | ------------------------------------- |
+| `r1dlxpt5` | 2.32% → **6.95%** (+15.5 SE)  | 76.70% → 76.60% | collapse −4.65pp, arrival **+4.05pp** |
+| `r16kyujq` | 2.81% → **12.26%** (+28.2 SE) | 71.53% → 70.37% | collapse −8.89pp, arrival **+8.79pp** |
+| `rskpfno`  | 10.80% → 14.68%               | 72.83% → 69.75% | arrival +4.25pp                       |
+| `r1gjd3s6` | 16.51% → **11.32%**           | 60.39% → 68.50% | **gave-up +8.23pp — a REGRESSION**    |
+
+**The fix converts COLLAPSE into ARRIVAL and leaves morale attrition untouched.** `failure_gave_up`
+on `r1dlxpt5` moved 75.98% → 76.00%, i.e. not at all, while `failure_collapsed` fell and
+`arrival_quiet` rose by the same amount. That is a mechanism, not a summary statistic.
+
+### Three things the closeout got WRONG, each corrected in place there
+
+1. **"Expect every golden to move."** No golden moved and the fixture baseline printed `No change`.
+   `planLegs` is reached only via `route/materialise-route.ts`; the fixture pack reads routes from
+   `__fixtures__/routes.json` as literal `RouteState`. `golden:update` was NOT run.
+2. **The two-pass constraint it specified is insufficient** — an unconditional last rung is not a
+   constraint. It moved a 9-leg run at legs 8–16 to a 9-leg run at legs 9–17. What shipped refuses
+   the hole-filling rung outright.
+3. **The morale-floor share did not track this intervention**, though the closeout said it tracks
+   every one. Part 3 was what showed the mechanism.
+
+### OPEN — read before building on this
+
+- **`route.illicit.r1gjd3s6` regressed 16.51% → 11.32% and the mechanism is NOT established.** The
+  corpus compressed: the four Beira-Aktobe illicit routes now span 6.95–14.68% where they spanned
+  2.32–16.51%. Pooled completion rose 46.1% → 46.7%, so nothing was lost in aggregate.
+- **Still n = 1.** The two routes that failed gate 9 share 88.9% of their edges. **Carry-forward
+  item #2 — path granularity and ADR 0043's generator collapse — has NOT landed**, and it is what
+  takes this validation off one corridor.
+- **`HOURS_PER_HUNGER_DAMAGE` / `HOURS_PER_STARVING_DAMAGE` (44/22) are still un-re-derived**, and
+  deliberately so — re-derive after item #2, against the route set it produces.
+- **Not committed.** The natural boundary is two commits: the `--by-route` instrumentation (both
+  baselines print `No change` at that point, which is the evidence it is behaviour-neutral), then
+  the constraint plus the regenerated baseline plus ADR 0046.
+
+### Phase 4 sequencing — the closeout's open question is now answered for montage
+
+Montage on `r1dlxpt5` is **seven isolated legs (5, 13, 17, 22, 26, 35, 40)**, not one nine-leg
+block. So the montage screen is a short interlude, not a long summary sequence, and it can be
+designed now. Mood calibration reads the state distribution this fix moved — calibrate against the
+CURRENT `docs/sim-baseline-corpus.md`, not the pre-fix one.
+
+`docs/art-direction-bakeoff.html` is up and **Phase 4A is blocked on a human choosing a direction.**
+
+---
+
 ## D0 — **PHASE 3 IS CLOSED WITH GATE 9 RED.** Its failure is explained; it is not fixed.
 
 > **`docs/phase-3-closeout.md` is the closing artefact and the thing to read first.** Closing is

@@ -23,14 +23,22 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> # Status: Phases 1, 2A, 2B and **3** are CLOSED. **PHASE 3 CLOSED WITH GATE 9 RED.**
+> # Status: Phases 1, 2A, 2B and **3** are CLOSED. Phase 3 closed with gate 9 red; **GATE 9 IS NOW GREEN.**
 >
-> **`docs/phase-3-closeout.md` is the closing artefact — read it before starting Phase 4.** Eight
-> of the nine gates pass; **gate 9 FAILS** on `route.illicit.r1dlxpt5` (2.32%, −4.5 SE) and
-> `route.illicit.r16kyujq` (2.81%, −1.1 SE), and is expected to keep failing until
-> carry-forward item #1 lands (an ENGINE fix — NOT Phase 4, see below). **Closing was a scheduling decision, not a pass**, for the reason the closeout
-> states: the fix moves `legKm` corpus-wide, therefore the baseline, therefore gate 9 itself, and
-> a fix validated by a measure that changed in the same commit is not validated.
+> **`docs/phase-3-closeout.md` is the closing artefact — read it before starting Phase 4**, and read
+> **`docs/adr/0046`** beside it. Phase 3 closed with **gate 9 FAILING** on `route.illicit.r1dlxpt5`
+> (2.32%, −4.5 SE) and `route.illicit.r16kyujq` (2.81%, −1.1 SE) — a scheduling decision, not a
+> pass. **Carry-forward item #1, the montage spacing constraint, landed on 2026-08-20 and all nine
+> gates now pass**: no route is below the 3% floor, and the two that were read **6.95% (+15.5 SE)**
+> and **12.26% (+28.2 SE)**. The corpus baseline was regenerated with it; the fixture baseline and
+> every golden run were untouched, and that null result is the evidence the change was
+> route-generation-only.
+>
+> **It is a GATE fix, not a route fix, and one route got WORSE.** `r1dlxpt5` is still the worst in
+> the corpus at roughly half its healthiest comparable, and `route.illicit.r1gjd3s6` regressed
+> 16.51% → 11.32% by a mechanism ADR 0046 records as unresolved. **Carry-forward item #2 (path
+> granularity / the ADR 0043 generator collapse) has NOT landed**, so the fix is still validated on
+> n = 1 — the two breaching routes share 88.9% of their edges.
 >
 > Phase 3 covered M3.1–M3.12a plus the un-numbered recovery milestone (2026-08-14) and an
 > adversarial verification pass. **The milestone-by-milestone history is `docs/PROGRESS.md`; it
@@ -50,24 +58,29 @@ The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 > profiles, **28 routes** (ADR 0043); the APP still supplies `RunInit.route`. Steps 1, 3 and 4 do
 > not exist. Three of §9's registries are live.
 >
-> **Every one of `docs/phase-3-dod.md`'s nine gates RUNS**, gate 9 included, since `--by-route`
-> shipped (ADR 0042). Gate 9's failure is **explained** by **ADR 0044**: drain is charged per
-> HOUR and recovery arrives per LEG, so a contiguous montage WALL — 232 of 509 hours in nine
-> consecutive legs — is lethal at a total the same route survives when spread. It is **one
-> corridor sampled twice** (the two breaching routes share 88.9% of their edges), so gate 9 and
-> ADR 0043's generator collapse are **one bug**, carried forward as closeout items #1 and #2.
+> **Every one of `docs/phase-3-dod.md`'s nine gates RUNS and PASSES.** Gate 9's failure was
+> explained by **ADR 0044** — drain per HOUR, recovery per LEG, so a contiguous montage WALL (232
+> of 509 hours in nine consecutive legs) is lethal at a total the same route survives when spread —
+> and closed by **ADR 0046**, which caps montage runs at two. The fix converts COLLAPSE into
+> ARRIVAL (`failure_collapsed` −4.65pp, `arrival_quiet` +4.05pp on `r1dlxpt5`) and leaves morale
+> attrition untouched. Gate 9 and ADR 0043's generator collapse were **one bug**; only half of it
+> is fixed, and item #2 is still open.
 >
-> **`peak` on `--by-route` is a FLAG, not a dial** — ADR 0044's addendum falsified the stronger
-> reading with a permutation that halved it and gained nothing. **No acceptance test may be
-> written as a `peak` threshold**, and the carry-forward criterion is three parts: completion
-> with its SE, the morale-floor share, and the ending histogram against a healthy comparable.
+> **`peak` on `--by-route` is RETIRED (ADR 0046).** ADR 0044's addendum had already killed it as a
+> dial; re-measured on the routes the spacing constraint produces it also failed its charter as a
+> flag, ordering its own four comparables wrongly while `hours` — already printed — dominates it
+> corpus-wide (ρ −0.956 against −0.940 at the best window). **No acceptance test may be written as
+> a `peak` threshold, and there is no longer a column to write one against.** The criterion for any
+> montage change is three parts: completion with its SE, the morale-floor share, and the ending
+> histogram against a healthy comparable — and `--by-route` now prints all three.
 >
-> **The two carry-forward items are ENGINE debt and are NOT Phase 4.** Phase 4 is **the design
-> system, mood, and motion foundation** — the app layer, §2 rules 9/10, pillar 7, and
-> `docs/motion-inventory.md`. Nothing there blocks on them at compile time, but **montage is a
-> presentation concept** and item #1 turns nine consecutive montage legs into ten scattered ones,
-> so the montage screen and the mood calibration should not be designed until it lands. The
-> closeout §6 argues the sequencing; where the items go is an OPEN DECISION in PROGRESS.
+> **The carry-forward items are ENGINE debt and are NOT Phase 4. Item #1 is DONE; item #2 is not.**
+> Phase 4 is **the design system, mood, and motion foundation** — the app layer, §2 rules 9/10,
+> pillar 7, and `docs/motion-inventory.md`. The sequencing question the closeout raised is now
+> settled for the montage screen: item #1 landed first, and montage on `r1dlxpt5` is **seven
+> isolated legs (5, 13, 17, 22, 26, 35, 40)** rather than one nine-leg block, so the montage screen
+> is a short interlude and not a long summary sequence. Mood calibration reads the state
+> distribution this fix moved, so calibrate against the CURRENT corpus baseline.
 >
 > **`docs/PROGRESS.md` is the authority on current state and this paragraph is not.**
 > `docs/engine-spec.md` Part II is the authority on what the engine does, written from the code.
@@ -113,10 +126,14 @@ These have caused real damage in similar projects when broken. Do not "improve" 
    `title: "You lost your passport"` is a bug. `titleKey: "events.passport_lost.title"` is correct.
    _Enforcement: **live, by construction** — an event file has no text fields at all; keys are
    derived from ids. `content:lint` errors on a key missing from `en/`._
-   **Exactly two exemptions, enumerated so neither spreads:** `name` on a geo node, a real place's
-   proper noun (`adr/0028`), and the attribution block, which ships in English in every locale
-   because a translated licence is a modified one (`adr/0024`). `GEO_NAME_FIELD_MISPLACED` enforces
-   the first.
+   **Exactly three exemptions, enumerated so none spreads:** `name` on a geo node, a real place's
+   proper noun (`adr/0028`); the attribution block, which ships in English in every locale because
+   a translated licence is a modified one (`adr/0024`); and **`apps/mobile/app/dev/**` plus
+   `apps/mobile/src/dev/**`, the developer tools.** `GEO_NAME_FIELD_MISPLACED` enforces the first.
+   The third is narrow and load-bearing in one direction only: `app/dev/_layout.tsx` returns `null`
+   outside `__DEV__`, so Metro strips the subtree from a production bundle and no player can reach
+   it — and an FPS meter labelled `dev.motionLab.worstFrame` is a worse diagnostic tool, not a
+   better-localised one. **A dev surface that ever becomes player-reachable loses the exemption.**
 
 5. **No text rendered inside generated images.** Ever. The game ships in 4 languages.
    _Enforcement: **(planned)** — `imagegen/` is empty and no images exist._
@@ -159,8 +176,11 @@ assume a `(planned)` path exists — create it in the phase that needs it. Verif
 ```
 apps/mobile/                Expo app (UI only — no game rules here)
   app/                      expo-router routes                       ✅ _layout.tsx, index.tsx
+  app/dev/                  dev tools — `null` outside __DEV__       ✅ motion-lab
   src/clock/                the ONE sanctioned wall-clock read       ✅
-  src/{features,design,audio}/  map · prep · journey · journal · tokens · sfx   (planned)
+  src/design/               motion tokens + speed scale              ✅ motion.ts (tokens only)
+  src/dev/                  frame meter · the 3 candidate transitions ✅ the 4A spike
+  src/{features,audio}/     map · prep · journey · journal · sfx        (planned)
 packages/engine/            Pure TS game engine                      ✅
   src/index.ts              public barrel                            ✅
   src/{ids,errors,rng}/     Brand<> ids · EngineError (returned) · PRNG + 8 substreams   ✅
@@ -218,17 +238,29 @@ re-verified against Expo SDK 57.0.11 on 2026-08-07; SDK 57.0.11 is still npm `la
   (TS 7 is npm `latest` but unusable here — no stable compiler API, and typescript-eslint
   caps at `<6.1.0`. ESLint is likewise pinned to `~9.39.5`, and Jest to `^29.7.0`, to match
   what Expo SDK 57 ships. **Read `docs/adr/0002` before changing any of those three.**)
-- State: Zustand + Immer **(planned)** · Persistence: `react-native-mmkv` **(planned)**
+- State: Zustand + Immer **(planned)** · Persistence: **`expo-sqlite/kv-store`** (SDK pin
+  `~57.0.1`), **not** `react-native-mmkv` — MMKV pulls `react-native-nitro-modules`, which ends
+  Expo Go and permanently blocks Rive. kv-store has the synchronous read the speed scale needs
+  before first paint. See `docs/art-direction.md` §2.
 - Animation: `react-native-reanimated` (v4+, foundation) ✅ 4.5.1 + `react-native-worklets` ✅ 0.10.1
   · `react-native-gesture-handler` ✅ ~2.32.0
   - **`moti` — DO NOT ADD** (verified incompatible; use Reanimated 4's built-in CSS
     animations API). `@shopify/react-native-skia` **(planned** — SDK pin `2.6.2`**)**.
     `rive-react-native` **(planned, has a nitro-modules collision with mmkv)**;
     `lottie-react-native` is the cheaper alternative. **Not usable: `anime.js`, web `motion`.**
+  - **Real 3D (`expo-gl` + `three` + `@react-three/fiber`) is COMPATIBLE and deliberately unused.**
+    r3f 9.7.0 peers `react >=19 <19.3` (satisfied), and `expo-gl` is SDK-pinned at `~57.0.2`. The
+    disqualifier is not compatibility: r3f renders through `GLView` and calls `endFrameEXP()` per
+    frame from the **JS thread**, with no worklet in the path — the same thread as the engine and
+    every `resolveChoice`. Skia's `Matrix4`/`perspective`/`rotateX/Y` helpers are all `@worklet`,
+    so perspective depth is reachable on the UI thread instead. `docs/art-direction.md` §2.
     **The reasoning for every one of those is `docs/stack-notes.md` — read it before adopting
     or rejecting any of them.**
 - Lists: `@shopify/flash-list` **(planned** — SDK pin `2.0.2`**)** ·
   Images: `expo-image` ✅ · Map: `react-native-svg` **(planned** — SDK pin `15.15.4`**)**
+- Canvas/glass: `@shopify/react-native-skia` ✅ **2.6.2** (SDK pin, installed) · `expo-blur` ✅
+  `~57.0.2` · `expo-mesh-gradient`, `expo-glass-effect`, `expo-linear-gradient` **(planned,
+  SDK-pinned)**
 - Validation: Zod ✅ 4.4.3 (`packages/content/schema/` — 8 modules; see `docs/adr/0009`) ·
   i18n: `i18next` + `react-i18next` + `expo-localization` **(planned)**
 - Tests: Vitest (engine, content, tools) ✅ + Jest ✅ **29.x, not 30** +
@@ -240,6 +272,13 @@ re-verified against Expo SDK 57.0.11 on 2026-08-07; SDK 57.0.11 is still npm `la
 > moti, rive and mmkv all declare one and all three install silently regardless of whether they
 > work. Prefer the Expo SDK pin over npm-latest. **`docs/stack-notes.md` has the detail, plus
 > the open Hermes `Intl.PluralRules` risk that will bite the first translated plural key.**
+
+> **pnpm 11 REFUSES to run a dependency's install script unless it is named in
+> `pnpm-workspace.yaml`'s `onlyBuiltDependencies`, and it FAILS the install rather than warning.**
+> `@shopify/react-native-skia` is there because its `postinstall` fetches the prebuilt native
+> libraries; without it the module typechecks and then fails at native compile time, a long way
+> from the cause. Keep that list an explicit allowlist with a reason per line — an install script
+> is arbitrary code.
 
 > **Version rule:** my training data has a cutoff, so check the real current version
 > (`npm view <pkg> version`, `npx expo install --check`) before adding or upgrading anything
