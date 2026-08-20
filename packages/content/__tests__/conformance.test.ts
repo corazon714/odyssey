@@ -151,6 +151,10 @@ const NOT_CONTENT: Readonly<Record<string, string>> = {
     'content to a PALETTE decision and make the art direction unchangeable without a content ' +
     'migration. Same argument as WEAR_BANDS, one layer up: there is deliberately no predicate ' +
     'kind for it either',
+  MOOD_THEME_KEYS:
+    'the subset of MOOD_IDS that gets its own palette — a presentation-grouping decision made ' +
+    'from occupancy data, not a vocabulary. Derived from MOOD_THEME_KEY, which is checked in ' +
+    'mood.test.ts',
   MOOD_OVERLAYS:
     'the two environmental members of MOOD_IDS, returned a second time as orthogonal layers so ' +
     'night and storm still tint when a threat outranks them. Presentation, never authored',

@@ -8,6 +8,9 @@ import { type RunState } from '../../state/run-state.ts';
 import {
   MOOD_IDS,
   MOOD_OVERLAYS,
+  MOOD_THEME_KEY,
+  MOOD_THEME_KEYS,
+  themeKeyFor,
   moodFromState,
   moodOverlaysFromState,
   type MoodId,
@@ -276,6 +279,45 @@ describe('overlays layer on top of whatever won the slot', () => {
     for (const overlay of MOOD_OVERLAYS) {
       expect(MOOD_IDS).toContain(overlay);
     }
+  });
+});
+
+describe('theme keys — which moods get their own APPEARANCE', () => {
+  it('aliases `destitute` to `desperate` and leaves everything else alone', () => {
+    // 11 legs of 81,133; 10 of 2,800 runs end there. It stays a distinct STATE — keeping it keeps
+    // it measurable — and borrows an appearance rather than earning a palette nobody would see.
+    expect(themeKeyFor('destitute')).toBe('desperate');
+    for (const mood of MOOD_IDS) {
+      if (mood === 'destitute') continue;
+      expect(themeKeyFor(mood), `${mood} should not be aliased`).toBe(mood);
+    }
+  });
+
+  it('NEVER chains — one lookup is always enough', () => {
+    // A two-step alias (a -> b -> c) would make resolution depend on how many times the caller
+    // applied it, and would fail silently and intermittently. Every alias must point at a mood
+    // that points at itself.
+    for (const mood of MOOD_IDS) {
+      const key = themeKeyFor(mood);
+      expect(themeKeyFor(key), `${mood} -> ${key} chains`).toBe(key);
+    }
+  });
+
+  it('every theme key is a real mood, and every mood has one', () => {
+    for (const mood of MOOD_IDS) expect(MOOD_IDS).toContain(MOOD_THEME_KEY[mood]);
+    expect(Object.keys(MOOD_THEME_KEY).sort()).toEqual([...MOOD_IDS].sort());
+  });
+
+  it('MOOD_THEME_KEYS is exactly the set worth authoring a palette for', () => {
+    // THE LIST PHASE 4B SHOULD ITERATE. Iterating MOOD_IDS instead would author eleven palettes,
+    // one of them for 0.36% of runs, because the mood is in the list. This makes the decision
+    // structural: there is no slot to fill.
+    expect(MOOD_THEME_KEYS).not.toContain('destitute');
+    expect(MOOD_THEME_KEYS).toHaveLength(MOOD_IDS.length - 1);
+    // Order follows MOOD_IDS so two builds of a theme file are diffable.
+    expect(MOOD_THEME_KEYS).toEqual(MOOD_IDS.filter((m) => m !== 'destitute'));
+    // Anti-vacuity: it must be the FIXED POINTS of the map, not a hand-maintained copy.
+    expect(MOOD_THEME_KEYS.every((m) => themeKeyFor(m) === m)).toBe(true);
   });
 });
 

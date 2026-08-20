@@ -416,6 +416,25 @@ Four further decisions are not obvious and are argued in the file:
   `village`, `rest_stop`, `station` and `port` map to nothing, and `fog` is a real `WEATHERS`
   member with nowhere to go. Recorded gaps rather than mislabelling.
 
+### `MOOD_THEME_KEYS` — the list Phase 4B iterates, which is NOT `MOOD_IDS`
+
+Eleven moods, **ten palettes**. `MOOD_THEME_KEY` aliases `destitute` to `desperate`'s appearance:
+it fires on 11 legs of 81,133 and ends 10 of 2,800 runs, because `wanted` outranks it and suppresses
+74% of its raw occurrences. It stays a distinct STATE — keeping it keeps it measurable — and borrows
+an appearance rather than earning a palette nobody would see.
+
+**Iterate `MOOD_THEME_KEYS`, not `MOOD_IDS`, when authoring themes.** The difference is structural
+rather than advisory: iterate the mood list and there is a slot for `destitute`, so somebody fills
+it. `themeKeyFor` never chains — every alias points at a mood that points at itself — and a test
+asserts that, because a two-step alias would fail silently and intermittently.
+
+`pnpm sim -- --moods` prints theme occupancy beside mood occupancy, so the grouping is checkable:
+if an aliased theme is still negligible, the alias did not rescue it and the grouping is wrong.
+`desperate`'s theme reads **6.75%** — 6.74 from itself plus 0.01 from `destitute`.
+
+Nothing here depends on art direction E: "these two states share an appearance because one is
+vanishingly rare" holds for F, or for anything else.
+
 **`moodOverlaysFromState`** returns `night` and `storm` a second time, as orthogonal layers, so
 they still tint when outranked — a night border crossing must still look like night. Both are
 therefore in `MOOD_IDS` and in `MOOD_OVERLAYS`, and **a consumer applying both will

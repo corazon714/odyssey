@@ -422,8 +422,11 @@ export { locationAtLeg } from './state/route-state.ts';
 export {
   MOOD_IDS,
   MOOD_OVERLAYS,
+  MOOD_THEME_KEY,
+  MOOD_THEME_KEYS,
   moodFromState,
   moodOverlaysFromState,
+  themeKeyFor,
   type MoodId,
   type MoodOverlay,
 } from './presentation/mood.ts';

@@ -1,4 +1,4 @@
-import { MOOD_IDS, type MoodId } from '@odyssey/engine';
+import { MOOD_IDS, MOOD_THEME_KEYS, themeKeyFor, type MoodId } from '@odyssey/engine';
 import { type FixtureScenario } from './load-pack.ts';
 import { type SimSummary } from './run-many.ts';
 import { type SimRun } from './run-one.ts';
@@ -223,6 +223,31 @@ export function formatMoods(
     lines.push(
       `${pad(mood, idWidth)}  ${padStart(String(totals.terminal[mood]), 9)}  ` +
         `${padStart(pct(totals.terminal[mood], totals.runs), 8)}`,
+    );
+  }
+
+  // ── THEME occupancy — the share each authored PALETTE actually covers ────────────────
+  //
+  // Moods and themes are not the same list. `destitute` is a distinct STATE that borrows
+  // `desperate`'s appearance, because it fires on 11 legs of 81,133 and a palette for 0.36% of runs
+  // is design effort spent on nobody. This section is what makes that decision checkable: if an
+  // aliased theme's share is still negligible, the alias did not rescue it and the grouping is
+  // wrong. Iterate `MOOD_THEME_KEYS` when authoring; iterate `MOOD_IDS` and you will build a
+  // palette that never renders.
+  const byTheme = emptyCounts();
+  for (const mood of MOOD_IDS) byTheme[themeKeyFor(mood)] += totals.byMood[mood];
+  lines.push(
+    '',
+    `THEMES — the ${String(MOOD_THEME_KEYS.length)} palettes actually worth authoring, of ` +
+      `${String(MOOD_IDS.length)} moods. Aliases are folded in.`,
+    '',
+  );
+  for (const theme of MOOD_THEME_KEYS) {
+    const aliases = MOOD_IDS.filter((m) => m !== theme && themeKeyFor(m) === theme);
+    lines.push(
+      `${pad(theme, idWidth)}  ${padStart(String(byTheme[theme]), 9)}  ` +
+        `${padStart(pct(byTheme[theme], totals.legs), 8)}` +
+        (aliases.length === 0 ? '' : `   <- also renders ${aliases.join(', ')}`),
     );
   }
 

@@ -51,6 +51,70 @@ export const MOOD_IDS = [
 export type MoodId = (typeof MOOD_IDS)[number];
 
 /**
+ * Which mood's THEME each mood renders with.
+ *
+ * Identity for every mood except one. **This is not a palette and contains no colour** — it is the
+ * decision about which moods are visually DISTINGUISHED, which is a different question from which
+ * moods are distinct STATES, and is answerable from occupancy data the app does not have.
+ *
+ * ## Why `destitute` is not given its own appearance
+ *
+ * It fires on **11 legs of 81,133**, and **10 of 2,800 runs end in it** — roughly one run in 280.
+ * The cause is known rather than assumed: `wanted` outranks it and suppresses **74% of its raw
+ * occurrences** (43 legs raw), because being broke and being hunted correlate — bribes cost money
+ * and raise heat.
+ *
+ * So it stays a distinct STATE, because it is one and because keeping it keeps it measurable, and
+ * it borrows `desperate`'s appearance rather than earning a palette nobody would see. Rarity is not
+ * the same as dead; it is a reason not to spend design effort, not a reason to delete the state.
+ *
+ * ## Why this is enforced rather than written down
+ *
+ * The theme layer does not exist yet. Whoever builds it in Phase 4B will iterate a mood vocabulary,
+ * and if that vocabulary is `MOOD_IDS` they will author eleven palettes — including one for 0.36%
+ * of runs — because the mood is in the list. **Iterate `MOOD_THEME_KEYS` instead** and the decision
+ * is structural: there is no slot to fill.
+ *
+ * ## Direction-independent on purpose
+ *
+ * Nothing here depends on art direction E surviving the frame-budget session. "These two states
+ * share an appearance because one is vanishingly rare" holds for direction F, or for anything else.
+ */
+export const MOOD_THEME_KEY: Readonly<Record<MoodId, MoodId>> = {
+  default: 'default',
+  night: 'night',
+  wanted: 'wanted',
+  // The alias. Measured, not assumed — see above.
+  destitute: 'desperate',
+  desperate: 'desperate',
+  injured: 'injured',
+  wilderness: 'wilderness',
+  urban: 'urban',
+  border_tension: 'border_tension',
+  storm: 'storm',
+  triumphant: 'triumphant',
+};
+
+/**
+ * The distinct themes a palette actually has to be authored for, in `MOOD_IDS` order.
+ *
+ * **The list Phase 4B should iterate.** Ten entries today rather than eleven, and the difference is
+ * one palette nobody would have seen.
+ */
+export const MOOD_THEME_KEYS: readonly MoodId[] = MOOD_IDS.filter((m) => MOOD_THEME_KEY[m] === m);
+
+/**
+ * The theme a mood renders with.
+ *
+ * **Never chains.** `MOOD_THEME_KEY` maps every alias directly to a mood that maps to itself, so
+ * one lookup is always enough and resolution can never depend on iteration order. A test asserts
+ * it, because a two-step alias added later would fail silently and intermittently.
+ */
+export function themeKeyFor(mood: MoodId): MoodId {
+  return MOOD_THEME_KEY[mood];
+}
+
+/**
  * Moods that ALSO apply as an orthogonal layer, whatever won the slot.
  *
  * ## The problem this solves

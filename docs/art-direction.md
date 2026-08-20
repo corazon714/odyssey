@@ -244,6 +244,18 @@ from beneath the stack, with the remaining choices restacking on a 40 ms cascade
 > disappears and the lab reports a comfortable, useless 60. Somebody has to plug in a low-end
 > Android phone.
 
+### When the mood themes are built, iterate `MOOD_THEME_KEYS`
+
+**Not `MOOD_IDS`.** Eleven moods, **ten palettes**: `destitute` is a real state that renders with
+`desperate`'s appearance, because it fires on 11 legs of 81,133 and ends 10 of 2,800 runs. Authoring
+a palette for 0.36% of runs is design effort spent on nobody, and iterating the mood list is how it
+would happen by accident — the mood is in the list, so somebody fills the slot.
+
+`pnpm sim -- --pack=corpus --moods` prints theme occupancy, which is the number to author against.
+Every palette should be justified by its THEME share, not its mood share.
+
+This is direction-independent and survives a fallback to F.
+
 ### What E commits the design system to
 
 - **At most two live backdrop-blur layers at any moment**, pending the measurement above. Every

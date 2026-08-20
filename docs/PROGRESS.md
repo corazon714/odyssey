@@ -5,6 +5,39 @@
 
 ---
 
+## D9 — `destitute` aliased to `desperate`'s theme, ENFORCED not remembered
+
+Decision taken: no palette for `destitute`. It fires on 11 legs of 81,133 and ends 10 of 2,800 runs
+(0.36%), because `wanted` suppresses 74% of its raw occurrences. It stays a distinct STATE —
+keeping it keeps it measurable — and borrows an appearance.
+
+**Themes are still parked**, so the honest way to discharge this was to make it structural rather
+than a note somebody has to remember:
+
+- **`MOOD_THEME_KEY`** — MoodId -> MoodId, identity everywhere except `destitute -> desperate`.
+  **Contains no colour**; it is the decision about which moods are visually DISTINGUISHED, which is
+  a different question from which are distinct STATES.
+- **`MOOD_THEME_KEYS`** — the ten fixed points. **The list Phase 4B iterates.** Iterating `MOOD_IDS`
+  instead would author eleven palettes because the mood is in the list; iterating this one leaves
+  no slot to fill.
+- **`themeKeyFor` never chains**, asserted by a test — a two-step alias would make resolution depend
+  on how many times a caller applied it and would fail silently and intermittently.
+- **`--moods` now prints THEME occupancy** beside mood occupancy, which is what makes the grouping
+  checkable rather than asserted: `desperate`'s theme reads **6.75%** (6.74 + 0.01, annotated
+  "also renders destitute"). If an aliased theme were still negligible, the alias did not rescue it
+  and the grouping is wrong.
+
+**Direction-independent**, so nothing here is wasted if the SE 3 session kills E. "These two states
+share an appearance because one is vanishingly rare" holds for F as well.
+
+The conformance sweep went red on `MOOD_THEME_KEYS` the moment it hit the barrel — it is an array —
+and is now classified `NOT_CONTENT` with its reason. `MOOD_THEME_KEY` is a Record and does not trip
+the array sweep.
+
+**No palette, no theme file, no colour was written.** Both sim baselines print `No change`.
+
+---
+
 ## D8 — the split, and TWO findings with owners outside the mood system
 
 ### `desperate` split into `destitute` + `desperate`. The bug was the NAME, not the threshold
