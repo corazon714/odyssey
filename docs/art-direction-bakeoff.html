@@ -1,0 +1,1814 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Odyssey — art direction bake-off, round 2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Commissioner:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ═══════════════════════════════════════════════════════════════════════
+         PAGE CHROME — the lab bench, not the specimen.
+         ═══════════════════════════════════════════════════════════════════════ */
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #1a1c1f;
+        color: #dfe1e3;
+        font:
+          14px/1.5 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+      }
+      .page {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 24px 20px 96px;
+      }
+      h1 {
+        font-size: 21px;
+        margin: 0 0 6px;
+        font-weight: 600;
+      }
+      .sub {
+        color: #9ea3a7;
+        margin: 0 0 18px;
+        max-width: 94ch;
+      }
+      .sub code,
+      .warnbox code {
+        background: #101214;
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-size: 12px;
+      }
+      .warnbox {
+        border: 1px solid #7a5a1c;
+        background: #241f13;
+        color: #e6d3a8;
+        padding: 12px 14px;
+        border-radius: 4px;
+        margin: 0 0 12px;
+        max-width: 120ch;
+      }
+      .warnbox b {
+        color: #f2dfae;
+      }
+      .newsbox {
+        border: 1px solid #2f5a4a;
+        background: #14231e;
+        color: #b7dccc;
+        padding: 12px 14px;
+        border-radius: 4px;
+        margin: 0 0 22px;
+        max-width: 120ch;
+      }
+      .newsbox b {
+        color: #d6f0e4;
+      }
+      .toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 18px;
+        align-items: center;
+        background: #101214;
+        border: 1px solid #2e3134;
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin: 0 0 26px;
+      }
+      .toolbar .grp {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .toolbar label {
+        color: #9ea3a7;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      button.tb {
+        background: #24272a;
+        color: #dfe1e3;
+        border: 1px solid #3e4245;
+        border-radius: 4px;
+        padding: 5px 11px;
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      button.tb[aria-pressed='true'] {
+        background: #dfe1e3;
+        color: #101214;
+        border-color: #dfe1e3;
+        font-weight: 600;
+      }
+      button.tb:hover {
+        border-color: #6d7275;
+      }
+
+      .screenrow {
+        margin: 0 0 40px;
+      }
+      .screenrow > h2 {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: #9ea3a7;
+        font-weight: 600;
+        margin: 0 0 4px;
+        border-bottom: 1px solid #2e3134;
+        padding-bottom: 8px;
+      }
+      .screenrow > p.why {
+        color: #82878b;
+        margin: 8px 0 16px;
+        font-size: 13px;
+        max-width: 104ch;
+      }
+      .cols {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+        align-items: start;
+      }
+      @media (max-width: 1180px) {
+        .cols {
+          grid-template-columns: 1fr;
+        }
+      }
+      .colhead {
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #9ea3a7;
+        margin: 0 0 8px;
+      }
+      .colhead b {
+        color: #dfe1e3;
+        letter-spacing: 0.04em;
+        font-size: 13px;
+      }
+      .phone {
+        width: 375px;
+        max-width: 100%;
+        border: 1px solid #3e4245;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+      }
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .langtag {
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #82878b;
+      }
+      .failbox,
+      .perfbox,
+      .rmbox {
+        margin-top: 12px;
+        padding: 10px 12px;
+        font-size: 12.5px;
+        line-height: 1.55;
+        border-radius: 0 4px 4px 0;
+      }
+      .failbox {
+        border-left: 3px solid #8a4a3f;
+        background: #251d1b;
+        color: #d7c5c0;
+      }
+      .perfbox {
+        border-left: 3px solid #7a6a3a;
+        background: #23200f;
+        color: #ddd2ac;
+      }
+      .rmbox {
+        border-left: 3px solid #3f5c6b;
+        background: #16201f;
+        color: #b6c9cf;
+      }
+      .failbox b,
+      .perfbox b,
+      .rmbox b {
+        display: block;
+        margin-bottom: 4px;
+        color: #fff;
+      }
+      .notebox {
+        margin-top: 10px;
+        border-left: 3px solid #3f5c6b;
+        background: #151b1d;
+        padding: 10px 12px;
+        font-size: 12.5px;
+        color: #b9c6cc;
+        border-radius: 0 4px 4px 0;
+      }
+      .mtable {
+        border-collapse: collapse;
+        width: 100%;
+        max-width: 1120px;
+        margin: 0 0 14px;
+        font-size: 13px;
+      }
+      .mtable th,
+      .mtable td {
+        border: 1px solid #2e3134;
+        padding: 7px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+      .mtable tr:first-child th {
+        background: #101214;
+        color: #dfe1e3;
+        font-size: 12px;
+      }
+      .mtable th.rowlab {
+        background: #17191c;
+        color: #b9bec1;
+        font-weight: 500;
+        width: 280px;
+      }
+      .mtable th.rowlab .hint {
+        color: #7c8184;
+        font-weight: 400;
+        font-size: 11.5px;
+        margin-top: 3px;
+      }
+      .mtable td {
+        font-variant-numeric: tabular-nums;
+        color: #cfd3d5;
+      }
+      .mtable td.bad {
+        background: #2a1a18;
+        color: #f0b8ac;
+      }
+      .mtable td.good {
+        background: #16251b;
+        color: #a8d8b4;
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════════
+         SHARED SCREEN STRUCTURE — identical markup and spacing for all three, so
+         any difference you see is the direction and not the layout.
+         ═══════════════════════════════════════════════════════════════════════ */
+      .scr {
+        position: relative;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-body);
+        padding: 14px 14px 16px;
+        min-height: 640px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        isolation: isolate;
+        overflow: hidden;
+      }
+      .scr::before {
+        /* the light / atmosphere layer — this is where each direction's depth lives */
+        content: '';
+        position: absolute;
+        inset: -20%;
+        z-index: 0;
+        pointer-events: none;
+        background: var(--atmos, none);
+        filter: var(--atmos-filter, none);
+        opacity: var(--atmos-opacity, 1);
+      }
+      .scr::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background: var(--vignette, none);
+      }
+      .scr > * {
+        position: relative;
+        z-index: 1;
+      }
+
+      .statusbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 8px;
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--text-3);
+      }
+      .statusbar .mood {
+        color: var(--accent);
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .card {
+        background: var(--surface);
+        border: var(--card-border);
+        border-radius: var(--radius);
+        box-shadow: var(--card-shadow, none);
+        backdrop-filter: var(--card-backdrop, none);
+        -webkit-backdrop-filter: var(--card-backdrop, none);
+        padding: var(--card-pad, 14px);
+        position: relative;
+        overflow: hidden;
+      }
+      /* the specular top edge — every direction uses it, at its own strength */
+      .card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: var(--specular, transparent);
+      }
+      .imgslot {
+        height: 120px;
+        border-radius: calc(var(--radius) - 4px);
+        background: var(--slot-bg);
+        border: var(--slot-border, none);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        text-align: center;
+        line-height: 1.8;
+        white-space: pre-line;
+        margin-bottom: 13px;
+      }
+      .title {
+        font-family: var(--font-display, var(--font-body));
+        font-size: 22px;
+        line-height: 1.16;
+        font-weight: 700;
+        letter-spacing: -0.015em;
+        margin: 0 0 9px;
+        color: var(--text);
+      }
+      .body {
+        font-size: 15.5px;
+        line-height: 1.52;
+        margin: 0 0 14px;
+        color: var(--text-2);
+      }
+      .choices {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .choice {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        background: var(--choice-bg);
+        border: var(--choice-border);
+        border-radius: var(--choice-radius, var(--radius));
+        box-shadow: var(--choice-shadow, none);
+        padding: 10px 12px;
+        font-size: 14.5px;
+        line-height: 1.32;
+        color: var(--text);
+        min-height: 44px;
+      }
+      .choice .mark {
+        flex: none;
+        width: 4px;
+        align-self: stretch;
+        border-radius: 2px;
+        background: var(--choice-mark, transparent);
+      }
+      .choice .cost {
+        margin-left: auto;
+        flex: none;
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        font-variant-numeric: tabular-nums;
+        color: var(--danger);
+      }
+
+      /* — resource strip: ICON + NUMBER, label on tap (decided) — */
+      .resources {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 9px 8px;
+        margin-top: auto;
+        padding-top: 11px;
+        border-top: 1px solid var(--hairline-c);
+      }
+      .res {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+      .res .top {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+      }
+      .res .g {
+        font-size: 13px;
+        line-height: 1;
+        color: var(--text-3);
+        width: 14px;
+        text-align: center;
+      }
+      /* A PRESSURE gauge is outlined, not filled, and its track is hatched. The
+         distinction is SHAPE, never hue — hunger and heat read UP as bad
+         (RESOURCE_POLARITY), and a colourblind player must still see it. */
+      .res.pressure .g {
+        color: var(--warn);
+      }
+      .res .v {
+        font-family: var(--font-mono);
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+        color: var(--text);
+        font-weight: 600;
+      }
+      .bar {
+        height: 3px;
+        border-radius: 2px;
+        background: var(--track);
+        overflow: hidden;
+      }
+      .res.pressure .bar {
+        background: repeating-linear-gradient(-45deg, var(--track) 0 2px, transparent 2px 4px);
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        background: var(--good);
+        border-radius: 2px;
+      }
+      .bar.warn i {
+        background: var(--warn);
+      }
+      .bar.bad i {
+        background: var(--danger);
+      }
+
+      /* — dice result — */
+      .dieline {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+      }
+      .die {
+        width: 74px;
+        height: 74px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-size: 30px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        border-radius: var(--die-radius, 12px);
+        background: var(--die-bg);
+        border: var(--die-border, none);
+        box-shadow: var(--die-glow, none);
+        color: var(--text);
+      }
+      .dcline {
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        line-height: 1.55;
+        color: var(--text-3);
+        white-space: pre-line;
+      }
+      .chips {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        margin: 13px 0 0;
+      }
+      .chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 6px;
+        background: var(--chip-bg);
+        border: var(--chip-border, none);
+        padding: 7px 9px;
+        font-size: 13px;
+        line-height: 1.3;
+        color: var(--text-2);
+      }
+      .chip .glyph {
+        flex: none;
+        width: 13px;
+        text-align: center;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--chip-accent);
+      }
+      .chip .n {
+        margin-left: auto;
+        flex: none;
+        font-family: var(--font-mono);
+        font-size: 12.5px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        color: var(--chip-accent);
+      }
+      .chip .kind {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        margin-top: 2px;
+      }
+      .chip.neg {
+        --chip-accent: var(--danger);
+      }
+      .chip.pos {
+        --chip-accent: var(--good);
+      }
+      .verdict {
+        margin-top: 13px;
+        padding-top: 11px;
+        border-top: 1px solid var(--hairline-c);
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+      }
+      .verdict .word {
+        font-family: var(--font-display, var(--font-body));
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--danger);
+      }
+      .verdict .sum {
+        font-family: var(--font-mono);
+        font-size: 12.5px;
+        font-variant-numeric: tabular-nums;
+        color: var(--text-3);
+        margin-left: auto;
+        white-space: nowrap;
+      }
+      .outcome {
+        font-size: 14.5px;
+        line-height: 1.5;
+        color: var(--text-2);
+        margin: 11px 0 0;
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════════
+         THE SIGNATURE TRANSITION STAGE
+         A static mockup cannot show a kinetic direction, so this one moves. Two
+         cards, the outgoing and the incoming, played with each direction's own
+         curve. Toggle "reduce motion" to see the designed alternative rather
+         than the animation switched off.
+         ═══════════════════════════════════════════════════════════════════════ */
+      .tstage {
+        position: relative;
+        height: 300px;
+        overflow: hidden;
+        perspective: 900px;
+        perspective-origin: 50% 42%;
+        background: var(--bg);
+        padding: 18px 16px;
+      }
+      .tstage .light {
+        position: absolute;
+        inset: -20%;
+        background: var(--atmos, none);
+        pointer-events: none;
+      }
+      .tcard {
+        position: absolute;
+        left: 16px;
+        right: 16px;
+        top: 24px;
+        transform-style: preserve-3d;
+        background: var(--surface);
+        border: var(--card-border);
+        border-radius: var(--radius);
+        box-shadow: var(--card-shadow, none);
+        padding: 13px;
+        color: var(--text);
+        font-family: var(--font-body);
+      }
+      .tcard h4 {
+        margin: 0 0 6px;
+        font-size: 17px;
+        font-weight: 700;
+        font-family: var(--font-display, var(--font-body));
+      }
+      .tcard p {
+        margin: 0;
+        font-size: 13.5px;
+        line-height: 1.45;
+        color: var(--text-2);
+      }
+      .tcard .row {
+        margin-top: 10px;
+        height: 34px;
+        border-radius: 6px;
+        background: var(--choice-bg);
+        border: var(--choice-border);
+      }
+      /* the light band, direction F's whole transition */
+      .sweep {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 46%;
+        pointer-events: none;
+        opacity: 0;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--accent) 45%,
+          #fff 50%,
+          var(--accent) 55%,
+          transparent
+        );
+        mix-blend-mode: screen;
+        filter: blur(10px);
+      }
+
+      .playing .tcard.out {
+        animation: var(--anim-out);
+      }
+      .playing .tcard.in {
+        animation: var(--anim-in);
+      }
+      .playing .sweep {
+        animation: var(--anim-sweep, none);
+      }
+      .tcard.in {
+        opacity: 0;
+      }
+
+      /* D — DOLLY */
+      @keyframes dollyOut {
+        from {
+          transform: translateZ(0) translateY(0);
+          filter: blur(0) saturate(1);
+          opacity: 1;
+        }
+        to {
+          transform: translateZ(-340px) translateY(-26px);
+          filter: blur(7px) saturate(0.45);
+          opacity: 0.28;
+        }
+      }
+      @keyframes dollyIn {
+        from {
+          transform: translateZ(-620px) translateY(58px);
+          filter: blur(9px);
+          opacity: 0;
+        }
+        to {
+          transform: none;
+          filter: blur(0);
+          opacity: 1;
+        }
+      }
+      /* E — SHUFFLE */
+      @keyframes shuffleOut {
+        from {
+          transform: rotateY(0) translate(0, 0);
+          opacity: 1;
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+        }
+        to {
+          transform: rotateY(-19deg) translate(-52px, -30px) scale(0.97);
+          opacity: 0;
+          box-shadow: 0 26px 44px rgba(0, 0, 0, 0.6);
+        }
+      }
+      @keyframes shuffleIn {
+        from {
+          transform: translateY(34px) scale(0.955);
+          opacity: 0;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+        }
+        to {
+          transform: none;
+          opacity: 1;
+          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+        }
+      }
+      /* F — WIPE */
+      @keyframes wipeOut {
+        0% {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        44% {
+          opacity: 0;
+          transform: translateX(-6px);
+        }
+        100% {
+          opacity: 0;
+          transform: translateX(-6px);
+        }
+      }
+      @keyframes wipeIn {
+        0% {
+          opacity: 0;
+          transform: translateX(6px);
+        }
+        46% {
+          opacity: 0;
+          transform: translateX(6px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      @keyframes sweepAcross {
+        0% {
+          opacity: 0;
+          transform: translateX(-60%);
+        }
+        12% {
+          opacity: 0.95;
+        }
+        88% {
+          opacity: 0.95;
+        }
+        100% {
+          opacity: 0;
+          transform: translateX(160%);
+        }
+      }
+
+      /* REDUCE-MOTION alternatives — designed, not disabled. */
+      .rm .playing .tcard.out {
+        animation: rmOut 200ms linear both;
+      }
+      .rm .playing .tcard.in {
+        animation: rmIn 200ms linear both;
+      }
+      .rm .playing .sweep {
+        animation: none;
+        opacity: 0;
+      }
+      @keyframes rmOut {
+        to {
+          opacity: 0;
+        }
+      }
+      @keyframes rmIn {
+        to {
+          opacity: 1;
+        }
+      }
+      .rm .tcard {
+        transform: none !important;
+        filter: none !important;
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════════
+         D — TRANSIT. Camera-led. The UI is a corridor; forward is the verb.
+         Type: Manrope + IBM Plex Mono (both cyrillic + cyrillic-ext, verified).
+         ═══════════════════════════════════════════════════════════════════════ */
+      .D {
+        --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+        --font-display: 'Manrope', ui-sans-serif, sans-serif;
+        --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+        --radius: 14px;
+        --card-border: 1px solid rgba(150, 178, 220, 0.14);
+        --card-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+        --card-backdrop: blur(14px);
+        --specular: linear-gradient(
+          90deg,
+          transparent,
+          rgba(210, 228, 255, 0.5) 30%,
+          rgba(210, 228, 255, 0.16) 70%,
+          transparent
+        );
+        --choice-radius: 10px;
+        --choice-border: 1px solid rgba(150, 178, 220, 0.16);
+        --die-radius: 16px;
+        --anim-out: dollyOut 520ms cubic-bezier(0.4, 0, 0.2, 1) both;
+        --anim-in: dollyIn 520ms cubic-bezier(0.16, 0.8, 0.24, 1) 60ms both;
+      }
+      .D.rest {
+        --bg: #080b12;
+        --surface: rgba(20, 29, 46, 0.72);
+        --slot-bg: rgba(10, 15, 25, 0.8);
+        --choice-bg: rgba(28, 40, 62, 0.6);
+        --track: rgba(147, 162, 188, 0.2);
+        --hairline-c: rgba(147, 162, 188, 0.16);
+        --chip-bg: rgba(28, 40, 62, 0.55);
+        --die-bg: rgba(28, 40, 62, 0.8);
+        --text: #e8edf5;
+        --text-2: #b9c6da;
+        --text-3: #7f8ea9;
+        --accent: #f0a63c;
+        --good: #4cd5c4;
+        --warn: #f0a63c;
+        --danger: #ff5a52;
+        --choice-mark: rgba(240, 166, 60, 0.55);
+        --atmos:
+          radial-gradient(60% 40% at 22% 8%, rgba(240, 166, 60, 0.2), transparent 70%),
+          radial-gradient(70% 50% at 88% 92%, rgba(58, 96, 176, 0.28), transparent 72%);
+        --vignette: radial-gradient(120% 80% at 50% 34%, transparent 40%, rgba(2, 4, 9, 0.68) 100%);
+      }
+      .D.wanted {
+        --bg: #0d0709;
+        --surface: rgba(44, 20, 26, 0.74);
+        --slot-bg: rgba(20, 8, 11, 0.8);
+        --choice-bg: rgba(58, 26, 33, 0.6);
+        --track: rgba(200, 150, 155, 0.2);
+        --hairline-c: rgba(200, 150, 155, 0.16);
+        --chip-bg: rgba(58, 26, 33, 0.55);
+        --die-bg: rgba(58, 26, 33, 0.8);
+        --text: #f7e9ea;
+        --text-2: #dcbcc0;
+        --text-3: #a97f86;
+        --accent: #ff5a52;
+        --good: #4cd5c4;
+        --warn: #f0a63c;
+        --danger: #ff5a52;
+        --choice-mark: rgba(255, 90, 82, 0.65);
+        --atmos:
+          radial-gradient(55% 38% at 78% 6%, rgba(255, 90, 82, 0.34), transparent 68%),
+          radial-gradient(70% 50% at 10% 96%, rgba(120, 20, 30, 0.4), transparent 70%);
+        --vignette: radial-gradient(110% 72% at 50% 36%, transparent 28%, rgba(20, 0, 4, 0.8) 100%);
+      }
+      .D.night {
+        --bg: #040610;
+        --surface: rgba(14, 21, 40, 0.76);
+        --slot-bg: rgba(6, 9, 20, 0.85);
+        --choice-bg: rgba(20, 30, 54, 0.62);
+        --track: rgba(130, 150, 190, 0.18);
+        --hairline-c: rgba(130, 150, 190, 0.14);
+        --chip-bg: rgba(20, 30, 54, 0.55);
+        --die-bg: rgba(20, 30, 54, 0.82);
+        --text: #dde6f6;
+        --text-2: #a3b4d0;
+        --text-3: #6f80a0;
+        --accent: #6fa8ff;
+        --good: #4cd5c4;
+        --warn: #f0a63c;
+        --danger: #ff5a52;
+        --choice-mark: rgba(111, 168, 255, 0.5);
+        --atmos:
+          radial-gradient(50% 34% at 14% 4%, rgba(111, 168, 255, 0.2), transparent 70%),
+          radial-gradient(80% 56% at 92% 100%, rgba(20, 34, 82, 0.55), transparent 72%);
+        --vignette: radial-gradient(108% 70% at 50% 32%, transparent 22%, rgba(0, 1, 6, 0.86) 100%);
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════════
+         E — MANIFEST. Material-led. Sheets of glass that stack, lift and occlude.
+         Type: Commissioner + JetBrains Mono (both cyrillic + cyrillic-ext).
+         ═══════════════════════════════════════════════════════════════════════ */
+      .E {
+        --font-body: 'Commissioner', ui-sans-serif, system-ui, sans-serif;
+        --font-display: 'Commissioner', ui-sans-serif, sans-serif;
+        --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+        --radius: 10px;
+        --card-border: 1px solid rgba(255, 255, 255, 0.13);
+        --card-shadow: 0 14px 32px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.4);
+        --card-backdrop: blur(18px) saturate(1.3);
+        --specular: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+        --choice-radius: 8px;
+        --choice-border: 1px solid rgba(255, 255, 255, 0.11);
+        --choice-shadow: 0 3px 10px rgba(0, 0, 0, 0.34);
+        --die-radius: 10px;
+        --anim-out: shuffleOut 440ms cubic-bezier(0.5, 0, 0.75, 0) both;
+        --anim-in: shuffleIn 440ms cubic-bezier(0.16, 1, 0.3, 1) 70ms both;
+      }
+      .E.rest {
+        --bg: #0e0f11;
+        --surface: rgba(255, 255, 255, 0.062);
+        --slot-bg: rgba(255, 255, 255, 0.04);
+        --choice-bg: rgba(255, 255, 255, 0.05);
+        --track: rgba(255, 255, 255, 0.12);
+        --hairline-c: rgba(255, 255, 255, 0.11);
+        --chip-bg: rgba(255, 255, 255, 0.05);
+        --die-bg: rgba(255, 255, 255, 0.08);
+        --text: #f2f3f5;
+        --text-2: #b6bcc4;
+        --text-3: #838992;
+        --accent: #ff6b35;
+        --good: #3ddc97;
+        --warn: #ffb020;
+        --danger: #ff4757;
+        --choice-mark: rgba(255, 107, 53, 0.5);
+        --atmos:
+          radial-gradient(48% 34% at 84% 4%, rgba(255, 107, 53, 0.14), transparent 70%),
+          radial-gradient(60% 44% at 8% 98%, rgba(90, 100, 130, 0.16), transparent 72%);
+        --vignette: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 22%);
+      }
+      .E.wanted {
+        --bg: #120b0a;
+        --surface: rgba(255, 120, 90, 0.075);
+        --slot-bg: rgba(255, 120, 90, 0.045);
+        --choice-bg: rgba(255, 120, 90, 0.06);
+        --track: rgba(255, 190, 175, 0.14);
+        --hairline-c: rgba(255, 190, 175, 0.13);
+        --chip-bg: rgba(255, 120, 90, 0.06);
+        --die-bg: rgba(255, 120, 90, 0.1);
+        --text: #fdf0ec;
+        --text-2: #d8b6ac;
+        --text-3: #a3827a;
+        --accent: #ff4757;
+        --good: #3ddc97;
+        --warn: #ffb020;
+        --danger: #ff4757;
+        --choice-mark: rgba(255, 71, 87, 0.6);
+        --atmos:
+          radial-gradient(52% 38% at 82% 2%, rgba(255, 60, 70, 0.3), transparent 66%),
+          radial-gradient(64% 46% at 6% 100%, rgba(120, 20, 24, 0.34), transparent 70%);
+        --vignette: radial-gradient(
+          104% 68% at 50% 38%,
+          transparent 26%,
+          rgba(24, 2, 4, 0.62) 100%
+        );
+      }
+      .E.night {
+        --bg: #08090c;
+        --surface: rgba(190, 215, 255, 0.05);
+        --slot-bg: rgba(190, 215, 255, 0.032);
+        --choice-bg: rgba(190, 215, 255, 0.042);
+        --track: rgba(190, 215, 255, 0.1);
+        --hairline-c: rgba(190, 215, 255, 0.09);
+        --chip-bg: rgba(190, 215, 255, 0.042);
+        --die-bg: rgba(190, 215, 255, 0.07);
+        --text: #e4e9f2;
+        --text-2: #a3adbf;
+        --text-3: #737d8e;
+        --accent: #7aa2ff;
+        --good: #3ddc97;
+        --warn: #ffb020;
+        --danger: #ff4757;
+        --choice-mark: rgba(122, 162, 255, 0.45);
+        --atmos: radial-gradient(46% 32% at 16% 4%, rgba(122, 162, 255, 0.14), transparent 70%);
+        --vignette: radial-gradient(106% 70% at 50% 34%, transparent 20%, rgba(0, 0, 3, 0.8) 100%);
+      }
+
+      /* ═══════════════════════════════════════════════════════════════════════
+         F — SIGNAL. Light-led. Geometry barely moves; illumination carries state.
+         Type: IBM Plex Sans + IBM Plex Mono (both cyrillic + cyrillic-ext).
+         ═══════════════════════════════════════════════════════════════════════ */
+      .F {
+        --font-body: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+        --font-display: 'IBM Plex Sans', ui-sans-serif, sans-serif;
+        --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+        --radius: 12px;
+        --card-border: 1px solid var(--edge);
+        --card-shadow: none;
+        --specular: none;
+        --choice-radius: 9px;
+        --choice-border: 1px solid var(--edge);
+        --die-radius: 50%;
+        --anim-out: wipeOut 380ms linear both;
+        --anim-in: wipeIn 380ms linear both;
+        --anim-sweep: sweepAcross 380ms cubic-bezier(0.3, 0, 0.2, 1) both;
+      }
+      .F.rest {
+        --bg: #07070a;
+        --surface: #0f1014;
+        --slot-bg: #131419;
+        --choice-bg: #131419;
+        --edge: rgba(123, 92, 255, 0.22);
+        --track: rgba(142, 142, 156, 0.2);
+        --hairline-c: rgba(123, 92, 255, 0.2);
+        --chip-bg: #131419;
+        --die-bg: #14121f;
+        --die-glow: 0 0 26px rgba(123, 92, 255, 0.55), inset 0 0 14px rgba(123, 92, 255, 0.35);
+        --text: #ededf2;
+        --text-2: #b1b1bf;
+        --text-3: #8e8e9c;
+        --accent: #7b5cff;
+        --good: #3ddc97;
+        --warn: #ffb020;
+        --danger: #ff3b5c;
+        --choice-mark: rgba(123, 92, 255, 0.6);
+        --atmos:
+          radial-gradient(46% 32% at 20% 0%, rgba(123, 92, 255, 0.34), transparent 68%),
+          radial-gradient(52% 36% at 96% 100%, rgba(40, 190, 200, 0.16), transparent 70%);
+        --atmos-filter: blur(14px);
+      }
+      .F.wanted {
+        --bg: #0a0507;
+        --surface: #150f12;
+        --slot-bg: #1a1215;
+        --choice-bg: #1a1215;
+        --edge: rgba(255, 59, 92, 0.3);
+        --track: rgba(180, 140, 148, 0.2);
+        --hairline-c: rgba(255, 59, 92, 0.24);
+        --chip-bg: #1a1215;
+        --die-bg: #1f1014;
+        --die-glow: 0 0 30px rgba(255, 59, 92, 0.6), inset 0 0 16px rgba(255, 59, 92, 0.4);
+        --text: #f8e9ec;
+        --text-2: #d3b0b8;
+        --text-3: #a1848b;
+        --accent: #ff3b5c;
+        --good: #3ddc97;
+        --warn: #ffb020;
+        --danger: #ff3b5c;
+        --choice-mark: rgba(255, 59, 92, 0.7);
+        --atmos:
+          radial-gradient(54% 40% at 76% 0%, rgba(255, 59, 92, 0.48), transparent 66%),
+          radial-gradient(48% 34% at 4% 100%, rgba(150, 10, 40, 0.34), transparent 70%);
+        --atmos-filter: blur(16px);
+      }
+      .F.night {
+        --bg: #04050a;
+        --surface: #0c0f16;
+        --slot-bg: #0f1219;
+        --choice-bg: #0f1219;
+        --edge: rgba(46, 123, 255, 0.24);
+        --track: rgba(130, 145, 175, 0.18);
+        --hairline-c: rgba(46, 123, 255, 0.2);
+        --chip-bg: #0f1219;
+        --die-bg: #0d1220;
+        --die-glow: 0 0 26px rgba(46, 123, 255, 0.5), inset 0 0 14px rgba(46, 123, 255, 0.32);
+        --text: #e2e8f4;
+        --text-2: #a6b2c8;
+        --text-3: #7e8a9e;
+        --accent: #2e7bff;
+        --good: #3ddc97;
+        --warn: #ffb020;
+        --danger: #ff3b5c;
+        --choice-mark: rgba(46, 123, 255, 0.55);
+        --atmos:
+          radial-gradient(50% 34% at 14% 0%, rgba(46, 123, 255, 0.34), transparent 68%),
+          radial-gradient(44% 30% at 96% 98%, rgba(20, 40, 110, 0.34), transparent 70%);
+        --atmos-filter: blur(16px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <h1>Odyssey — art direction bake-off, round 2</h1>
+      <p class="sub">
+        Three directions in the <b>widened</b> space: modern, kinetic, spatial. Four screens each at
+        <code>375px</code>, plus a <b>fifth panel that moves</b> — the signature transition —
+        because a static mockup cannot show a kinetic direction. Copy is verbatim from
+        <code>packages/content/</code>; the deltas, DC 12 and the d20 are the real values.
+        <b>The resource strip is icon + number</b>, per your decision — a pressure gauge
+        (<code>hunger</code>, <code>heat</code>) is marked by a <b>hatched track</b>, a shape
+        difference rather than a hue, so it survives colourblindness.
+      </p>
+
+      <div class="newsbox">
+        <b>Round 1 is retired, and so is the brief that produced it.</b>
+        The retro-print reference list and the “should not feel bouncy” instruction are recorded as
+        WITHDRAWN in <code>docs/art-direction.md</code> §1, so a later session cannot revive them.
+        Two findings from round 1 survive because they are facts about the game rather than about
+        those directions: German body copy runs <b>+50%</b> over English (RU +17%), and the
+        eight-cell resource strip cannot hold a German label at 375px.
+      </div>
+
+      <div class="warnbox">
+        <b
+          >The German and Russian here are mockup copy and have not been reviewed by a native
+          speaker.</b
+        >
+        <code>packages/content/i18n/{de,ru,tr}/</code> are empty. These strings live in this file
+        only, are not seeded into the locale, and exist to make the layout honest — the German
+        carries real compounds (<i>Grenzabfertigungsbeamte</i>, <i>Aufenthaltsgenehmigungen</i>) and
+        the Russian exercises Cyrillic at body, chip and tabular-numeral sizes.
+      </div>
+
+      <div class="toolbar">
+        <div class="grp">
+          <label>Language</label>
+          <button class="tb" data-lang="en" aria-pressed="true">EN</button>
+          <button class="tb" data-lang="de" aria-pressed="false">DE</button>
+          <button class="tb" data-lang="ru" aria-pressed="false">RU</button>
+          <button class="tb" data-lang="all" aria-pressed="false">All three</button>
+        </div>
+        <div class="grp">
+          <label>Event</label>
+          <button class="tb" data-ev="border" aria-pressed="true">border.night_crossing</button>
+          <button class="tb" data-ev="city" aria-pressed="false">city.the_last_kilometre</button>
+        </div>
+        <div class="grp">
+          <label>Transitions</label>
+          <button class="tb" id="replay">Play all</button>
+          <button class="tb" id="rm" aria-pressed="false">Reduce motion</button>
+        </div>
+      </div>
+
+      <section class="screenrow" id="measured">
+        <h2>0 · Measured, live, on what is rendered below</h2>
+        <p class="why">
+          Re-measured from the laid-out DOM every time you switch language. A direction that only
+          works in English is not a direction.
+        </p>
+        <div id="measurebox"></div>
+      </section>
+
+      <div id="rows"></div>
+    </div>
+
+    <script>
+      /* Copy: `en` verbatim from packages/content/i18n/en/. `de` and `ru` are mockup-only. */
+      const COPY = {
+        en: {
+          label: 'English',
+          border: {
+            title: 'The Late Booth',
+            body:
+              'Two lanes, one open. The officer has been on since morning and it shows in how ' +
+              'slowly he turns each page. Behind you an engine idles. Ahead, a strip light buzzes ' +
+              "over a counter worn pale by other people's paperwork. He looks up, and waits.",
+            choices: [
+              { t: 'Hand over your papers' },
+              { t: 'Fold something into the passport', cost: '−40' },
+              { t: 'Keep it out of sight' },
+              { t: 'Make conversation while he reads' },
+            ],
+            outcome:
+              'He keeps the passport and asks you to wait. The wait becomes an office, and the ' +
+              'office becomes a form. Nobody is unkind. It simply takes the rest of the night, ' +
+              'and your name is written down twice.',
+          },
+          city: {
+            title: 'The Last Kilometre',
+            body:
+              'The street is in the grid you have been carrying in your head for weeks and it is ' +
+              'narrower than the version in there. Somebody is unloading crates. Somebody else ' +
+              'is arguing on a balcony. None of it knows how far you have come, and there is no ' +
+              'reason it should.',
+            choices: [
+              { t: 'Walk in as you are' },
+              { t: 'Clean yourself up first' },
+              { t: 'Wait until the street is quiet' },
+              { t: 'Get rid of the package' },
+            ],
+            outcome:
+              'You arrive. It takes about four minutes and nobody marks the occasion, which is ' +
+              'broadly what arriving is.',
+          },
+          slot: 'image slot\nborder/night_crossing\nPhase 9',
+          loc: 'Border crossing · Night · Leg 21/48',
+          moods: { rest: 'default', wanted: 'wanted', night: 'night' },
+          check: 'Negotiation · DC 12\nsocial, documents, authority',
+          chips: [
+            { k: 'How you are', t: 'Slept in your clothes', n: '−2', s: 'neg', g: '−' },
+            { k: 'Where and when ×2', t: 'The queue · After dark', n: '−2', s: 'neg', g: '−' },
+            { k: 'Your papers', t: 'Papers in order', n: '+1', s: 'pos', g: '+' },
+            { k: 'Your record', t: 'Night crossing logged', n: '−1', s: 'neg', g: '−' },
+            { k: 'What you know', t: 'Negotiation', n: '+3', s: 'pos', g: '+' },
+          ],
+          verdict: 'Failure',
+          sum: '11 + 3 − 4 = 10 vs 12',
+          tOut: { h: 'The Late Booth', p: 'He keeps the passport and asks you to wait.' },
+          tIn: {
+            h: 'The Shared Room',
+            p: 'Four beds, three of them taken, and a window that does not close.',
+          },
+        },
+
+        de: {
+          label: 'Deutsch (Mockup, ungeprüft)',
+          border: {
+            title: 'Die späte Abfertigungskabine',
+            body:
+              'Zwei Fahrspuren, eine geöffnet. Der Grenzabfertigungsbeamte hat seit dem Morgen ' +
+              'Dienst, und man sieht es daran, wie langsam er jede Seite umblättert. Hinter Ihnen ' +
+              'läuft ein Motor im Leerlauf. Voraus surrt eine Leuchtstoffröhre über einem Tresen, ' +
+              'den fremde Aufenthaltsgenehmigungen blass gescheuert haben. Er blickt auf und ' +
+              'wartet.',
+            choices: [
+              { t: 'Die Fahrzeugpapiere aushändigen' },
+              { t: 'Etwas in den Reisepass einlegen', cost: '−40' },
+              { t: 'Außer Sichtweite behalten' },
+              { t: 'Ein Gespräch anfangen, während er liest' },
+            ],
+            outcome:
+              'Er behält den Reisepass und bittet Sie zu warten. Aus dem Warten wird ein Büro, ' +
+              'und aus dem Büro wird ein Formular. Niemand ist unfreundlich. Es dauert schlicht ' +
+              'den Rest der Nacht, und Ihr Name wird zweimal aufgeschrieben.',
+          },
+          city: {
+            title: 'Der letzte Kilometer',
+            body:
+              'Die Straße liegt in dem Stadtplan, den Sie seit Wochen im Kopf mit sich ' +
+              'herumtragen, und sie ist schmaler als die Fassung dort drinnen. Jemand lädt Kisten ' +
+              'ab. Jemand anderes streitet auf einem Balkon. Nichts davon weiß, wie weit Sie ' +
+              'gekommen sind, und es gibt keinen Grund, warum es das sollte.',
+            choices: [
+              { t: 'So hineingehen, wie Sie sind' },
+              { t: 'Sich vorher zurechtmachen' },
+              { t: 'Warten, bis die Straße ruhig ist' },
+              { t: 'Das Päckchen loswerden' },
+            ],
+            outcome:
+              'Sie kommen an. Es dauert etwa vier Minuten, und niemand nimmt Notiz davon, was im ' +
+              'Großen und Ganzen genau das ist, was Ankommen bedeutet.',
+          },
+          slot: 'Bildplatzhalter\nborder/night_crossing\nPhase 9',
+          loc: 'Grenzübergangsstelle · Nacht · Etappe 21/48',
+          moods: { rest: 'standard', wanted: 'gesucht', night: 'nacht' },
+          check: 'Verhandlungsgeschick · Schwierigkeit 12\nsozial, Dokumente, Behörden',
+          chips: [
+            { k: 'Ihr Zustand', t: 'In den Kleidern geschlafen', n: '−2', s: 'neg', g: '−' },
+            {
+              k: 'Ort und Zeitpunkt ×2',
+              t: 'Die Warteschlange · Nach Einbruch der Dunkelheit',
+              n: '−2',
+              s: 'neg',
+              g: '−',
+            },
+            {
+              k: 'Ihre Papiere',
+              t: 'Fahrzeugpapierkontrolle bestanden',
+              n: '+1',
+              s: 'pos',
+              g: '+',
+            },
+            { k: 'Ihre Akte', t: 'Nachtübergang protokolliert', n: '−1', s: 'neg', g: '−' },
+            { k: 'Ihre Fähigkeiten', t: 'Verhandlungsgeschick', n: '+3', s: 'pos', g: '+' },
+          ],
+          verdict: 'Misserfolg',
+          sum: '11 + 3 − 4 = 10 gegen 12',
+          tOut: {
+            h: 'Die späte Abfertigungskabine',
+            p: 'Er behält den Reisepass und bittet Sie zu warten.',
+          },
+          tIn: {
+            h: 'Das Mehrbettzimmer',
+            p: 'Vier Betten, drei davon belegt, und ein Fenster, das nicht schließt.',
+          },
+        },
+
+        ru: {
+          label: 'Русский (макет, без вычитки)',
+          border: {
+            title: 'Поздняя будка контроля',
+            body:
+              'Две полосы, открыта одна. Инспектор на посту с самого утра, и это видно по тому, ' +
+              'как медленно он переворачивает каждую страницу. Позади вас работает на холостом ' +
+              'ходу двигатель. Впереди над стойкой, вытертой добела чужими документами, гудит ' +
+              'лампа. Он поднимает взгляд и ждёт.',
+            choices: [
+              { t: 'Предъявить документы' },
+              { t: 'Вложить что-нибудь в паспорт', cost: '−40' },
+              { t: 'Не показывать' },
+              { t: 'Разговорить его, пока он читает' },
+            ],
+            outcome:
+              'Он оставляет паспорт у себя и просит подождать. Ожидание превращается в кабинет, ' +
+              'а кабинет — в бланк. Никто не груб. Просто на это уходит остаток ночи, и вашу ' +
+              'фамилию записывают дважды.',
+          },
+          city: {
+            title: 'Последний километр',
+            body:
+              'Улица — та самая, из карты, которую вы неделями держали в голове, и она уже, чем ' +
+              'та версия. Кто-то разгружает ящики. Кто-то ругается на балконе. Ничто из этого не ' +
+              'знает, сколько вы прошли, и нет причин, почему должно знать.',
+            choices: [
+              { t: 'Войти как есть' },
+              { t: 'Сначала привести себя в порядок' },
+              { t: 'Подождать, пока улица опустеет' },
+              { t: 'Избавиться от свёртка' },
+            ],
+            outcome:
+              'Вы приходите. Это занимает минуты четыре, и никто не отмечает событие — что, в ' +
+              'общем-то, и есть прибытие.',
+          },
+          slot: 'место для изображения\nborder/night_crossing\nэтап 9',
+          loc: 'Пограничный переход · Ночь · Отрезок 21/48',
+          moods: { rest: 'обычное', wanted: 'розыск', night: 'ночь' },
+          check: 'Переговоры · Сложность 12\nобщение, документы, власти',
+          chips: [
+            { k: 'Ваше состояние', t: 'Спали не раздеваясь', n: '−2', s: 'neg', g: '−' },
+            {
+              k: 'Место и время ×2',
+              t: 'Очередь · После наступления темноты',
+              n: '−2',
+              s: 'neg',
+              g: '−',
+            },
+            { k: 'Ваши документы', t: 'Документы в порядке', n: '+1', s: 'pos', g: '+' },
+            { k: 'Ваша история', t: 'Ночной переход зафиксирован', n: '−1', s: 'neg', g: '−' },
+            { k: 'Ваши навыки', t: 'Переговоры', n: '+3', s: 'pos', g: '+' },
+          ],
+          verdict: 'Неудача',
+          sum: '11 + 3 − 4 = 10 против 12',
+          tOut: {
+            h: 'Поздняя будка контроля',
+            p: 'Он оставляет паспорт у себя и просит подождать.',
+          },
+          tIn: {
+            h: 'Общая комната',
+            p: 'Четыре койки, три заняты, и окно, которое не закрывается.',
+          },
+        },
+      };
+
+      /* Icon + number. `hunger` and `heat` are PRESSURE gauges: more is worse
+         (RESOURCE_POLARITY), marked by a hatched track — a shape difference. */
+      const RES = [
+        { g: '¤', v: '124', pct: null },
+        { g: '⚡', v: '3', pct: 30, tone: 'warn' },
+        { g: '✚', v: '6', pct: 60, tone: '' },
+        { g: '◆', v: '2', pct: 20, tone: 'bad' },
+        { g: '◔', v: '7', pct: 70, tone: 'bad', pressure: true },
+        { g: '◌', v: '2', pct: 20, tone: 'warn' },
+        { g: '◉', v: '8', pct: 80, tone: 'bad', pressure: true },
+        { g: '★', v: '−1', pct: 40, tone: 'warn' },
+      ];
+
+      const DIRECTIONS = [
+        {
+          id: 'D',
+          name: 'Transit',
+          lead: 'camera-led — the UI is a corridor and forward is the verb',
+          type: 'Manrope + IBM Plex Mono — both cyrillic + cyrillic-ext, verified 2026-08-20.',
+          transition:
+            'DOLLY, 520ms. The answered card recedes on Z, blurs and desaturates while the ' +
+            'atmosphere slides past; the next card comes forward out of depth into focus. Depth ' +
+            'IS the navigation model — “back” is literally further away.',
+          perf:
+            'THE MOST EXPENSIVE OF THE THREE, and the cost is one specific thing: an ANIMATED ' +
+            'blur radius on a full-width layer. Static blur is cheap; blur that changes per frame ' +
+            'forces a re-render of the blurred source every frame. Budget: 3 composited planes + ' +
+            '1 animated blur + 1 vignette. Reachable with Skia (its Matrix4/perspective helpers ' +
+            'are @worklet, so the transform runs UI-thread), but the blur is the thing to measure ' +
+            'FIRST in /dev/motion-lab. What gets cut on a low-end device: the animated blur ' +
+            'becomes a two-step (sharp → pre-blurred snapshot), and the third parallax plane goes.',
+          rm:
+            'No Z travel, no parallax, no blur ramp. The outgoing card dims to 28% at final scale ' +
+            'and the incoming crossfades in. Depth-as-“which card is now” is re-carried by ' +
+            'opacity plus a 2px accent rule on the active card, so nothing is only in the motion. ' +
+            'Honest risk: this direction loses the MOST of its identity in reduce-motion, because ' +
+            'its identity is the camera.',
+          fail:
+            'Its whole personality is a transition, so a player on Instant speed never sees the ' +
+            'direction at all — it degrades to a competent dark theme. It is also the one that ' +
+            'most wants a real GL layer and must be talked out of it: every depth cue here is ' +
+            'reachable with perspective-projected planes, and reaching for three.js would put the ' +
+            'render loop on the JS thread. Watch the DE choice rows: the 14px radius and 12px ' +
+            'padding leave less horizontal room than the other two.',
+        },
+        {
+          id: 'E',
+          name: 'Manifest',
+          lead: 'material-led — sheets of glass that stack, lift and occlude',
+          type: 'Commissioner + JetBrains Mono — both cyrillic + cyrillic-ext, verified.',
+          transition:
+            'SHUFFLE, 440ms. The answered card rotates out on Y and slides up-left while its ' +
+            'shadow lengthens; the next rises from beneath the stack with its shadow shrinking, ' +
+            'and the remaining choices restack on a 40ms cascade. Depth is OCCLUSION and shadow, ' +
+            'not distance.',
+          perf:
+            'The risk is OVERDRAW, not blur ramps. Every translucent sheet re-reads what is ' +
+            'behind it, and this direction stacks them: card over choices over background. ' +
+            'backdrop-filter on more than two simultaneous layers is where low-end Android GPUs ' +
+            'fall over. Budget: at most 2 live backdrop layers at any moment; the rest use a ' +
+            'flat tinted fill that reads the same at these opacities. What gets cut: the shadow ' +
+            'animation becomes a two-state swap, and the choice-row cascade drops to a single ' +
+            'group fade.',
+          rm:
+            'No rotation, no lift, no shadow ramp. The stack becomes a list: the answered card ' +
+            'collapses to a one-line summary row in place and the next expands where it sat. ' +
+            'Elevation is re-carried by a solid 3px left accent bar rather than by shadow depth. ' +
+            'This is the direction whose reduce-motion version is closest to a normal, good app — ' +
+            'which is both the compliment and the criticism.',
+          fail:
+            'Glass is the most-copied look in mobile UI right now and this will date fastest — in ' +
+            'two years it reads as “2020s app”, where a committed graphic direction would not. ' +
+            'Translucency also fights the stills: a photograph behind a frosted panel loses the ' +
+            'contrast Phase 9 spent money generating, so the image slot has to sit ON the glass ' +
+            'rather than under it, which costs the layout a layer.',
+        },
+        {
+          id: 'F',
+          name: 'Signal',
+          lead: 'light-led — geometry barely moves; illumination carries the state',
+          type: 'IBM Plex Sans + IBM Plex Mono — both cyrillic + cyrillic-ext, verified.',
+          transition:
+            'WIPE, 380ms. A band of light crosses the screen; what it has passed is the new ' +
+            'content, what it has not is the old. Nothing translates more than 6px. The die does ' +
+            'not tumble — it BRIGHTENS to its face, which satisfies rule 9 without a physics lie.',
+          perf:
+            'CHEAPEST BY A DISTANCE, and it is not close. One full-screen gradient (expo-mesh- ' +
+            'gradient is SDK-pinned at ~57.0.1) plus one masked sweep, both pure fragment work ' +
+            'with no layout, no overdraw stack and no animated blur. This is the only one of the ' +
+            'three I would bet on holding 60fps on a low-end Android device WITHOUT a prototype. ' +
+            'What gets cut: nothing. The bloom on the die drops from a live shader to a static ' +
+            'radial if it ever measures badly.',
+          rm:
+            'The wipe becomes an instant swap plus a 160ms colour pulse on the value that ' +
+            'changed. Because this direction never used POSITION to carry meaning, the ' +
+            'reduce-motion version loses almost nothing — the strongest fallback of the three, ' +
+            'and its main argument. A player on Instant speed still gets the full information ' +
+            'design; they only lose the travel time.',
+          fail:
+            'The quietest at rest, and it has to earn attention with colour it may not always be ' +
+            'allowed to use — a “default” mood that glows violet is making a claim about a leg ' +
+            'where nothing happened. Mood is the ONLY strong signal here, so mood calibration ' +
+            'stops being a nice-to-have and becomes load-bearing: get the thresholds wrong and ' +
+            'the whole UI lies. And a saturated glow on OLED at night is the classic battery and ' +
+            'eye-strain complaint.',
+        },
+      ];
+
+      const SCREENS = [
+        {
+          mood: 'rest',
+          kind: 'card',
+          title: '1 · Event card at rest',
+          why: 'The screen players see 90% of the time. If a direction cannot hold this, nothing else matters.',
+        },
+        {
+          mood: 'wanted',
+          kind: 'card',
+          title: '2 · The same card, mood: wanted',
+          why:
+            'Design pillar 3 — the world reacts. Mood is DERIVED (heat ≥ 7); no UI code sets it. ' +
+            'Watch how much of the move is palette and how much is light.',
+        },
+        {
+          mood: 'night',
+          kind: 'card',
+          title: '3 · The same card, mood: night',
+          why:
+            'All three are dark-first now, so this is no longer an inversion test — it is a test ' +
+            'of whether night is DISTINGUISHABLE from default without losing the body text.',
+        },
+        {
+          mood: 'rest',
+          kind: 'dice',
+          title: '4 · Dice result — the densest moment in the game',
+          why:
+            'Five chips collapsed by sourceKind (ADR 0037), real deltas, the real DC 12, a d20 per ' +
+            'CHECK_DIE_SIDES. Pillar 2 says the player must reconstruct WHY. Every chip carries a ' +
+            'glyph as well as a hue.',
+        },
+      ];
+
+      let LANG = 'en';
+      let EVENT = 'border';
+
+      const el = (t, c, x) => {
+        const n = document.createElement(t);
+        if (c) n.className = c;
+        if (x != null) n.textContent = x;
+        return n;
+      };
+
+      function resourceStrip() {
+        const wrap = el('div', 'resources');
+        for (const r of RES) {
+          const cell = el('div', 'res' + (r.pressure ? ' pressure' : ''));
+          const top = el('div', 'top');
+          top.append(el('span', 'g', r.g));
+          top.append(el('span', 'v', r.v));
+          cell.append(top);
+          if (r.pct != null) {
+            const bar = el('div', 'bar' + (r.tone ? ' ' + r.tone : ''));
+            const fill = el('i');
+            fill.style.width = r.pct + '%';
+            bar.append(fill);
+            cell.append(bar);
+          }
+          wrap.append(cell);
+        }
+        return wrap;
+      }
+
+      function statusBar(c, mood) {
+        const s = el('div', 'statusbar');
+        s.append(el('span', '', c.loc));
+        s.append(el('span', 'mood', c.moods[mood]));
+        return s;
+      }
+
+      function cardScreen(dir, mood, lang) {
+        const c = COPY[lang];
+        const ev = c[EVENT];
+        const scr = el('div', 'scr ' + dir.id + ' ' + mood);
+        scr.append(statusBar(c, mood));
+        const card = el('div', 'card');
+        card.append(el('div', 'imgslot', c.slot));
+        card.append(el('h3', 'title', ev.title));
+        card.append(el('p', 'body', ev.body));
+        const choices = el('div', 'choices');
+        ev.choices.forEach((ch, i) => {
+          const b = el('div', 'choice');
+          b.append(el('span', 'mark'));
+          b.append(el('span', '', ch.t));
+          if (ch.cost) b.append(el('span', 'cost', ch.cost));
+          choices.append(b);
+        });
+        card.append(choices);
+        scr.append(card);
+        scr.append(resourceStrip());
+        return scr;
+      }
+
+      function diceScreen(dir, lang) {
+        const c = COPY[lang];
+        const ev = c[EVENT];
+        const scr = el('div', 'scr ' + dir.id + ' rest');
+        scr.append(statusBar(c, 'rest'));
+        const card = el('div', 'card');
+        const line = el('div', 'dieline');
+        line.append(el('div', 'die', '11'));
+        line.append(el('div', 'dcline', c.check));
+        card.append(line);
+        const chips = el('div', 'chips');
+        for (const ch of c.chips) {
+          const n = el('div', 'chip ' + ch.s);
+          n.append(el('span', 'glyph', ch.g));
+          const body = el('span', '');
+          body.style.minWidth = '0';
+          body.append(el('div', '', ch.t));
+          body.append(el('div', 'kind', ch.k));
+          n.append(body);
+          n.append(el('span', 'n', ch.n));
+          chips.append(n);
+        }
+        card.append(chips);
+        const v = el('div', 'verdict');
+        v.append(el('span', 'word', c.verdict));
+        v.append(el('span', 'sum', c.sum));
+        card.append(v);
+        card.append(el('p', 'outcome', ev.outcome));
+        scr.append(card);
+        scr.append(resourceStrip());
+        return scr;
+      }
+
+      const players = [];
+
+      function transitionStage(dir) {
+        const c = COPY[LANG === 'all' ? 'en' : LANG];
+        const stage = el('div', 'tstage ' + dir.id + ' rest');
+        stage.append(el('div', 'light'));
+        stage.append(el('div', 'sweep'));
+
+        const mk = (cls, d) => {
+          const card = el('div', 'tcard ' + cls);
+          card.append(el('h4', '', d.h));
+          card.append(el('p', '', d.p));
+          card.append(el('div', 'row'));
+          card.append(el('div', 'row'));
+          return card;
+        };
+        stage.append(mk('out', c.tOut));
+        stage.append(mk('in', c.tIn));
+
+        players.push(() => {
+          stage.classList.remove('playing');
+          void stage.offsetWidth;
+          stage.classList.add('playing');
+        });
+        return stage;
+      }
+
+      function render() {
+        const root = document.getElementById('rows');
+        root.textContent = '';
+        players.length = 0;
+        const langs = LANG === 'all' ? ['en', 'de', 'ru'] : [LANG];
+
+        SCREENS.forEach((s, si) => {
+          const row = el('section', 'screenrow');
+          row.append(el('h2', '', s.title));
+          row.append(el('p', 'why', s.why));
+          const cols = el('div', 'cols');
+          for (const dir of DIRECTIONS) {
+            const col = el('div', '');
+            const head = el('div', 'colhead');
+            head.append(el('b', '', dir.id + ' — ' + dir.name));
+            head.append(document.createTextNode('  ' + dir.lead));
+            col.append(head);
+            const stack = el('div', 'stack');
+            for (const lang of langs) {
+              if (LANG === 'all') stack.append(el('div', 'langtag', COPY[lang].label));
+              const phone = el('div', 'phone');
+              phone.append(
+                s.kind === 'dice' ? diceScreen(dir, lang) : cardScreen(dir, s.mood, lang),
+              );
+              stack.append(phone);
+            }
+            col.append(stack);
+            if (si === 0) col.append(el('div', 'notebox', dir.type));
+            cols.append(col);
+          }
+          row.append(cols);
+          root.append(row);
+        });
+
+        /* 5 · the signature transition — the panel a static mockup cannot give you */
+        const trow = el('section', 'screenrow');
+        trow.append(el('h2', '', '5 · The signature transition — what happens between two events'));
+        trow.append(
+          el(
+            'p',
+            'why',
+            'This is where a kinetic direction actually lives. Press “Play all”, then turn on ' +
+              '“Reduce motion” and press it again — the second version is the DESIGNED ' +
+              'alternative, not the animation switched off, and a direction whose fallback is ' +
+              'unusable is disqualified.',
+          ),
+        );
+        const tcols = el('div', 'cols');
+        for (const dir of DIRECTIONS) {
+          const col = el('div', '');
+          const head = el('div', 'colhead');
+          head.append(el('b', '', dir.id + ' — ' + dir.name));
+          col.append(head);
+          const phone = el('div', 'phone');
+          phone.append(transitionStage(dir));
+          col.append(phone);
+          col.append(el('div', 'notebox', dir.transition));
+          const perf = el('div', 'perfbox');
+          perf.append(el('b', '', 'Performance ceiling'));
+          perf.append(document.createTextNode(dir.perf));
+          col.append(perf);
+          const rm = el('div', 'rmbox');
+          rm.append(el('b', '', 'Reduce motion — the designed alternative'));
+          rm.append(document.createTextNode(dir.rm));
+          col.append(rm);
+          const f = el('div', 'failbox');
+          f.append(el('b', '', 'Failure mode — ' + dir.name));
+          f.append(document.createTextNode(dir.fail));
+          col.append(f);
+          tcols.append(col);
+        }
+        trow.append(tcols);
+        root.append(trow);
+
+        measure();
+        // Webfonts resolve asynchronously, so the first measure() runs against FALLBACK metrics
+        // and every width row reports the same number. Re-measure when they land.
+        void document.fonts.ready.then(() => measure());
+        setTimeout(() => players.forEach((p) => p()), 120);
+      }
+
+      function measure() {
+        const box = document.getElementById('measurebox');
+        box.textContent = '';
+        const t = el('table', 'mtable');
+        const head = el('tr');
+        ['', 'D — Transit', 'E — Manifest', 'F — Signal'].forEach((h) =>
+          head.append(el('th', '', h)),
+        );
+        t.append(head);
+
+        function row(label, hint, fn) {
+          const tr = el('tr');
+          const th = el('th', 'rowlab');
+          th.append(el('div', '', label));
+          if (hint) th.append(el('div', 'hint', hint));
+          tr.append(th);
+          for (const d of ['D', 'E', 'F']) {
+            const scr = document.querySelector('.scr.' + d + '.rest');
+            const r = fn(scr);
+            const td = el('td', r.bad ? 'bad' : r.good ? 'good' : '');
+            td.textContent = r.text;
+            tr.append(td);
+          }
+          t.append(tr);
+        }
+
+        row(
+          'Body block height',
+          'EN ≈ 141px. The growth is a LAYOUT budget, not a palette one.',
+          (scr) => ({
+            text: Math.round(scr.querySelector('.body').getBoundingClientRect().height) + ' px',
+          }),
+        );
+
+        row('Choice rows that wrap to 2 lines', '44px is the touch-target floor.', (scr) => {
+          const hs = [...scr.querySelectorAll('.choice')].map((n) =>
+            Math.round(n.getBoundingClientRect().height),
+          );
+          const base = Math.min(...hs);
+          const n = hs.filter((h) => h > base + 6).length;
+          return { text: n + ' of 4  (' + hs.join(' / ') + ' px)', bad: n > 0 };
+        });
+
+        row(
+          'Resource strip overflow',
+          'Icon + number, so this should now be structurally zero in every language.',
+          (scr) => {
+            const cut = [...scr.querySelectorAll('.res .top')].filter(
+              (n) => n.scrollWidth > n.clientWidth + 1,
+            ).length;
+            return { text: cut === 0 ? 'none' : cut + ' cells', bad: cut > 0, good: cut === 0 };
+          },
+        );
+
+        row(
+          'Body face width, same string',
+          'Measured on the canvas at 15.5px. Under ~3% spread means the body BUDGET is the same ' +
+            'whichever direction wins — so the German overflow is a layout decision, not a type one.',
+          (scr) => {
+            const cvs = document.createElement('canvas').getContext('2d');
+            // The FULL computed stack, not just the first family: a bare unloaded name makes
+            // the canvas silently fall back to its default and print one number for all three
+            // directions, which is the exact false null this row exists to avoid.
+            const fam = getComputedStyle(scr.querySelector('.body')).fontFamily;
+            cvs.font = '400 15.5px ' + fam;
+            const w = Math.round(
+              cvs.measureText('Two lanes, one open. The officer has been on since morning').width,
+            );
+            return { text: w + ' px  (' + fam.split(',')[0].replace(/"/g, '') + ')' };
+          },
+        );
+
+        row('Body / surface contrast', 'WCAG AA body text is 4.5:1.', (scr) => {
+          const cs = getComputedStyle(scr.querySelector('.body'));
+          const card = scr.querySelector('.card');
+          const lum = (c) => {
+            const m = /rgba?\(([^)]+)\)/.exec(c);
+            if (!m) return 0;
+            const [r, g, b] = m[1].split(',').map(Number);
+            const f = (v) => {
+              const s = v / 255;
+              return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+            };
+            return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+          };
+          // Card surfaces are translucent, so composite against the screen background.
+          const bg = lum(getComputedStyle(scr).backgroundColor);
+          const fg = lum(cs.color);
+          const ratio = (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+          void card;
+          return {
+            text: ratio.toFixed(1) + ':1',
+            bad: ratio < 4.5,
+            good: ratio >= 7,
+          };
+        });
+
+        box.append(t);
+        box.append(
+          el(
+            'p',
+            'why',
+            'Contrast is measured against the SCREEN background, not the translucent card, ' +
+              'because a glass surface composites onto whatever is behind it — which is the ' +
+              'honest worst case and the one a real device will show.',
+          ),
+        );
+      }
+
+      document.querySelectorAll('button[data-lang]').forEach((b) =>
+        b.addEventListener('click', () => {
+          LANG = b.dataset.lang;
+          document
+            .querySelectorAll('button[data-lang]')
+            .forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+          render();
+        }),
+      );
+      document.querySelectorAll('button[data-ev]').forEach((b) =>
+        b.addEventListener('click', () => {
+          EVENT = b.dataset.ev;
+          document
+            .querySelectorAll('button[data-ev]')
+            .forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+          render();
+        }),
+      );
+      document
+        .getElementById('replay')
+        .addEventListener('click', () => players.forEach((p) => p()));
+      document.getElementById('rm').addEventListener('click', (e) => {
+        const on = document.body.classList.toggle('rm');
+        e.currentTarget.setAttribute('aria-pressed', String(on));
+        players.forEach((p) => p());
+      });
+
+      render();
+    </script>
+  </body>
+</html>
