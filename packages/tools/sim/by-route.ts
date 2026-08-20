@@ -30,37 +30,36 @@ import { type SimRun } from './run-one.ts';
  * describes a passing world is worse than one that describes nothing. Everything above is a
  * statement about the INSTRUMENT; the numbers live in `docs/PROGRESS.md` and in the output._
  *
- * ## Why `peak` is printed next to `hours` (ADR 0044)
+ * ## `peak` WAS RETIRED FROM THIS TABLE (ADR 0046). Do not re-add it without reading this
  *
- * Because the instrument could not read its own verdict. Gate 9 failed on two routes that were
- * identical in every column this table printed — same profile, same mode, same leg count, total
- * hours within 4.7% — and 7.1x apart in completion, and finding out why cost a whole session.
+ * The column printed the most travel hours any nine consecutive legs bill, and its charter was
+ * narrow and explicit (ADR 0044): total hours is the better predictor BETWEEN routes of different
+ * lengths but is blind WITHIN a set whose totals are alike, and `peak` "is the only printed column
+ * that separates them". ADR 0044's own addendum then retired it as a DIAL — two permutations of
+ * one route, same leg multiset, reached 9.32% at peak 232 and 8.64% at peak 109, a 2.1x difference
+ * in `peak` for 1.7 SE of completion.
  *
- * Total hours is the better predictor BETWEEN routes of different lengths. It is blind WITHIN a
- * set whose totals are alike, and a floor gate reads exactly there: gate 9's four comparables
- * span 490-513 hours and 2.32-16.51% completion, and `peak` is the only printed column that
- * separates them.
+ * It survived as a FLAG, with a note attached to its constant saying the montage spacing
+ * constraint would invalidate it: "contiguous blocks stop existing by construction and a
+ * fixed-width window is the wrong shape for what remains. Re-derive it or retire the column; do
+ * not keep it because it is already here."
  *
- * ## `peak` IS A FLAG, NOT A DIAL. Read this before tuning anything against it
+ * That constraint landed (ADR 0046) and the column was re-measured on the corpus it produced:
  *
- * It says "this route's hours are not spread like its comparables'". It does **not** say how
- * much completion a given reduction buys, and the measurement that would license that reading
- * has been made and came back negative (ADR 0044's addendum):
+ *   - **It fails its own charter.** On the four Beira-Aktobe illicit routes — the exact set it
+ *     existed to separate — it now orders them WRONGLY. `r1gjd3s6` has the LOWEST peak of the four
+ *     (118) and only the third-best completion (11.32%), while `rskpfno` at peak 134 completes
+ *     best at 14.68%.
+ *   - **It is dominated globally by a column already printed.** Over the 28 routes,
+ *     rho(hours, completion) = -0.956 against the best window's -0.940 (K = 13); K = 9 gives
+ *     -0.931. Re-pinning K buys 0.009 on n = 28 — noise, and the same insensitivity ADR 0042
+ *     already recorded across K = 5/9/13.
+ *   - **Its constant measured a structure that no longer exists.** 9 was the length of
+ *     `r1dlxpt5`'s contiguous montage block. Montage runs are capped at two by construction now,
+ *     so a nine-leg window is no longer the width of anything.
  *
- *   - **Halving it bought nothing.** Two permutations of the same route, same multiset of legs,
- *     10,000 runs each: relocating the montage block left `peak` at 232 and reached 9.32%, while
- *     spreading the block into a comb took `peak` to 109 and reached 8.64%. A 2.1x difference in
- *     `peak` for a 1.7 SE difference in completion. The engine responds to WHERE hours sit
- *     against the meters and the wear knee, which only one of those two changes.
- *   - **Most of its corpus correlation is borrowed from `hours`.** rho(peak, hours) = 0.938;
- *     rho(peak, completion) = -0.923 falls to a partial of **-0.296** once hours is held. Within
- *     hours-strata it orders inconsistently, and two of five strata run backwards.
- *   - **No threshold is demonstrated.** Only 6 of 28 routes reach `peak` 100, and the band
- *     178-231 contains ZERO routes. The clean-looking gap between the failing pair and their
- *     comparables is a hole in the sample, not a measured cliff.
- *
- * So: use it to notice a route, then measure that route. An acceptance test written as a `peak`
- * threshold would be pinning a number this column has not earned.
+ * If item #2 (path granularity) needs a concentration statistic, derive one against the route set
+ * IT produces, rather than reviving a constant fitted to a shape this constraint deleted.
  *
  * Every per-route figure in ADR 0041 and `docs/phase-3-verification.md` was produced by a
  * scratchpad harness that was then thrown away, which is why the same measurement kept being
@@ -69,62 +68,6 @@ import { type SimRun } from './run-one.ts';
 
 /** Gate 9's floor. One named constant, so the table and the verdict cannot disagree. */
 export const ROUTE_COMPLETION_FLOOR = 0.03;
-
-/**
- * The window `peak` is measured over, in legs. **EMPIRICAL, and labelled as such.**
- *
- * ## Where 9 came from
- *
- * ADR 0044. It is the length of the contiguous montage block measured on
- * `route.illicit.r1dlxpt5` — legs 8-16, billing 232 of that route's 509 travel hours against
- * nine events. So this is the size of the structure the statistic exists to detect, taken from
- * the one case where the structure was identified, not fitted.
- *
- * **It is NOT optimal and nothing here claims it is.** Swept against completion over the
- * 28-route corpus, K = 5 / 9 / 13 give Spearman -0.876 / -0.915 / -0.921: the statistic is
- * insensitive to K across that range and 13 scores marginally better. 9 is kept because a
- * window much shorter than the block it is meant to detect degenerates toward reporting one
- * leg's `MAX_MONTAGE_HOURS` ceiling, and one much longer stops distinguishing a wall from a
- * route that is simply long.
- *
- * ## What would make it wrong
- *
- * The block length is a consequence of montage selection, so anything that changes the SHAPE of
- * a montage run invalidates this number rather than merely retuning it:
- *
- *   - `MAX_MONTAGE_HOURS` or `MAX_MONTAGE_SHARE` moving (`leg-hours.ts`, `leg-plan.ts`);
- *   - the 48-leg compression cap moving, since the block is bounded by the montage budget;
- *   - **the montage SPACING CONSTRAINT ADR 0044 names.** If `planLegs` is taught to refuse a
- *     segment adjacent to one already montaged, contiguous blocks stop existing by construction
- *     and a fixed-width window is the wrong shape for what remains. Re-derive it or retire the
- *     column; do not keep it because it is already here.
- *
- * A parameter-free alternative exists — maximum-subarray over `hours[i] - r`, where `r` is the
- * drain one event repays — and was not taken because it trades this constant for `r`, which has
- * to be measured from content and would drift with every registry change. This one is a fact
- * about route geometry and moves only when route geometry does.
- */
-export const PEAK_WINDOW_LEGS = 9;
-
-/**
- * The most travel hours any `window` consecutive legs of a route bill.
- *
- * Exported so its own test can exercise it on hand-built inputs rather than only through a sim
- * summary. Windows shorter than the route are clamped to the route, so a 5-leg route reports its
- * whole hour content and never a slice of a window it does not have.
- */
-export function peakWindowHours(perLeg: readonly number[], window: number): number {
-  if (perLeg.length === 0 || window < 1) return 0;
-  const width = Math.min(window, perLeg.length);
-  let running = 0;
-  for (let i = 0; i < width; i += 1) running += perLeg[i] ?? 0;
-  let peak = running;
-  for (let i = width; i < perLeg.length; i += 1) {
-    running += (perLeg[i] ?? 0) - (perLeg[i - width] ?? 0);
-    if (running > peak) peak = running;
-  }
-  return peak;
-}
 
 export type RouteStat = {
   readonly routeId: string;
@@ -144,31 +87,36 @@ export type RouteStat = {
    * At the STARTING mode only. A run that loses its truck and walks costs more than this says.
    */
   readonly hours: number;
-  /**
-   * The most travel hours any `PEAK_WINDOW_LEGS` consecutive legs bill — the route's worst
-   * stretch, alongside `hours`, which is its total.
-   *
-   * **Both are printed and neither substitutes for the other**: a route can be unfinishable
-   * because it is long or because one stretch of it is brutal. `hours` is the better predictor
-   * BETWEEN routes of different lengths; this one separates a set whose totals are alike, which
-   * is the case a floor gate has to read and the case `hours` alone is blind to.
-   *
-   * **A flag, not a dial** — see the header. It identifies a route worth measuring; it does not
-   * predict what a change to it buys, and a permutation that halved it gained nothing.
-   *
-   * Derived from the same `legHours` fold as `hours`, at the STARTING mode, so the two are
-   * commensurable by construction and `peak <= hours` always holds.
-   *
-   * Comparable within a leg count, not across one: nine legs is 19% of a 48-leg route and 41%
-   * of a 22-leg one. That is a property of a fixed-width window and is why this column supports
-   * the verdict rather than deciding it.
-   */
-  readonly peakHours: number;
   /** Runs that produced a verdict. Errored runs are excluded here and counted separately. */
   readonly runs: number;
   readonly completed: number;
   readonly errors: number;
   readonly rate: number;
+  /**
+   * Share of error-free runs whose morale reached 0 at any point — acceptance part 2.
+   *
+   * ADR 0044 identified morale as the BINDING meter, and `docs/phase-3-closeout.md` requires
+   * this alongside completion because **completion alone cannot tell two fixes apart**. The two
+   * permutations it measured landed 1.7 SE apart on completion (9.32% / 8.64%) and 15pp apart
+   * on this (35.9% / 51.3%). A montage fix that clears the floor by starving players slowly and
+   * one that clears it by letting them collapse are different games, and pillar 1 says the
+   * difference is the finding.
+   *
+   * Denominated over the ERROR-FREE population, the same `n` the completion rate uses, so the
+   * two columns are read against the same denominator.
+   */
+  readonly moraleFloorShare: number;
+  /**
+   * The route's ending histogram — acceptance part 3. `[endingId, count]`, descending by count
+   * then ascending by id, so the ordering is total and the output is stable enough to diff.
+   *
+   * Counts UNLOCKS, not runs: `state.unlockedEndings` is a list and a run may unlock more than
+   * one, so the counts sum to at least `runs` rather than exactly to it. That is the right
+   * population for the comparison the criterion asks for — "which endings does this route
+   * produce, against a healthy comparable" — and the header prints the total so nobody reads it
+   * as a partition of the runs.
+   */
+  readonly endings: readonly (readonly [string, number])[];
   /**
    * Wald standard error of the completion proportion, `sqrt(p(1-p)/n)`.
    *
@@ -186,13 +134,21 @@ function statOf(routeId: string, scenario: FixtureScenario, runs: readonly SimRu
   const completed = usable.filter((r) => r.completed).length;
   const n = usable.length;
   const rate = n === 0 ? 0 : completed / n;
+  const floored = usable.filter((r) => r.moraleFloored).length;
+
+  const endingCounts = new Map<string, number>();
+  for (const run of usable) {
+    for (const ending of run.endings) {
+      const id = String(ending);
+      endingCounts.set(id, (endingCounts.get(id) ?? 0) + 1);
+    }
+  }
 
   const montage = new Set(scenario.route.montageLegs);
   const mode = scenario.transport.mode;
-  // ONE fold, two statistics. `hours` is its sum and `peakHours` its worst window, so the two
-  // cannot disagree about what a leg costs the way two independent traversals could.
-  const perLeg = scenario.route.legKm.map((km, leg) => legHours(km, mode, montage.has(leg)));
-  const hours = perLeg.reduce((sum, h) => sum + h, 0);
+  const hours = scenario.route.legKm
+    .map((km, leg) => legHours(km, mode, montage.has(leg)))
+    .reduce((sum, h) => sum + h, 0);
 
   return {
     routeId,
@@ -201,11 +157,15 @@ function statOf(routeId: string, scenario: FixtureScenario, runs: readonly SimRu
     legs: scenario.route.legCount,
     km: scenario.route.totalKm,
     hours,
-    peakHours: peakWindowHours(perLeg, PEAK_WINDOW_LEGS),
     runs: n,
     completed,
     errors: runs.length - n,
     rate,
+    moraleFloorShare: n === 0 ? 0 : floored / n,
+    // Descending by count, then ASCENDING by id. The id tiebreak is what makes the order total:
+    // a histogram ordered by `Map` insertion is one whose row order depends on which seed
+    // happened to unlock what first.
+    endings: [...endingCounts.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)),
     standardError: n === 0 ? 0 : Math.sqrt((rate * (1 - rate)) / n),
   };
 }
@@ -312,9 +272,10 @@ export function formatByRoute(
   const idWidth = Math.max(8, ...stats.map((s) => s.routeId.length));
   lines.push(
     `${pad('route', idWidth)}  ${pad('profile', 8)}  ${pad('mode', 9)}  ${padStart('legs', 4)}  ` +
-      `${padStart('km', 6)}  ${padStart('hours', 5)}  ${padStart('peak', 5)}  ` +
+      `${padStart('km', 6)}  ${padStart('hours', 5)}  ` +
       `${padStart('runs', 6)}  ` +
-      `${padStart('completion', 10)}  ${padStart('SE', 8)}  ${padStart('vs floor', 10)}`,
+      `${padStart('completion', 10)}  ${padStart('SE', 8)}  ${padStart('morale@0', 8)}  ` +
+      `${padStart('vs floor', 10)}`,
   );
 
   for (const stat of stats) {
@@ -323,9 +284,10 @@ export function formatByRoute(
     lines.push(
       `${pad(stat.routeId, idWidth)}  ${pad(stat.profile, 8)}  ${pad(stat.mode, 9)}  ` +
         `${padStart(String(stat.legs), 4)}  ${padStart(String(stat.km), 6)}  ` +
-        `${padStart(String(stat.hours), 5)}  ${padStart(String(stat.peakHours), 5)}  ` +
+        `${padStart(String(stat.hours), 5)}  ` +
         `${padStart(String(stat.runs), 6)}  ` +
         `${padStart(pct(stat.rate), 10)}  ${padStart(pp(stat.standardError), 8)}  ` +
+        `${padStart(pct(stat.moraleFloorShare), 8)}  ` +
         `${padStart(marginText, 10)}` +
         (stat.rate < ROUTE_COMPLETION_FLOOR ? '   <- BELOW THE FLOOR' : '') +
         (stat.errors > 0 ? `   <- ${String(stat.errors)} errored run(s)` : ''),
@@ -343,9 +305,40 @@ export function formatByRoute(
           `(SE ${pp(worst.standardError)}, ` +
           `${worstMargin === null ? 'margin undefined at p=0' : `${worstMargin >= 0 ? '+' : ''}${worstMargin.toFixed(1)} SE vs the floor`})`,
     `GATE 9                      ${under.length === 0 && stats.length > 0 ? 'PASS' : 'FAIL'}`,
-    '',
-    `Wall clock ${String(meta.elapsedMs)} ms`,
   );
+
+  // ── ENDING HISTOGRAMS — acceptance part 3 ──────────────────────────────────────────
+  //
+  // BELOW the table rather than interleaved with it, and that placement is the decision. The
+  // table is what the gate is read off — one row per route, worst first, so the row deciding
+  // pass or fail is the first line under the header. Indenting a histogram under each row would
+  // put a dozen lines between the failing route and its runner-up.
+  //
+  // Read it by COMPARING a breaching route against a healthy one, which is what
+  // `docs/phase-3-closeout.md` asks for: two fixes can reach the same completion through
+  // different failure mixes, and this is the only output that can tell them apart.
+  lines.push('', 'ENDINGS PER ROUTE — unlocks, not runs; a run may unlock more than one.', '');
+  for (const stat of stats) {
+    const total = stat.endings.reduce((sum, entry) => sum + entry[1], 0);
+    lines.push(
+      `${stat.routeId}  (${String(stat.runs)} runs, ${String(total)} unlock` +
+        `${total === 1 ? '' : 's'}, completion ${pct(stat.rate)}, ` +
+        `morale@0 ${pct(stat.moraleFloorShare)})`,
+    );
+    if (stat.endings.length === 0) {
+      lines.push('    (none unlocked)');
+      continue;
+    }
+    const endingWidth = Math.max(...stat.endings.map((entry) => entry[0].length));
+    for (const [id, count] of stat.endings) {
+      lines.push(
+        `    ${pad(id, endingWidth)}  ${padStart(String(count), 7)}  ` +
+          `${padStart(pct(stat.runs === 0 ? 0 : count / stat.runs), 8)}`,
+      );
+    }
+  }
+
+  lines.push('', `Wall clock ${String(meta.elapsedMs)} ms`);
 
   return lines.join('\n');
 }

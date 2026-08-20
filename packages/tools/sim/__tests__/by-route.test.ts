@@ -3,15 +3,14 @@ import {
   byRouteStats,
   formatByRoute,
   marginInSe,
-  peakWindowHours,
-  PEAK_WINDOW_LEGS,
   ROUTE_COMPLETION_FLOOR,
   type RouteStat,
 } from '../by-route.ts';
 import { formatReport } from '../format-report.ts';
 import { loadFixturePack, loadFixtureScenarios } from '../load-pack.ts';
 import { parseArgs } from '../parse-args.ts';
-import { runMany } from '../run-many.ts';
+import { runMany, type SimSummary } from '../run-many.ts';
+import { type SimRun } from '../run-one.ts';
 
 const PACK = loadFixturePack();
 const SCENARIOS = loadFixtureScenarios();
@@ -131,6 +130,107 @@ describe('byRouteStats', () => {
   });
 });
 
+describe('acceptance parts 2 and 3 — morale@0 and the ending histogram', () => {
+  /**
+   * `docs/phase-3-closeout.md` requires THREE things of any montage fix, and completion is only
+   * the first. These two columns are the other two, and they shipped BEFORE the fix on purpose:
+   * an instrument built and read in the same commit is the circularity ADR 0032 exists to
+   * prevent, arriving through the front door.
+   *
+   * Hand-built runs rather than a simulated corpus, because the properties under test are folds
+   * — which population divides, which order the rows take — and a real run cannot be made to
+   * exhibit a chosen one on demand.
+   */
+  const ROUTE = String(SCENARIOS[0]!.route.id);
+  const template = SUMMARY.runs[0]!;
+  const run = (
+    moraleFloored: boolean,
+    endings: readonly string[],
+    error: string | null = null,
+  ): SimRun => ({
+    ...template,
+    routeId: ROUTE,
+    moraleFloored,
+    endings: endings as unknown as SimRun['endings'],
+    error,
+  });
+  const summaryOf = (runs: readonly SimRun[]): SimSummary => ({ ...SUMMARY, runs });
+  const statFor = (runs: readonly SimRun[]): RouteStat =>
+    byRouteStats(summaryOf(runs), SCENARIOS).find((s) => s.routeId === ROUTE)!;
+
+  it('divides morale@0 by the ERROR-FREE population, the same n completion uses', () => {
+    // An errored run produced no verdict and therefore no morale trajectory. Counting it in the
+    // denominator would dilute the share by exactly the error rate and make a corpus look
+    // healthier the more it broke — and the two columns would silently stop being comparable.
+    const stat = statFor([
+      run(true, []),
+      run(false, []),
+      run(false, [], 'advanceLeg: SOMETHING'),
+      run(false, [], 'advanceLeg: SOMETHING'),
+    ]);
+    expect(stat.runs).toBe(2);
+    expect(stat.errors).toBe(2);
+    expect(stat.moraleFloorShare).toBe(0.5);
+  });
+
+  it('is a RUN-level share, so a run that sits at the floor counts exactly once', () => {
+    expect(
+      statFor([run(true, []), run(true, []), run(true, []), run(false, [])]).moraleFloorShare,
+    ).toBeCloseTo(0.75, 10);
+    expect(statFor([run(false, [])]).moraleFloorShare).toBe(0);
+  });
+
+  it('reproduces the contrast ADR 0044 measured — 35.9% against 51.3% at equal completion', () => {
+    // The reason this column exists. The two permutations landed 1.7 SE apart on completion and
+    // 15pp apart here, so completion alone cannot tell a fix that starves players from one that
+    // collapses them. Asserted as arithmetic over a built population, not as a recorded figure.
+    const mix = (floored: number, total: number): readonly SimRun[] => [
+      ...Array.from({ length: floored }, () => run(true, [])),
+      ...Array.from({ length: total - floored }, () => run(false, [])),
+    ];
+    expect(statFor(mix(359, 1000)).moraleFloorShare).toBeCloseTo(0.359, 10);
+    expect(statFor(mix(513, 1000)).moraleFloorShare).toBeCloseTo(0.513, 10);
+  });
+
+  it('counts ending UNLOCKS, not runs — a run may unlock more than one', () => {
+    const stat = statFor([run(false, ['ending.a', 'ending.b']), run(false, ['ending.a'])]);
+    expect(stat.runs).toBe(2);
+    expect(stat.endings.reduce((sum, entry) => sum + entry[1], 0)).toBe(3);
+    expect(Object.fromEntries(stat.endings)).toEqual({ 'ending.a': 2, 'ending.b': 1 });
+  });
+
+  it('orders the histogram by count DESCENDING then id ASCENDING — a total order', () => {
+    // The id tiebreak is what makes this diffable. Ordered by Map insertion, the row order would
+    // depend on which seed happened to unlock what first, and two identical corpora would print
+    // different tables.
+    const stat = statFor([
+      run(false, ['ending.z', 'ending.a', 'ending.m']),
+      run(false, ['ending.m']),
+    ]);
+    expect(stat.endings.map((entry) => entry[0])).toEqual(['ending.m', 'ending.a', 'ending.z']);
+  });
+
+  it('prints both in the table, and neither in the standard report', () => {
+    const stat = statFor([run(true, ['ending.a'])]);
+    const table = formatByRoute(summaryOf([run(true, ['ending.a'])]), SCENARIOS, {
+      seed: 'by-route',
+      runs: 1,
+      pack: 'fixture',
+      elapsedMs: 1,
+    });
+    expect(stat.moraleFloorShare).toBe(1);
+    expect(table).toContain('morale@0');
+    expect(table).toContain('ENDINGS PER ROUTE');
+    expect(table).toContain('ending.a');
+
+    // The guard that keeps both baselines still. `diff-report.ts` compares by LINE INDEX, so a
+    // column leaking into the standard report would move every headline metric beneath it.
+    const report = formatReport(SUMMARY, PACK, { seed: 'by-route', runs: 300, elapsedMs: 42 });
+    expect(report).not.toContain('morale@0');
+    expect(report).not.toContain('ENDINGS PER ROUTE');
+  });
+});
+
 describe('marginInSe — gate 9 is a margin, not a rate', () => {
   const stat = (rate: number, runs: number): RouteStat => ({
     routeId: 'route.x',
@@ -139,11 +239,12 @@ describe('marginInSe — gate 9 is a margin, not a rate', () => {
     legs: 22,
     km: 1957,
     hours: 112,
-    peakHours: 47,
     runs,
     completed: Math.round(rate * runs),
     errors: 0,
     rate,
+    moraleFloorShare: 0,
+    endings: [],
     standardError: Math.sqrt((rate * (1 - rate)) / runs),
   });
 
@@ -208,49 +309,16 @@ describe('the table states its own verdict', () => {
   });
 });
 
-describe('peakWindowHours — the worst stretch, not the total', () => {
-  it('is the maximum over every window of the given width', () => {
-    // Hand-built so the expected answer is arithmetic rather than whatever the corpus happens
-    // to produce: the worst three of [1,2,9,9,1,1] are the 9,9 pair plus a neighbour.
-    expect(peakWindowHours([1, 2, 9, 9, 1, 1], 3)).toBe(20);
-    expect(peakWindowHours([1, 2, 9, 9, 1, 1], 1)).toBe(9);
-    expect(peakWindowHours([5, 5, 5, 5], 2)).toBe(10);
-  });
-
-  it('separates a WALL from a flat route at identical totals — the whole point', () => {
-    // The two shapes ADR 0044 is about, reduced to nine legs each. Same sum, same length; a
-    // statistic that cannot tell these apart cannot see what gate 9 failed on.
-    const flat = [10, 10, 10, 10, 10, 10, 10, 10, 10];
-    const wall = [2, 2, 2, 30, 30, 20, 2, 1, 1];
-    expect(flat.reduce((a, b) => a + b, 0)).toBe(wall.reduce((a, b) => a + b, 0));
-    expect(peakWindowHours(flat, 3)).toBe(30);
-    expect(peakWindowHours(wall, 3)).toBe(80);
-  });
-
-  it('clamps a window wider than the route to the route', () => {
-    // A 5-leg route has no 9-leg window. Reporting its whole hour content is right; reporting a
-    // slice of a window it does not have, or zero, would both be lies about a short route.
-    expect(peakWindowHours([3, 4, 5], 9)).toBe(12);
-    expect(peakWindowHours([], 9)).toBe(0);
-    expect(peakWindowHours([7], 9)).toBe(7);
-  });
-
-  it('never exceeds the total, and equals it exactly when the route fits the window', () => {
-    for (const stat of byRouteStats(SUMMARY, SCENARIOS)) {
-      expect(stat.peakHours).toBeLessThanOrEqual(stat.hours);
-      expect(Number.isInteger(stat.peakHours)).toBe(true);
-      if (stat.legs <= PEAK_WINDOW_LEGS) expect(stat.peakHours).toBe(stat.hours);
-    }
-  });
-});
-
 /**
  * THE BASELINE-NEUTRALITY GUARD, asserted rather than argued.
  *
- * `LEGACY_*` below reproduce the format this table printed BEFORE the `peak` column existed,
- * copied verbatim from the pre-change formatter. The claim under test is not "peak looks right"
- * — it is **"nothing else moved"**: excise the peak field and the table must be byte-identical
- * to what it rendered before.
+ * `LEGACY_*` below reproduce the format this table printed BEFORE the `morale@0` column existed,
+ * copied verbatim from the pre-change formatter. The claim under test is not "morale@0 looks
+ * right" — it is **"nothing else moved"**: excise that one field and the table must be
+ * byte-identical to what it rendered before.
+ *
+ * The `peak` column was RETIRED in the same change that added this one (ADR 0046), so the legacy
+ * format below is once again the shape the table had before either column existed.
  *
  * That matters because gate 9's whole design is that this mode cannot disturb either sim
  * baseline (ADR 0032/0042). The mode returning before `formatReport` is what makes that true of
@@ -260,7 +328,7 @@ const CELL = '  ';
 const legacyPad = (t: string, w: number) => (t.length >= w ? t : t + ' '.repeat(w - t.length));
 const legacyPadStart = (t: string, w: number) => (t.length >= w ? t : ' '.repeat(w - t.length) + t);
 
-describe('adding `peak` changed NOTHING ELSE about the table', () => {
+describe('adding `morale@0` changed NOTHING ELSE about the table', () => {
   const stats = byRouteStats(SUMMARY, SCENARIOS);
   const idWidth = Math.max(8, ...stats.map((s) => s.routeId.length));
 
@@ -287,10 +355,10 @@ describe('adding `peak` changed NOTHING ELSE about the table', () => {
     legacyPadStart('vs floor', 10);
 
   /**
-   * The peak cell is `padStart(_, 5)` preceded by its separator, and it sits immediately after
-   * `hours`. Its offset is therefore fixed by the widths of the columns to its left.
+   * The `morale@0` cell is `padStart(_, 8)` preceded by its separator, and it sits between `SE`
+   * and `vs floor`. Its offset is therefore fixed by the widths of every column to its left.
    */
-  const PEAK_AT =
+  const MORALE_AT =
     idWidth +
     CELL.length +
     8 +
@@ -301,20 +369,36 @@ describe('adding `peak` changed NOTHING ELSE about the table', () => {
     CELL.length +
     6 +
     CELL.length +
-    5;
-  const PEAK_WIDTH = CELL.length + 5;
-  const excisePeak = (line: string) => line.slice(0, PEAK_AT) + line.slice(PEAK_AT + PEAK_WIDTH);
+    5 +
+    CELL.length +
+    6 +
+    CELL.length +
+    10 +
+    CELL.length +
+    8;
+  const MORALE_WIDTH = CELL.length + 8;
+  const exciseMorale = (line: string) =>
+    line.slice(0, MORALE_AT) + line.slice(MORALE_AT + MORALE_WIDTH);
 
-  it('renders the pre-change header once the peak column is removed', () => {
+  it('renders the pre-change header once the morale@0 column is removed', () => {
     const header = TABLE.split('\n').find((l) => l.startsWith('route  '));
     expect(header).toBeDefined();
-    expect(header).toContain(legacyPadStart('peak', 5));
-    expect(excisePeak(header ?? '')).toBe(legacyHeader);
+    expect(header).toContain(legacyPadStart('morale@0', 8));
+    // The retired column must not come back by accident.
+    expect(header).not.toContain('peak');
+    expect(exciseMorale(header ?? '')).toBe(legacyHeader);
   });
 
-  it('renders every pre-change ROW byte-identically once the peak column is removed', () => {
+  it('renders every pre-change ROW byte-identically once the morale@0 column is removed', () => {
     const lines = TABLE.split('\n');
-    const rows = lines.filter((l) => stats.some((s) => l.startsWith(s.routeId)));
+    // Scoped to the table SECTION. Since the ending histograms shipped, a route id also opens
+    // each histogram's header line, so an unscoped scan finds two lines per route and this guard
+    // would fail on a block it is not about.
+    const endingsAt = lines.findIndex((l) => l.startsWith('ENDINGS PER ROUTE'));
+    expect(endingsAt).toBeGreaterThan(0);
+    const rows = lines
+      .slice(0, endingsAt)
+      .filter((l) => stats.some((s) => l.startsWith(s.routeId)));
     expect(rows).toHaveLength(stats.length);
 
     for (const stat of stats) {
@@ -345,12 +429,12 @@ describe('adding `peak` changed NOTHING ELSE about the table', () => {
         (stat.rate < ROUTE_COMPLETION_FLOOR ? '   <- BELOW THE FLOOR' : '') +
         (stat.errors > 0 ? `   <- ${String(stat.errors)} errored run(s)` : '');
 
-      expect(excisePeak(row ?? '')).toBe(legacyRow);
+      expect(exciseMorale(row ?? '')).toBe(legacyRow);
     }
   });
 
   it('leaves every line that is not a route row untouched', () => {
-    // The verdict block, the marginals and the title carry no peak field, so they must be
+    // The verdict block, the marginals and the title carry no added field, so they must be
     // character-for-character what they were. `Routes below`/`Worst route`/`GATE 9` are what a
     // reader and a future CI check both key on.
     expect(TABLE).toContain('Gate 9 (docs/phase-3-dod.md): NO ROUTE BELOW 3.00% COMPLETION.');
@@ -361,12 +445,12 @@ describe('adding `peak` changed NOTHING ELSE about the table', () => {
     expect(TABLE).toMatch(/GATE 9 {22}(PASS|FAIL)/);
   });
 
-  it('keeps `peak` out of the STANDARD report, which is what the baselines diff', () => {
+  it('keeps the per-route columns out of the STANDARD report, which the baselines diff', () => {
     // The column must not reach `format-report.ts`. If it ever did, both baselines would have to
     // regenerate for a change that is purely an instrument improvement — ADR 0032's false
     // positive, arriving by a new route.
     const report = formatReport(SUMMARY, PACK, { seed: 'by-route', runs: 300, elapsedMs: 42 });
-    expect(report).not.toContain('peak');
+    expect(report).not.toContain('morale@0');
     expect(report).not.toContain('vs floor');
   });
 });

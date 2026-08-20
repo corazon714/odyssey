@@ -32,6 +32,23 @@ export type SimRun = {
   readonly routeId: string;
   readonly policy: PolicyName;
   readonly completed: boolean;
+  /**
+   * Did morale ever reach its floor of 0 during this run?
+   *
+   * The second of the three parts `docs/phase-3-closeout.md` requires of any montage fix, and
+   * it is not a nice-to-have: ADR 0044 identified morale as the BINDING meter, and the
+   * morale-floor share tracked every intervention cleanly where completion alone did not. Two
+   * permutations reached statistically identical completion (9.32% and 8.64%, 1.7 SE apart)
+   * through failure mixes of 35.9% and 51.3% on this number.
+   *
+   * A RUN-LEVEL flag, not a leg count. The question the criterion asks is what share of the
+   * POPULATION floors, so a run that sits at 0 for thirty legs must count once, exactly as a
+   * run that touches 0 and recovers does.
+   *
+   * Sampled after every state change rather than at the `CHECKPOINT_LEGS` snapshots: those are
+   * legs 5, 15 and 25, and a run that floors on leg 14 and recovers by 15 is invisible to them.
+   */
+  readonly moraleFloored: boolean;
   readonly legs: number;
   readonly days: number;
   readonly endings: readonly EndingId[];
@@ -153,6 +170,9 @@ export function runOne(
   }
 
   let state = created.state;
+  // `morale` is clamped at a minimum of 0 by `clampResources`, so `<= 0` and `=== 0` are the
+  // same test; `<=` is written because it stays correct if that bound ever moves.
+  let moraleFloored = state.resources.morale <= 0;
   const firedEvents: EventId[] = [];
   let selections = 0;
   let uneventfulLegs = 0;
@@ -200,6 +220,7 @@ export function runOne(
     const advanced = advanceLeg(state, pack);
     if (!advanced.ok) return blank(seed, route, policyName, `advanceLeg: ${advanced.error.code}`);
     state = advanced.state;
+    if (state.resources.morale <= 0) moraleFloored = true;
     queueDrops += advanced.queueDrops.length;
     beatsFilled += advanced.beatsFilled;
     beatsExpired += advanced.beatsExpired;
@@ -302,6 +323,7 @@ export function runOne(
       if (applied.op === 'scheduleEvent' && applied.changed) scheduled += 1;
     }
     state = resolved.state;
+    if (state.resources.morale <= 0) moraleFloored = true;
   }
 
   return {
@@ -309,6 +331,7 @@ export function runOne(
     routeId: route.id,
     policy: policyName,
     completed: state.route.legIndex >= state.route.legCount,
+    moraleFloored,
     legs: state.route.legIndex,
     days: state.clock.day,
     endings: state.unlockedEndings,
@@ -355,6 +378,10 @@ function blank(
     routeId: route.id,
     policy,
     completed: false,
+    // An errored run produced no verdict, so it produced no morale trajectory either. `false`
+    // here is "not observed", and `statOf` divides by the ERROR-FREE population so it never
+    // enters a share.
+    moraleFloored: false,
     legs: 0,
     days: 0,
     endings: [],

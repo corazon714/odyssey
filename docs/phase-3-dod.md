@@ -205,6 +205,15 @@ pnpm sim -- --pack=corpus --runs=280000 --by-route
 
 **Pass:** the worst route's completion is at or above 3%, **reported with its standard error**.
 
+The table also prints **`morale@0`** (the share of runs whose morale reaches 0) and, beneath it,
+a **per-route ending histogram**. Those are not decoration: they are parts 2 and 3 of the
+acceptance criterion any montage change owes, because two fixes can reach the same completion
+through different failure mixes and a single figure cannot tell them apart (ADR 0046).
+
+**The `peak` column was RETIRED at ADR 0046** and no longer appears. It failed its own charter on
+the route set the spacing constraint produces, and `hours` — already printed — dominates it
+corpus-wide. Do not re-add it without reading `by-route.ts`'s header.
+
 **280,000 is derived, not round, and it is the only count this gate may be run at.** The corpus
 grid is **28 routes × 5 policies = 140 cells**, and a floor is a claim about the WORST CELL, so
 the count has to divide evenly into the grid or the marginal routes are sampled at a different
@@ -225,15 +234,19 @@ anywhere can break a rank correlation). A route nobody can finish under any play
 the difference between a route that reads 3.1% and is safe and one that reads 3.1% and is a 2.7%
 route that got lucky is the only thing this gate is for.
 
-> **THIS GATE IS CURRENTLY RED, AND THIS PARAGRAPH USED TO SAY OTHERWISE.** It read "at the chosen
-> knee the worst route sits at 4.8%, a margin as thin as 4.1 standard errors, while pooled
-> completion reads a comfortable 42.7%" — present tense, describing the 25-route grid the knee was
-> swept on. On the 28-route corpus this repo ships, **two routes are below the floor**
-> (`route.illicit.r1dlxpt5` 2.32% at −4.5 SE, `route.illicit.r16kyujq` 2.81% at −1.1 SE) and
-> pooled completion reads 46.1%. **The pooled number being healthy while the gate fails is the
-> whole point of the gate**, and quoting it as reassurance is the mistake this gate exists to
-> prevent. Cause, evidence and carry-forward: **`docs/phase-3-closeout.md`** and `docs/adr/0044`.
-> Live figures belong in the command's output, never here.
+> **THIS GATE PASSES AS OF 2026-08-20 (ADR 0046), AND IT HAS BEEN RED TWICE BEFORE.** It first
+> read a passing world in the present tense — "the worst route sits at 4.8%, a margin as thin as
+> 4.1 standard errors" — describing a 25-route grid that no longer existed. On the 28-route corpus
+> this repo ships it then failed outright, with `route.illicit.r1dlxpt5` at 2.32% (−4.5 SE) and
+> `route.illicit.r16kyujq` at 2.81% (−1.1 SE) while pooled completion read a comfortable 46.1%.
+> **The pooled number being healthy while the gate failed is the whole point of the gate.**
+>
+> The montage spacing constraint (ADR 0046) closed it: no route is below the floor, and the two
+> that were now read 6.95% (+15.5 SE) and 12.26% (+28.2 SE). **`route.illicit.r1gjd3s6` regressed
+> in the same change**, 16.51% → 11.32%, and ADR 0046 §Consequences owns that.
+>
+> **Live figures belong in the command's output, never here.** This block records that the gate has
+> twice been wrong in this file, which is the reason it names a command instead of a number.
 
 > **`--by-route` SHIPPED at C4** (`packages/tools/sim/by-route.ts`, ADR 0042), so this gate runs
 > today and is the last of the nine to become measurable. It shipped as a **separate output mode,

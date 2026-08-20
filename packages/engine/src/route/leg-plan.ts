@@ -333,14 +333,64 @@ export function planLegs(segments: readonly LegSegment[]): LegPlan {
     // Position beats dullness: `protectedFromMontage` keeps the two anchors and the
     // neighbourhood of every crossing, because `admit` DROPS a beat it cannot place.
     const off = protectedFromMontage(segments);
-    const order = segments.filter((_, i) => !off.has(i)).sort(byDullness);
+    // POSITIONS ARE CARRIED THROUGH THE SORT, and that is what makes the spacing pass possible.
+    // `montaged` is keyed by `edgeIdx` — the graph's index for an edge, which says nothing about
+    // adjacency ALONG THIS PATH — so a neighbour test needs the position in `segments`, and the
+    // previous `filter((_, i) => ...).sort()` discarded it before the loop could see it.
+    const order = segments
+      .map((segment, position) => ({ segment, position }))
+      .filter((entry) => !off.has(entry.position))
+      .sort((a, b) => byDullness(a.segment, b.segment));
+    const montagedPositions = new Set<number>();
     let freeUnits = units.reduce((a, b) => a + b, 0);
-    for (const segment of order) {
-      if (montaged.size >= montageBudget) break;
-      if (montageSatisfied(expanding, segments.length, montaged.size, freeUnits, target)) break;
-      if (segment.ferry) break; // sorted last; nothing duller remains
-      montaged.add(segment.edgeIdx);
-      freeUnits -= rawUnits(segment);
+
+    // MONTAGE SPACING — ADR 0046. The mechanism it exists to defuse is ADR 0044.
+    //
+    // Selecting by dullness alone lets montage take nine CONSECUTIVE segments, and on a corridor
+    // whose dull stretches are contiguous it reliably does. That is lethal rather than merely
+    // long: drain is charged per HOUR (every drain in `world-tick.ts` is `spanPoints`) while
+    // recovery arrives per LEG (one event per leg while `BASE_EVENT_ODDS` is fenced at 1:0), so
+    // survivability is the LOCAL ratio, not the total. `route.illicit.r1dlxpt5` billed 232 of its
+    // 509 hours inside legs 8-16 and lost 67% of its population there, against 22% for a route
+    // spreading the same 509 hours. Proved causally at 21 SE with two null controls.
+    //
+    // A LADDER OF THREE PASSES, NOT A SWITCH, AND THAT IS THE CORRECTION THIS FIX TURNS ON.
+    //
+    // `maxAdjacent` is how many of a candidate's two neighbours may ALREADY be montaged: pass 0
+    // takes only fully isolated segments, pass 1 allows extending a run at one end, pass 2 allows
+    // closing a hole between two. Same order every pass, so the dullest still goes first.
+    //
+    // **`docs/phase-3-closeout.md` proposed a two-pass version — refuse a neighbour, then relax —
+    // and it was measured INSUFFICIENT on the very route it was written for.** The deficit on
+    // `r1dlxpt5` demands 10-11 montaged segments out of an 18-edge path whose anchors and
+    // crossing neighbourhoods are already protected, and no arrangement of 11 among ~16 free
+    // positions is fully spaced. So the relaxed pass ran on almost every selection and rebuilt
+    // the wall: measured, the two-pass version moved `r1dlxpt5` from a 9-leg run at 8-16 to a
+    // 9-leg run at 9-17, which is not a fix. The ladder degrades one step at a time instead of
+    // falling off a cliff, and the worst it can produce is short runs where the path genuinely
+    // cannot hold gaps.
+    //
+    // THE BUDGET IS NEVER SHRUNK. Every pass shares the same `montageSatisfied` and
+    // `montageBudget` guards, so the constraint changes WHERE montage lands and never how much of
+    // it there is — the cap still wins over the deficit (ADR 0026 D4) and leg count is untouched.
+    //
+    // NOT A `peak` THRESHOLD. `peak` is a FLAG, not a dial — a permutation that halved it gained
+    // nothing (closeout §5). This constrains the SHAPE that produced the wall, and is measured by
+    // completion, the morale-floor share and the ending histogram.
+    for (const maxAdjacent of [0, 1]) {
+      for (const { segment, position } of order) {
+        if (montaged.size >= montageBudget) break;
+        if (montageSatisfied(expanding, segments.length, montaged.size, freeUnits, target)) break;
+        if (segment.ferry) break; // sorted last; nothing duller remains
+        if (montagedPositions.has(position)) continue; // taken by an earlier pass
+        const adjacent =
+          (montagedPositions.has(position - 1) ? 1 : 0) +
+          (montagedPositions.has(position + 1) ? 1 : 0);
+        if (adjacent > maxAdjacent) continue;
+        montaged.add(segment.edgeIdx);
+        montagedPositions.add(position);
+        freeUnits -= rawUnits(segment);
+      }
     }
   }
 

@@ -1,13 +1,22 @@
 # Phase 3 — CLOSEOUT
 
-> **READ THIS FIRST, AND READ THE NEXT LINE TWICE.**
+> **READ THIS FIRST.**
 >
-> # PHASE 3 IS CLOSED WITH GATE 9 RED.
+> # PHASE 3 CLOSED WITH GATE 9 RED. **GATE 9 IS NOW GREEN — item #1 landed on 2026-08-20.**
 >
-> **`docs/phase-3-dod.md` gate 9 FAILS and is expected to keep failing until carry-forward item #1
-> lands.** Closing the phase is a scheduling decision, not a pass. Two routes are below the 3%
-> completion floor and nothing in this repo has fixed them. If you have arrived here believing
-> Phase 3 went green, that belief is wrong and this document exists to correct it.
+> This document is the record of the phase as it CLOSED, and everything below describes the tree at
+> `5c79b64`, where gate 9 failed on `route.illicit.r1dlxpt5` (2.32%, −4.5 SE) and
+> `route.illicit.r16kyujq` (2.81%, −1.1 SE). Closing was a scheduling decision, not a pass.
+>
+> **Carry-forward item #1 — the montage spacing constraint — has since landed. `docs/adr/0046` is
+> the authority on it, and it supersedes §6's ITEM #1 below.** Gate 9 passes: no route is under the
+> floor, and the two that were read 6.95% (+15.5 SE) and 12.26% (+28.2 SE). **Item #2 has NOT
+> landed**, so §6's argument about n = 1 and about path granularity stands unchanged.
+>
+> Three things in this document were found to be WRONG when the fix was built, and each is
+> corrected in place below rather than quietly edited away: the golden-run expectation in §6's
+> "Order when it lands", the sufficiency of the two-pass constraint in §6 ITEM #1, and the
+> expectation that the morale-floor share would move.
 
 **Measured on:** 2026-08-20, `dev` at `5c79b64`, tree clean.
 **Authorities:** `docs/phase-3-dod.md` (what closing requires) · `docs/PROGRESS.md` (current
@@ -18,17 +27,17 @@ state) · `docs/adr/0044` **including its addendum** (why gate 9 fails) ·
 
 ## 1. STATUS — all nine gates, run on this tree
 
-| #   | gate                                      | command                                                     | result   |
-| --- | ----------------------------------------- | ----------------------------------------------------------- | -------- |
-| 1   | Static checks                             | `typecheck && lint && test && content:lint && format:check` | **PASS** |
-| 2   | Fixture baseline (the control)            | `pnpm sim:diff -- --runs=2000`                              | **PASS** |
-| 3   | Corpus baseline (the real content)        | `pnpm sim:diff -- --pack=corpus --runs=2000`                | **PASS** |
-| 4   | Goldens                                   | `pnpm test:engine`                                          | **PASS** |
-| 5   | Geo artifacts regenerate byte-identically | `pnpm geo:build -- --check`                                 | **PASS** |
-| 6   | `geo:verify` matches the handoff          | `pnpm geo:verify`                                           | **PASS** |
-| 7   | Route diversity                           | `pnpm geo:diversity`                                        | **PASS** |
-| 8   | Engine purity under bare Node             | `node packages/engine/src/index.ts`                         | **PASS** |
-| 9   | **NO ROUTE BELOW 3% COMPLETION**          | `pnpm sim -- --pack=corpus --runs=280000 --by-route`        | **FAIL** |
+| #   | gate                                      | command                                                     | result                          |
+| --- | ----------------------------------------- | ----------------------------------------------------------- | ------------------------------- |
+| 1   | Static checks                             | `typecheck && lint && test && content:lint && format:check` | **PASS**                        |
+| 2   | Fixture baseline (the control)            | `pnpm sim:diff -- --runs=2000`                              | **PASS**                        |
+| 3   | Corpus baseline (the real content)        | `pnpm sim:diff -- --pack=corpus --runs=2000`                | **PASS**                        |
+| 4   | Goldens                                   | `pnpm test:engine`                                          | **PASS**                        |
+| 5   | Geo artifacts regenerate byte-identically | `pnpm geo:build -- --check`                                 | **PASS**                        |
+| 6   | `geo:verify` matches the handoff          | `pnpm geo:verify`                                           | **PASS**                        |
+| 7   | Route diversity                           | `pnpm geo:diversity`                                        | **PASS**                        |
+| 8   | Engine purity under bare Node             | `node packages/engine/src/index.ts`                         | **PASS**                        |
+| 9   | **NO ROUTE BELOW 3% COMPLETION**          | `pnpm sim -- --pack=corpus --runs=280000 --by-route`        | **FAIL** (green since ADR 0046) |
 
 Detail on the ones whose "pass" is not self-explanatory:
 
@@ -249,6 +258,16 @@ remains — that breaks the wall into a comb at no cost to the montage budget.
 
 **Read first:** ADR 0044 **including its addendum**, ADR 0026 D4, ADR 0039.
 
+> **CORRECTION — the constraint as worded above was IMPLEMENTED AND MEASURED INSUFFICIENT.**
+> "Refuse a segment adjacent to one already montaged while any unmontaged candidate remains" has an
+> unconditional last rung, and an unconditional last rung is not a constraint. On `r1dlxpt5` the
+> deficit demands 10–11 montaged segments from an 18-edge path whose anchors and crossing
+> neighbourhoods are already protected, so the relaxed pass ran on almost every selection: the
+> spaced pass correctly took positions 1, 3, 5, 7, 9, 14, 16 and the relaxed pass then filled
+> 2, 4, 6, 8 and closed every hole. Measured, it moved a 9-leg run at legs 8–16 to a 9-leg run at
+> legs 9–17. **What shipped refuses the hole-filling rung outright, capping montage runs at two.**
+> `docs/adr/0046` is the authority.
+
 **ACCEPTANCE CRITERION — three parts, and completion alone is NOT enough:**
 
 1. **Completion at `--runs=280000 --by-route`** on `route.illicit.r1dlxpt5`, reported with its SE.
@@ -256,6 +275,13 @@ remains — that breaks the wall into a comb at no cost to the montage budget.
 2. **The morale-floor share** — the fraction of runs whose morale reaches 0. It tracked every
    intervention cleanly where completion alone did not, and it is the meter ADR 0044 identified
    as binding.
+   > **CORRECTION — it did NOT track this one.** `r1dlxpt5`'s completion tripled while its
+   > morale-floor share moved 76.70% → 76.60%, i.e. not at all. Part 3 is what showed the
+   > mechanism: `failure_collapsed` fell 21.70% → 17.05% and `arrival_quiet` rose 2.10% → 6.15%,
+   > with `failure_gave_up` unmoved to two decimal places. **The fix converts collapse into
+   > arrival and does not touch morale attrition.** Noted additionally: `morale@0` tracks
+   > `ending.failure_gave_up` to within a point on all 28 routes, so it is close to a restatement
+   > of one histogram row rather than an independent signal. ADR 0046 §Decision 2.
 3. **The ending histogram, compared against a healthy comparable** (`rskpfno` or `r1gjd3s6`).
 
 _Why part 3 is not optional: the two permutations reach statistically identical completion —
@@ -273,8 +299,17 @@ it ships.
 
 **Order when it lands:** `leg-plan.ts` → `pnpm test:engine` → `pnpm sim:diff -- --runs=2000` on
 BOTH packs → regenerate `docs/sim-baseline-corpus.md` → `--runs=280000 --by-route` →
-`pnpm geo:verify` (route structure moved) → `pnpm golden:update`, reviewing the diff.
-**Expect every golden to move: `legKm` feeds `stateDigest`.**
+`pnpm geo:verify` (route structure moved) → ~~`pnpm golden:update`, reviewing the diff.~~
+~~**Expect every golden to move: `legKm` feeds `stateDigest`.**~~
+
+> **CORRECTION — THAT LAST STEP IS WRONG AND WAS NOT RUN.** No golden moved and the fixture
+> baseline printed `No change`. `planLegs` is reached only through `route/materialise-route.ts`;
+> `packages/tools/sim/load-pack.ts` reads fixture routes from
+> `engine/src/__tests__/__fixtures__/routes.json` as literal `RouteState`, and
+> `regenerate-goldens.ts` builds every golden from those same scenarios. So a route-GENERATION
+> change cannot reach them. **That null result is the evidence the change was generation-only** —
+> exactly what `docs/phase-3-dod.md` gate 2 says it is for — and running `golden:update` on the
+> strength of this line would have converted a real finding into a silent pass.
 
 ### ITEM #2 — montage SELECTION and path GRANULARITY
 

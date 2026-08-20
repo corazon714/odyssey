@@ -332,6 +332,123 @@ describe('montage selection is stable, and never eats a scene', () => {
   });
 });
 
+describe('montage SPACING — the hour wall (ADR 0044, ADR 0046)', () => {
+  /**
+   * The defect these pin. Drain is charged per HOUR and recovery arrives per LEG, so a montage
+   * run is not merely a long summary — it is a stretch billing all of its hours against a single
+   * event each. `route.illicit.r1dlxpt5` billed 232 of its 509 hours inside nine CONSECUTIVE
+   * montage legs and lost 67% of its population there, against 22% for a route that spread the
+   * same 509 hours.
+   *
+   * Asserted on `montageLegs`, which is leg space and therefore the space the wall lives in.
+   * Segment space would be the weaker claim: a montaged segment is exactly one leg and every
+   * other segment gets at least one, so consecutive montage LEGS hold if and only if the
+   * montaged SEGMENTS were consecutive.
+   */
+  const longestRun = (legs: readonly number[]): number => {
+    let best = 0;
+    let run = 0;
+    for (let i = 0; i < legs.length; i += 1) {
+      run = i > 0 && legs[i] === (legs[i - 1] ?? 0) + 1 ? run + 1 : 1;
+      if (run > best) best = run;
+    }
+    return best;
+  };
+
+  /** A coarse corridor: few edges, each far longer than any density, and uniformly dull. */
+  const coarseDullRoute = (n: number, km: number): LegSegment[] =>
+    Array.from({ length: n }, () =>
+      segment({ distanceKm: km, terrain: 'steppe', servicesCount: 0, scenic: 0 }),
+    );
+
+  it('never montages three consecutive segments — the wall cannot form', () => {
+    // The regression. Before the constraint these routes montaged one solid block: the selector
+    // picked by dullness alone, and position entered only through `protectedFromMontage`.
+    for (const [n, km] of [
+      [18, 950],
+      [18, 2200],
+      [20, 1200],
+      [24, 900],
+      [30, 700],
+    ] as const) {
+      const plan = planLegs(coarseDullRoute(n, km));
+      expect(plan.montageLegs.length, `n=${n} km=${km} montaged nothing — vacuous`).toBeGreaterThan(
+        0,
+      );
+      expect(
+        longestRun(plan.montageLegs),
+        `n=${n} km=${km} legs=${plan.montageLegs.join(',')}`,
+      ).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('spaces montage when the route has room, rather than merely capping the run', () => {
+    // A cap alone would allow pairs everywhere. The ladder takes ISOLATED segments first, so a
+    // route with room comes out as a comb and not as a chain of twos.
+    const plan = planLegs(coarseDullRoute(18, 950));
+    expect(longestRun(plan.montageLegs)).toBe(1);
+    for (let i = 1; i < plan.montageLegs.length; i += 1) {
+      expect((plan.montageLegs[i] ?? 0) - (plan.montageLegs[i - 1] ?? 0)).toBeGreaterThan(1);
+    }
+  });
+
+  it('does not change the leg count it was already going to produce', () => {
+    /**
+     * The cost this constraint is allowed to have, and it is none. Every route on the current
+     * slice is in the EXPANSION regime (`target > segments.length`), where `legCount` is exactly
+     * `target` whatever montage does — montage decides who gets the surplus, not how many legs
+     * there are. So refusing a segment to keep a gap moves the surplus and nothing else, which is
+     * why this constraint does not have to trade against ADR 0026 Decision 4's cap.
+     *
+     * Tested as an A/B rather than against a formula. Marking segments as crossings changes
+     * `protectedFromMontage`, therefore the candidate set, therefore which segments get montaged
+     * — while leaving `distanceKm` and `terrain` alone, so `rawUnits`, `rawLegs` and `target` are
+     * identical by construction. Two genuinely different montage outcomes over one leg budget is
+     * exactly the comparison the claim is about, and a formula restating `target` here would only
+     * assert that `planLegs` agrees with a copy of itself.
+     */
+    for (const [n, km] of [
+      [18, 950],
+      [24, 900],
+      [30, 700],
+    ] as const) {
+      const plain = planLegs(coarseDullRoute(n, km));
+      const withCrossings = planLegs(
+        coarseDullRoute(n, km).map((s, i) => (i % 5 === 2 ? { ...s, viaCrossingNode: true } : s)),
+      );
+
+      expect(withCrossings.totalKm).toBe(plain.totalKm);
+      // The montage sets genuinely differ, or the comparison below proves nothing.
+      expect(withCrossings.montageLegs).not.toEqual(plain.montageLegs);
+      expect(withCrossings.legCount).toBe(plain.legCount);
+
+      for (const plan of [plain, withCrossings]) {
+        expect(plan.legKm.reduce((a, b) => a + b, 0)).toBe(plan.totalKm);
+        expect(plan.legCount).toBeGreaterThanOrEqual(minLegs(plan.totalKm));
+        expect(plan.legCount).toBeLessThanOrEqual(maxLegs(plan.totalKm));
+      }
+    }
+  });
+
+  it('still montages when the route has NO room to space — the budget is not shrunk', () => {
+    // The ladder DEGRADES, it does not refuse. A short route whose only candidates are adjacent
+    // must still get its montage, or the constraint would silently under-compress exactly the
+    // coarse paths it was written for.
+    const plan = planLegs(coarseDullRoute(5, 3000));
+    expect(plan.montageLegs.length).toBeGreaterThan(0);
+    expect(longestRun(plan.montageLegs)).toBeLessThanOrEqual(2);
+  });
+
+  it('is deterministic and RNG-free — the same segments give the same plan', () => {
+    // `legKm` reaches `RouteState`, therefore `stateDigest`, therefore every golden run. Two
+    // passes over one total order preserve that; a coin anywhere in the selector would not.
+    const a = planLegs(coarseDullRoute(18, 950));
+    const b = planLegs(coarseDullRoute(18, 950));
+    expect(a.montageLegs).toEqual(b.montageLegs);
+    expect(a.legKm).toEqual(b.legKm);
+  });
+});
+
 describe('degenerate input does not throw', () => {
   it('returns an empty plan for an empty path', () => {
     expect(planLegs([])).toEqual({
