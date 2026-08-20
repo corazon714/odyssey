@@ -1,0 +1,1791 @@
+{
+  "_generated": "pnpm hermes:fixture — do not edit by hand",
+  "_why": "ADR 0012 section 3: the engine has never executed on Hermes. See packages/tools/hermes-fixture/cli.ts",
+  "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
+  "registries": {
+    "npcs": ["border_guard", "roadside_mechanic", "pickpocket"],
+    "items": ["ration", "spare_tyre", "cash_belt"],
+    "traits": ["smooth_talker", "light_sleeper"],
+    "modifiers": [],
+    "complications": [],
+    "universalChoices": []
+  },
+  "events": [
+    {
+      "id": "filler.roadside_quiet",
+      "version": 1,
+      "category": "filler",
+      "tags": ["travel", "quiet"],
+      "priority": "filler",
+      "beatType": null,
+      "weight": 100,
+      "tensionBand": null,
+      "context": {
+        "locationTypes": [],
+        "timeOfDay": [],
+        "transportModes": [],
+        "weather": [],
+        "routeProfiles": []
+      },
+      "cooldownLegs": 2,
+      "maxOccurrences": null,
+      "exclusiveGroup": null,
+      "requires": {
+        "kind": "always"
+      },
+      "image": null,
+      "titleKey": "events.filler.roadside_quiet.title",
+      "bodyKey": "events.filler.roadside_quiet.body",
+      "choices": [
+        {
+          "id": "keep_going",
+          "labelKey": "events.filler.roadside_quiet.choice.keep_going",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": null,
+          "costs": [],
+          "skillCheck": null,
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 1,
+              "onCheck": null,
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.filler.roadside_quiet.out.onward",
+              "textVariants": ["events.filler.roadside_quiet.out.onward_again"],
+              "effects": [
+                {
+                  "op": "advanceTime",
+                  "hours": 3
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "filler.long_hours",
+      "version": 1,
+      "category": "filler",
+      "tags": ["travel", "fatigue"],
+      "priority": "filler",
+      "beatType": null,
+      "weight": 80,
+      "tensionBand": null,
+      "context": {
+        "locationTypes": [],
+        "timeOfDay": [],
+        "transportModes": [],
+        "weather": [],
+        "routeProfiles": []
+      },
+      "cooldownLegs": 2,
+      "maxOccurrences": null,
+      "exclusiveGroup": null,
+      "requires": {
+        "kind": "always"
+      },
+      "image": null,
+      "titleKey": "events.filler.long_hours.title",
+      "bodyKey": "events.filler.long_hours.body",
+      "choices": [
+        {
+          "id": "push_on",
+          "labelKey": "events.filler.long_hours.choice.push_on",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": null,
+          "costs": [],
+          "skillCheck": null,
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 1,
+              "onCheck": null,
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.filler.long_hours.out.tired",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "advanceTime",
+                  "hours": 5
+                },
+                {
+                  "op": "resource",
+                  "key": "energy",
+                  "delta": -1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "rest",
+          "labelKey": "events.filler.long_hours.choice.rest",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": null,
+          "costs": [],
+          "skillCheck": null,
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 1,
+              "onCheck": null,
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.filler.long_hours.out.rested",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "advanceTime",
+                  "hours": 8
+                },
+                {
+                  "op": "resource",
+                  "key": "energy",
+                  "delta": 2
+                },
+                {
+                  "op": "resource",
+                  "key": "hunger",
+                  "delta": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "border.bribe_attempt",
+      "version": 1,
+      "category": "border",
+      "tags": ["authority", "money", "risk", "corruption"],
+      "priority": "beat",
+      "beatType": "border_crossing",
+      "weight": 100,
+      "tensionBand": [0.4, 1],
+      "context": {
+        "locationTypes": ["border_crossing", "checkpoint"],
+        "timeOfDay": ["evening", "night"],
+        "transportModes": ["car", "truck", "bus"],
+        "weather": [],
+        "routeProfiles": []
+      },
+      "cooldownLegs": 999,
+      "maxOccurrences": 1,
+      "exclusiveGroup": "border_resolution",
+      "requires": {
+        "kind": "all",
+        "of": [
+          {
+            "kind": "resource",
+            "key": "cash",
+            "cmp": {
+              "op": "gte",
+              "value": 30
+            }
+          },
+          {
+            "kind": "not",
+            "of": {
+              "kind": "flag",
+              "id": "bribed_this_border",
+              "cmp": {
+                "op": "isSet"
+              }
+            }
+          }
+        ]
+      },
+      "image": "border/bribe_attempt",
+      "titleKey": "events.border.bribe_attempt.title",
+      "bodyKey": "events.border.bribe_attempt.body",
+      "choices": [
+        {
+          "id": "offer_bribe",
+          "labelKey": "events.border.bribe_attempt.choice.offer",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": null,
+          "costs": [
+            {
+              "op": "resource",
+              "key": "cash",
+              "delta": -40
+            }
+          ],
+          "skillCheck": {
+            "skill": "negotiation",
+            "dc": 12,
+            "tags": ["social", "bribery", "authority", "crime"],
+            "visibility": "partial",
+            "modifiers": [
+              {
+                "labelKey": "check.modifier.smooth_talker",
+                "delta": 2,
+                "when": {
+                  "kind": "trait",
+                  "id": "smooth_talker"
+                }
+              }
+            ]
+          },
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 1,
+              "onCheck": "success",
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.border.bribe_attempt.out.success",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "flag",
+                  "id": "bribed_this_border",
+                  "value": true,
+                  "ttlLegs": 1
+                },
+                {
+                  "op": "relationship",
+                  "npc": "border_guard",
+                  "trustDelta": 1,
+                  "meet": true,
+                  "addTags": ["bribed"]
+                },
+                {
+                  "op": "advanceTime",
+                  "hours": 1
+                },
+                {
+                  "op": "scheduleEvent",
+                  "eventId": "border.guard_remembers",
+                  "inLegs": [4, 12],
+                  "requires": null,
+                  "payload": null
+                }
+              ]
+            },
+            {
+              "weight": 3,
+              "onCheck": "failure",
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.border.bribe_attempt.out.refused",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "resource",
+                  "key": "heat",
+                  "delta": 2
+                },
+                {
+                  "op": "flag",
+                  "id": "bribe_on_record",
+                  "value": true,
+                  "ttlLegs": null
+                }
+              ]
+            },
+            {
+              "weight": 1,
+              "onCheck": "failure",
+              "requires": {
+                "kind": "resource",
+                "key": "heat",
+                "cmp": {
+                  "op": "gte",
+                  "value": 5
+                }
+              },
+              "textKey": "events.border.bribe_attempt.out.detained",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "flag",
+                  "id": "detained",
+                  "value": true,
+                  "ttlLegs": null
+                },
+                {
+                  "op": "flag",
+                  "id": "wanted",
+                  "value": true,
+                  "ttlLegs": null
+                },
+                {
+                  "op": "advanceTime",
+                  "hours": 14
+                },
+                {
+                  "op": "resource",
+                  "key": "morale",
+                  "delta": -3
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "present_documents",
+          "labelKey": "events.border.bribe_attempt.choice.documents",
+          "requires": {
+            "kind": "passport",
+            "present": true,
+            "valid": true,
+            "flagged": null
+          },
+          "hiddenUnless": null,
+          "costs": [],
+          "skillCheck": null,
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 4,
+              "onCheck": null,
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.border.bribe_attempt.out.waved_through",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "advanceTime",
+                  "hours": 2
+                }
+              ]
+            },
+            {
+              "weight": 1,
+              "onCheck": null,
+              "requires": {
+                "kind": "flag",
+                "id": "wanted",
+                "cmp": {
+                  "op": "isSet"
+                }
+              },
+              "textKey": "events.border.bribe_attempt.out.flagged_in_system",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "flag",
+                  "id": "detained",
+                  "value": true,
+                  "ttlLegs": null
+                },
+                {
+                  "op": "unlockEnding",
+                  "id": "ending.detained_at_border"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "hide_the_cash",
+          "labelKey": "events.border.bribe_attempt.choice.hide_the_cash",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": {
+            "kind": "resource",
+            "key": "cash",
+            "cmp": {
+              "op": "gte",
+              "value": 100
+            }
+          },
+          "costs": [],
+          "skillCheck": null,
+          "search": {
+            "container": "person",
+            "dc": 12,
+            "item": "cash_belt",
+            "skill": "stealth",
+            "tags": ["stealth", "search"]
+          },
+          "outcomes": [
+            {
+              "weight": 1,
+              "onCheck": "success",
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.border.bribe_attempt.out.concealed",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "resource",
+                  "key": "heat",
+                  "delta": 1
+                }
+              ]
+            },
+            {
+              "weight": 1,
+              "onCheck": "failure",
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.border.bribe_attempt.out.found",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "resource",
+                  "key": "cash",
+                  "delta": -60
+                },
+                {
+                  "op": "resource",
+                  "key": "heat",
+                  "delta": 3
+                },
+                {
+                  "op": "flag",
+                  "id": "bribe_on_record",
+                  "value": true,
+                  "ttlLegs": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "turn_back",
+          "labelKey": "events.border.bribe_attempt.choice.turn_back",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": {
+            "kind": "resource",
+            "key": "heat",
+            "cmp": {
+              "op": "gte",
+              "value": 6
+            }
+          },
+          "costs": [],
+          "skillCheck": null,
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 1,
+              "onCheck": null,
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.border.bribe_attempt.out.detour",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "advanceTime",
+                  "hours": 20
+                },
+                {
+                  "op": "resource",
+                  "key": "morale",
+                  "delta": -2
+                },
+                {
+                  "op": "flag",
+                  "id": "took_the_long_way",
+                  "value": true,
+                  "ttlLegs": null
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "border.document_check",
+      "version": 1,
+      "category": "border",
+      "tags": ["authority", "documents"],
+      "priority": "beat",
+      "beatType": "border_crossing",
+      "weight": 120,
+      "tensionBand": null,
+      "context": {
+        "locationTypes": ["border_crossing", "checkpoint"],
+        "timeOfDay": [],
+        "transportModes": [],
+        "weather": [],
+        "routeProfiles": []
+      },
+      "cooldownLegs": 6,
+      "maxOccurrences": null,
+      "exclusiveGroup": "border_resolution",
+      "requires": {
+        "kind": "always"
+      },
+      "image": null,
+      "titleKey": "events.border.document_check.title",
+      "bodyKey": "events.border.document_check.body",
+      "choices": [
+        {
+          "id": "hand_them_over",
+          "labelKey": "events.border.document_check.choice.hand_over",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": null,
+          "costs": [],
+          "skillCheck": null,
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 3,
+              "onCheck": null,
+              "requires": {
+                "kind": "passport",
+                "present": true,
+                "valid": true,
+                "flagged": null
+              },
+              "textKey": "events.border.document_check.out.clear",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "advanceTime",
+                  "hours": 1
+                }
+              ]
+            },
+            {
+              "weight": 2,
+              "onCheck": null,
+              "requires": {
+                "kind": "passport",
+                "present": false,
+                "valid": null,
+                "flagged": null
+              },
+              "textKey": "events.border.document_check.out.no_papers",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "resource",
+                  "key": "heat",
+                  "delta": 3
+                },
+                {
+                  "op": "advanceTime",
+                  "hours": 6
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transit.bus_ejection",
+      "version": 1,
+      "category": "transit",
+      "tags": ["authority", "transport", "humiliation"],
+      "priority": "normal",
+      "beatType": null,
+      "weight": 90,
+      "tensionBand": [0.2, 0.9],
+      "context": {
+        "locationTypes": [],
+        "timeOfDay": [],
+        "transportModes": ["bus"],
+        "weather": [],
+        "routeProfiles": []
+      },
+      "cooldownLegs": 8,
+      "maxOccurrences": 3,
+      "exclusiveGroup": null,
+      "requires": {
+        "kind": "always"
+      },
+      "image": null,
+      "titleKey": "events.transit.bus_ejection.title",
+      "bodyKey": "events.transit.bus_ejection.body",
+      "choices": [
+        {
+          "id": "plead_with_driver",
+          "labelKey": "events.transit.bus_ejection.choice.plead",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": null,
+          "costs": [],
+          "skillCheck": {
+            "skill": "negotiation",
+            "dc": 14,
+            "tags": ["social", "intimidate"],
+            "visibility": "hidden",
+            "modifiers": [
+              {
+                "labelKey": "check.modifier.seen_before",
+                "delta": -2,
+                "when": {
+                  "kind": "eventMemory",
+                  "event": "transit.bus_ejection",
+                  "field": "count",
+                  "cmp": {
+                    "op": "gte",
+                    "value": 1
+                  }
+                }
+              }
+            ]
+          },
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 1,
+              "onCheck": "success",
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.transit.bus_ejection.out.relented",
+              "textVariants": ["events.transit.bus_ejection.out.relented_again"],
+              "effects": [
+                {
+                  "op": "resource",
+                  "key": "morale",
+                  "delta": -1
+                }
+              ]
+            },
+            {
+              "weight": 1,
+              "onCheck": "failure",
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.transit.bus_ejection.out.ejected",
+              "textVariants": ["events.transit.bus_ejection.out.ejected_again"],
+              "effects": [
+                {
+                  "op": "transport",
+                  "change": {
+                    "field": "mode",
+                    "mode": "foot",
+                    "vehicleId": null
+                  }
+                },
+                {
+                  "op": "resource",
+                  "key": "morale",
+                  "delta": -2
+                },
+                {
+                  "op": "advanceTime",
+                  "hours": 4
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "get_off",
+          "labelKey": "events.transit.bus_ejection.choice.get_off",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": null,
+          "costs": [],
+          "skillCheck": null,
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 1,
+              "onCheck": null,
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.transit.bus_ejection.out.walked",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "transport",
+                  "change": {
+                    "field": "mode",
+                    "mode": "foot",
+                    "vehicleId": null
+                  }
+                },
+                {
+                  "op": "advanceTime",
+                  "hours": 3
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rest.pickpocket_victim",
+      "version": 1,
+      "category": "rest",
+      "tags": ["theft", "money", "crowd"],
+      "priority": "normal",
+      "beatType": null,
+      "weight": 70,
+      "tensionBand": null,
+      "context": {
+        "locationTypes": ["rest_stop", "station", "city", "town"],
+        "timeOfDay": [],
+        "transportModes": [],
+        "weather": [],
+        "routeProfiles": []
+      },
+      "cooldownLegs": 10,
+      "maxOccurrences": 2,
+      "exclusiveGroup": null,
+      "requires": {
+        "kind": "resource",
+        "key": "cash",
+        "cmp": {
+          "op": "gte",
+          "value": 10
+        }
+      },
+      "image": null,
+      "titleKey": "events.rest.pickpocket_victim.title",
+      "bodyKey": "events.rest.pickpocket_victim.body",
+      "choices": [
+        {
+          "id": "chase",
+          "labelKey": "events.rest.pickpocket_victim.choice.chase",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": null,
+          "costs": [],
+          "skillCheck": {
+            "skill": "endurance",
+            "dc": 13,
+            "tags": ["physical", "endurance", "crime"],
+            "visibility": "partial",
+            "modifiers": [
+              {
+                "labelKey": "check.modifier.exhausted",
+                "delta": -3,
+                "when": {
+                  "kind": "resource",
+                  "key": "energy",
+                  "cmp": {
+                    "op": "lte",
+                    "value": 3
+                  }
+                }
+              }
+            ]
+          },
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 1,
+              "onCheck": "success",
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.rest.pickpocket_victim.out.recovered",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "resource",
+                  "key": "energy",
+                  "delta": -2
+                },
+                {
+                  "op": "relationship",
+                  "npc": "pickpocket",
+                  "trustDelta": -2,
+                  "meet": true,
+                  "addTags": ["thief"]
+                }
+              ]
+            },
+            {
+              "weight": 2,
+              "onCheck": "failure",
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.rest.pickpocket_victim.out.lost",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "resource",
+                  "key": "cash",
+                  "delta": -40
+                },
+                {
+                  "op": "resource",
+                  "key": "energy",
+                  "delta": -2
+                },
+                {
+                  "op": "item",
+                  "id": "cash_belt",
+                  "countDelta": -1,
+                  "condition": null,
+                  "container": null
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "let_it_go",
+          "labelKey": "events.rest.pickpocket_victim.choice.let_it_go",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": null,
+          "costs": [],
+          "skillCheck": null,
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 1,
+              "onCheck": null,
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.rest.pickpocket_victim.out.shrug",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "resource",
+                  "key": "cash",
+                  "delta": -40
+                },
+                {
+                  "op": "resource",
+                  "key": "morale",
+                  "delta": -1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "border.guard_remembers",
+      "version": 1,
+      "category": "border",
+      "tags": ["authority", "corruption", "memory"],
+      "priority": "normal",
+      "beatType": null,
+      "weight": 150,
+      "tensionBand": null,
+      "context": {
+        "locationTypes": ["border_crossing", "checkpoint"],
+        "timeOfDay": [],
+        "transportModes": [],
+        "weather": [],
+        "routeProfiles": []
+      },
+      "cooldownLegs": 999,
+      "maxOccurrences": 1,
+      "exclusiveGroup": null,
+      "requires": {
+        "kind": "npcMet",
+        "npc": "border_guard",
+        "met": true
+      },
+      "image": null,
+      "titleKey": "events.border.guard_remembers.title",
+      "bodyKey": "events.border.guard_remembers.body",
+      "choices": [
+        {
+          "id": "acknowledge",
+          "labelKey": "events.border.guard_remembers.choice.acknowledge",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": null,
+          "costs": [],
+          "skillCheck": null,
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 1,
+              "onCheck": null,
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.border.guard_remembers.out.waved",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "relationship",
+                  "npc": "border_guard",
+                  "trustDelta": 1,
+                  "meet": false,
+                  "addTags": []
+                },
+                {
+                  "op": "advanceTime",
+                  "hours": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crisis.breakdown",
+      "version": 1,
+      "category": "crisis",
+      "tags": ["transport", "money", "delay"],
+      "priority": "beat",
+      "beatType": "midpoint_crisis",
+      "weight": 100,
+      "tensionBand": [0.5, 1],
+      "context": {
+        "locationTypes": [],
+        "timeOfDay": [],
+        "transportModes": ["car", "truck"],
+        "weather": [],
+        "routeProfiles": []
+      },
+      "cooldownLegs": 999,
+      "maxOccurrences": 1,
+      "exclusiveGroup": null,
+      "requires": {
+        "kind": "always"
+      },
+      "image": null,
+      "titleKey": "events.crisis.breakdown.title",
+      "bodyKey": "events.crisis.breakdown.body",
+      "choices": [
+        {
+          "id": "fix_it_yourself",
+          "labelKey": "events.crisis.breakdown.choice.fix",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": null,
+          "costs": [],
+          "skillCheck": {
+            "skill": "mechanics",
+            "dc": 15,
+            "tags": ["mechanics", "physical"],
+            "visibility": "full",
+            "modifiers": [
+              {
+                "labelKey": "check.modifier.has_spare",
+                "delta": 4,
+                "when": {
+                  "kind": "item",
+                  "id": "spare_tyre",
+                  "cmp": {
+                    "op": "gte",
+                    "value": 1
+                  },
+                  "in": null
+                }
+              }
+            ]
+          },
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 1,
+              "onCheck": "success",
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.crisis.breakdown.out.fixed",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "transport",
+                  "change": {
+                    "field": "condition",
+                    "delta": 4
+                  }
+                },
+                {
+                  "op": "advanceTime",
+                  "hours": 5
+                }
+              ]
+            },
+            {
+              "weight": 1,
+              "onCheck": "failure",
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.crisis.breakdown.out.stuck",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "advanceTime",
+                  "hours": 12
+                },
+                {
+                  "op": "resource",
+                  "key": "morale",
+                  "delta": -2
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "find_help",
+          "labelKey": "events.crisis.breakdown.choice.find_help",
+          "requires": {
+            "kind": "resource",
+            "key": "cash",
+            "cmp": {
+              "op": "gte",
+              "value": 60
+            }
+          },
+          "hiddenUnless": null,
+          "costs": [
+            {
+              "op": "resource",
+              "key": "cash",
+              "delta": -60
+            }
+          ],
+          "skillCheck": null,
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 1,
+              "onCheck": null,
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.crisis.breakdown.out.towed",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "transport",
+                  "change": {
+                    "field": "condition",
+                    "delta": 6
+                  }
+                },
+                {
+                  "op": "relationship",
+                  "npc": "roadside_mechanic",
+                  "trustDelta": 1,
+                  "meet": true,
+                  "addTags": []
+                },
+                {
+                  "op": "advanceTime",
+                  "hours": 9
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "arrival.final_stretch",
+      "version": 1,
+      "category": "arrival",
+      "tags": ["arrival", "relief"],
+      "priority": "beat",
+      "beatType": "finale",
+      "weight": 100,
+      "tensionBand": null,
+      "context": {
+        "locationTypes": [],
+        "timeOfDay": [],
+        "transportModes": [],
+        "weather": [],
+        "routeProfiles": []
+      },
+      "cooldownLegs": 999,
+      "maxOccurrences": 1,
+      "exclusiveGroup": null,
+      "requires": {
+        "kind": "always"
+      },
+      "image": null,
+      "titleKey": "events.arrival.final_stretch.title",
+      "bodyKey": "events.arrival.final_stretch.body",
+      "choices": [
+        {
+          "id": "walk_in",
+          "labelKey": "events.arrival.final_stretch.choice.walk_in",
+          "requires": {
+            "kind": "always"
+          },
+          "hiddenUnless": null,
+          "costs": [],
+          "skillCheck": null,
+          "search": null,
+          "outcomes": [
+            {
+              "weight": 3,
+              "onCheck": null,
+              "requires": {
+                "kind": "resource",
+                "key": "morale",
+                "cmp": {
+                  "op": "gte",
+                  "value": 5
+                }
+              },
+              "textKey": "events.arrival.final_stretch.out.triumphant",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "unlockEnding",
+                  "id": "ending.arrival_triumphant"
+                }
+              ]
+            },
+            {
+              "weight": 2,
+              "onCheck": null,
+              "requires": {
+                "kind": "always"
+              },
+              "textKey": "events.arrival.final_stretch.out.hollow",
+              "textVariants": [],
+              "effects": [
+                {
+                  "op": "unlockEnding",
+                  "id": "ending.arrival_hollow"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "start": {
+        "transportMode": "car",
+        "vehicleLegal": true,
+        "cash": 320,
+        "startHour": 7,
+        "weather": "clear"
+      },
+      "route": {
+        "id": "fixture.short",
+        "profile": "fastest",
+        "nodes": ["origin", "waypoint_a", "destination"],
+        "edges": ["origin-waypoint_a", "waypoint_a-destination"],
+        "legIndex": 0,
+        "legCount": 10,
+        "progressKm": 0,
+        "totalKm": 620,
+        "beatSchedule": [
+          {
+            "legIndex": 0,
+            "type": "departure",
+            "slackLegs": 0,
+            "status": "pending"
+          },
+          {
+            "legIndex": 5,
+            "type": "midpoint_crisis",
+            "slackLegs": 2,
+            "status": "pending"
+          },
+          {
+            "legIndex": 9,
+            "type": "finale",
+            "slackLegs": 0,
+            "status": "pending"
+          }
+        ],
+        "legLocations": [
+          "city",
+          "roadside",
+          "rest_stop",
+          "roadside",
+          "town",
+          "checkpoint",
+          "roadside",
+          "rest_stop",
+          "roadside",
+          "city"
+        ],
+        "legKm": [62, 62, 62, 62, 62, 62, 62, 62, 62, 62],
+        "montageLegs": []
+      }
+    },
+    {
+      "start": {
+        "transportMode": "truck",
+        "vehicleLegal": false,
+        "cash": 540,
+        "startHour": 19,
+        "weather": "fog"
+      },
+      "route": {
+        "id": "fixture.illicit",
+        "profile": "illicit",
+        "nodes": ["origin", "border_a", "waypoint_b", "border_b", "destination"],
+        "edges": [
+          "origin-border_a",
+          "border_a-waypoint_b",
+          "waypoint_b-border_b",
+          "border_b-destination"
+        ],
+        "legIndex": 0,
+        "legCount": 24,
+        "progressKm": 0,
+        "totalKm": 2140,
+        "beatSchedule": [
+          {
+            "legIndex": 0,
+            "type": "departure",
+            "slackLegs": 0,
+            "status": "pending"
+          },
+          {
+            "legIndex": 5,
+            "type": "border_crossing",
+            "slackLegs": 3,
+            "status": "pending"
+          },
+          {
+            "legIndex": 12,
+            "type": "midpoint_crisis",
+            "slackLegs": 3,
+            "status": "pending"
+          },
+          {
+            "legIndex": 17,
+            "type": "border_crossing",
+            "slackLegs": 3,
+            "status": "pending"
+          },
+          {
+            "legIndex": 20,
+            "type": "approach",
+            "slackLegs": 2,
+            "status": "pending"
+          },
+          {
+            "legIndex": 23,
+            "type": "finale",
+            "slackLegs": 0,
+            "status": "pending"
+          }
+        ],
+        "legLocations": [
+          "city",
+          "roadside",
+          "roadside",
+          "rest_stop",
+          "roadside",
+          "border_crossing",
+          "roadside",
+          "roadside",
+          "town",
+          "checkpoint",
+          "roadside",
+          "rest_stop",
+          "wilderness",
+          "checkpoint",
+          "station",
+          "roadside",
+          "roadside",
+          "border_crossing",
+          "roadside",
+          "roadside",
+          "town",
+          "checkpoint",
+          "rest_stop",
+          "city"
+        ],
+        "legKm": [
+          89, 89, 89, 89, 89, 90, 89, 89, 89, 89, 89, 90, 89, 89, 89, 89, 89, 90, 89, 89, 89, 89,
+          89, 90
+        ],
+        "montageLegs": []
+      }
+    },
+    {
+      "start": {
+        "transportMode": "bus",
+        "vehicleLegal": true,
+        "cash": 260,
+        "startHour": 9,
+        "weather": "clear"
+      },
+      "route": {
+        "id": "fixture.scenic",
+        "profile": "scenic",
+        "nodes": ["origin", "waypoint_a", "waypoint_b", "destination"],
+        "edges": ["origin-waypoint_a", "waypoint_a-waypoint_b", "waypoint_b-destination"],
+        "legIndex": 0,
+        "legCount": 16,
+        "progressKm": 0,
+        "totalKm": 1380,
+        "beatSchedule": [
+          {
+            "legIndex": 0,
+            "type": "departure",
+            "slackLegs": 0,
+            "status": "pending"
+          },
+          {
+            "legIndex": 8,
+            "type": "midpoint_crisis",
+            "slackLegs": 2,
+            "status": "pending"
+          },
+          {
+            "legIndex": 13,
+            "type": "approach",
+            "slackLegs": 2,
+            "status": "pending"
+          },
+          {
+            "legIndex": 15,
+            "type": "finale",
+            "slackLegs": 0,
+            "status": "pending"
+          }
+        ],
+        "legLocations": [
+          "city",
+          "roadside",
+          "roadside",
+          "rest_stop",
+          "roadside",
+          "roadside",
+          "town",
+          "roadside",
+          "wilderness",
+          "roadside",
+          "checkpoint",
+          "roadside",
+          "rest_stop",
+          "town",
+          "roadside",
+          "city"
+        ],
+        "legKm": [86, 86, 86, 87, 86, 86, 86, 87, 86, 86, 86, 87, 86, 86, 86, 87],
+        "montageLegs": []
+      }
+    }
+  ],
+  "runs": [
+    {
+      "seed": "golden:fixture.short:random",
+      "routeId": "fixture.short",
+      "policy": "random",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
+      "choiceSequence": [
+        "keep_going",
+        "rest",
+        "let_it_go",
+        "push_on",
+        "keep_going",
+        "fix_it_yourself",
+        "push_on",
+        "keep_going",
+        "rest",
+        "walk_in"
+      ],
+      "expectedDigest": "8afad0e71fa23594fb278f240c0d7ec4",
+      "expectedHistoryKeys": [
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.rest.pickpocket_victim.out.shrug",
+        "events.filler.long_hours.out.tired",
+        "events.filler.roadside_quiet.out.onward",
+        "events.crisis.breakdown.out.stuck",
+        "events.filler.long_hours.out.tired",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.arrival.final_stretch.out.hollow"
+      ],
+      "expectedLegs": 10,
+      "expectedEndings": ["ending.arrival_hollow"]
+    },
+    {
+      "seed": "golden:fixture.short:greedy-safe",
+      "routeId": "fixture.short",
+      "policy": "greedy-safe",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
+      "choiceSequence": [
+        "rest",
+        "keep_going",
+        "let_it_go",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "fix_it_yourself",
+        "rest",
+        "keep_going",
+        "walk_in"
+      ],
+      "expectedDigest": "d9631bc19a5a1c2e779f33f96c93b5c6",
+      "expectedHistoryKeys": [
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.rest.pickpocket_victim.out.shrug",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.crisis.breakdown.out.fixed",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.arrival.final_stretch.out.triumphant"
+      ],
+      "expectedLegs": 10,
+      "expectedEndings": ["ending.arrival_triumphant"]
+    },
+    {
+      "seed": "golden:fixture.short:risk-taker",
+      "routeId": "fixture.short",
+      "policy": "risk-taker",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
+      "choiceSequence": [
+        "rest",
+        "keep_going",
+        "chase",
+        "rest",
+        "keep_going",
+        "fix_it_yourself",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "walk_in"
+      ],
+      "expectedDigest": "0412feccf72c2fd57600da2c16d33007",
+      "expectedHistoryKeys": [
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.rest.pickpocket_victim.out.lost",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.crisis.breakdown.out.stuck",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.arrival.final_stretch.out.hollow"
+      ],
+      "expectedLegs": 10,
+      "expectedEndings": ["ending.arrival_hollow"]
+    },
+    {
+      "seed": "golden:fixture.illicit:random",
+      "routeId": "fixture.illicit",
+      "policy": "random",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
+      "choiceSequence": [
+        "let_it_go",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "push_on",
+        "hand_them_over",
+        "push_on",
+        "keep_going",
+        "push_on",
+        "keep_going",
+        "push_on",
+        "let_it_go",
+        "fix_it_yourself",
+        "keep_going",
+        "push_on"
+      ],
+      "expectedDigest": "02eed8567df5776bfe1c5e7ce3c19d34",
+      "expectedHistoryKeys": [
+        "events.rest.pickpocket_victim.out.shrug",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.tired",
+        "events.border.document_check.out.no_papers",
+        "events.filler.long_hours.out.tired",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.tired",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.tired",
+        "events.rest.pickpocket_victim.out.shrug",
+        "events.crisis.breakdown.out.stuck",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.tired"
+      ],
+      "expectedLegs": 15,
+      "expectedEndings": ["ending.failure_gave_up"]
+    },
+    {
+      "seed": "golden:fixture.illicit:greedy-safe",
+      "routeId": "fixture.illicit",
+      "policy": "greedy-safe",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
+      "choiceSequence": [
+        "let_it_go",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "hand_them_over",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "let_it_go",
+        "fix_it_yourself",
+        "rest",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "offer_bribe",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "walk_in"
+      ],
+      "expectedDigest": "e8017834a761568b478b3c599df0c17a",
+      "expectedHistoryKeys": [
+        "events.rest.pickpocket_victim.out.shrug",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.border.document_check.out.no_papers",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.rest.pickpocket_victim.out.shrug",
+        "events.crisis.breakdown.out.stuck",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.border.bribe_attempt.out.refused",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.arrival.final_stretch.out.hollow"
+      ],
+      "expectedLegs": 24,
+      "expectedEndings": ["ending.arrival_hollow"]
+    },
+    {
+      "seed": "golden:fixture.illicit:risk-taker",
+      "routeId": "fixture.illicit",
+      "policy": "risk-taker",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
+      "choiceSequence": [
+        "chase",
+        "rest",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "hide_the_cash",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "chase",
+        "fix_it_yourself",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "hand_them_over",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "walk_in"
+      ],
+      "expectedDigest": "e28b7fb0f1487c0b9941a5da70b5342c",
+      "expectedHistoryKeys": [
+        "events.rest.pickpocket_victim.out.lost",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.border.bribe_attempt.out.found",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.rest.pickpocket_victim.out.recovered",
+        "events.crisis.breakdown.out.fixed",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.border.document_check.out.no_papers",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.arrival.final_stretch.out.hollow"
+      ],
+      "expectedLegs": 24,
+      "expectedEndings": ["ending.arrival_hollow"]
+    },
+    {
+      "seed": "golden:fixture.scenic:random",
+      "routeId": "fixture.scenic",
+      "policy": "random",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
+      "choiceSequence": [
+        "keep_going",
+        "plead_with_driver",
+        "rest",
+        "chase",
+        "keep_going",
+        "push_on",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "push_on",
+        "keep_going"
+      ],
+      "expectedDigest": "c6eb7e7fa79b5e1510ac319da793fa68",
+      "expectedHistoryKeys": [
+        "events.filler.roadside_quiet.out.onward",
+        "events.transit.bus_ejection.out.ejected",
+        "events.filler.long_hours.out.rested",
+        "events.rest.pickpocket_victim.out.lost",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.tired",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.tired",
+        "events.filler.roadside_quiet.out.onward"
+      ],
+      "expectedLegs": 11,
+      "expectedEndings": ["ending.failure_gave_up"]
+    },
+    {
+      "seed": "golden:fixture.scenic:greedy-safe",
+      "routeId": "fixture.scenic",
+      "policy": "greedy-safe",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
+      "choiceSequence": [
+        "let_it_go",
+        "keep_going",
+        "get_off",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "let_it_go",
+        "keep_going",
+        "rest",
+        "keep_going"
+      ],
+      "expectedDigest": "e1245c8bcc98ff862a836682c8aab352",
+      "expectedHistoryKeys": [
+        "events.rest.pickpocket_victim.out.shrug",
+        "events.filler.roadside_quiet.out.onward",
+        "events.transit.bus_ejection.out.walked",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.rest.pickpocket_victim.out.shrug",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward"
+      ],
+      "expectedLegs": 16,
+      "expectedEndings": ["ending.arrival_quiet"]
+    },
+    {
+      "seed": "golden:fixture.scenic:risk-taker",
+      "routeId": "fixture.scenic",
+      "policy": "risk-taker",
+      "contentVersion": "aee5a082a9f89ceec88ef119461dfe51",
+      "choiceSequence": [
+        "keep_going",
+        "get_off",
+        "keep_going",
+        "chase",
+        "rest",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "keep_going",
+        "rest",
+        "chase",
+        "keep_going",
+        "rest"
+      ],
+      "expectedDigest": "5be4efa19bdbf4117f6536bd7456d34c",
+      "expectedHistoryKeys": [
+        "events.filler.roadside_quiet.out.onward",
+        "events.transit.bus_ejection.out.walked",
+        "events.filler.roadside_quiet.out.onward",
+        "events.rest.pickpocket_victim.out.lost",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested",
+        "events.rest.pickpocket_victim.out.lost",
+        "events.filler.roadside_quiet.out.onward",
+        "events.filler.long_hours.out.rested"
+      ],
+      "expectedLegs": 16,
+      "expectedEndings": ["ending.arrival_quiet"]
+    }
+  ]
+}

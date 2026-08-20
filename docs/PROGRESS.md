@@ -5,6 +5,59 @@
 
 ---
 
+## D10 — the device session is READY. Step 0 pre-verified; all 11 steps have an instrument
+
+**The session was not runnable.** Only steps 4/6/7/8 — the frame budget — had a screen. The Hermes
+group, which the session doc calls its highest-value output, could not run at all: **`@odyssey/engine`
+was not a dependency of `apps/mobile`.**
+
+### Step 0 verified WITHOUT a device
+
+Asked the dev server for the iOS bundle exactly as Expo Go does, via the manifest:
+**HTTP 200, 8.9 MB, no resolution errors.** Skia is **not** bundled (installed but unimported, and
+not in Expo Go — the specific risk §6 named); `expo-blur` is; all four dev screens are.
+**No EAS build, no Apple Developer account.**
+
+### Built
+
+- **`/dev`** — the running order as the screen you start from.
+- **`/dev/hermes-check`** — step 2. Replays the nine golden runs and compares digest, leg count,
+  history-key SEQUENCE and endings. Closes ADR 0012 §3, open since Phase 1.
+- **`/dev/device-check`** — steps 1, 3, 5, 10. Dimensions/pixel ratio/font scale · a live
+  `Intl.PluralRules` check on `ru` · the UI-thread claim tested by blocking JS 500ms and watching a
+  worklet-driven bar · cold start from `__BUNDLE_START_TIME__` · Hermes allocation stats.
+- **`pnpm hermes:fixture`** — the generator.
+
+### The property that makes the Hermes result trustworthy
+
+**The fixture is SELF-CERTIFYING.** The generator replays every run on V8 and refuses to write
+unless all nine digests reproduce. So a mismatch on the phone means Hermes and V8 disagree — it
+**cannot** mean the harness drifted, because drift fails at generation time on the developer's
+machine. Without that, a harness bug would appear on the device as a red result with the wrong
+obvious conclusion, and that is the worst outcome this exercise could have.
+
+`historyKeys` is compared as well as the digest, because a digest hashes the FINAL state and two
+different journeys can reach the same numbers.
+
+### Three integration facts, each found by hitting it
+
+1. **`apps/mobile` now depends on `@odyssey/engine`**, and with it comes a new lint boundary: deep
+   imports (`@odyssey/engine/*`, `**/packages/engine/**`) are banned app-wide. **Verified failing on
+   a deliberate violation.** A deep import walks past the barrel AND past the L2 conformance sweep.
+2. **The app's tsconfig needed `allowImportingTsExtensions`**, because the engine's `main` is
+   `./src/index.ts` and its internal imports carry `.ts` extensions, so type-checking the app now
+   follows TS into them. Legal only alongside `noEmit`, which was already set.
+3. **`packages/tools/tsconfig.json` has an explicit include list**, so a new tool directory is
+   invisible to ESLint's project service until it is named there. Caught as a parsing error.
+
+### OPEN
+
+- **Someone has to pick up the phone.** That is the only thing left.
+- Unchanged: ADR 0047 owed; CLAUDE.md over its cap; carry-forward item #2; the shadow ramp;
+  crossing density (Phase 5); energy floored at 71%; the Android-frost recommendation.
+
+---
+
 ## D9 — `destitute` aliased to `desperate`'s theme, ENFORCED not remembered
 
 Decision taken: no palette for `destitute`. It fires on 11 legs of 81,133 and ends 10 of 2,800 runs

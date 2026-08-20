@@ -471,6 +471,41 @@ clean. Recorded in `docs/enforcement.md`.
 
 ---
 
+## 8a. PRE-FLIGHT, DONE 2026-08-20 — step 0 is GREEN and every step now has an instrument
+
+**Step 0 was verified without a device**, by asking the dev server for the iOS bundle exactly as
+Expo Go does (via the manifest, which requests `transform.engine=hermes`):
+
+- **Bundle builds: HTTP 200, 8.9 MB.** No resolution errors.
+- **Skia is NOT bundled** — 0 references. It is installed but unimported, and it is not in Expo Go;
+  Metro leaves it out, so Expo Go works. This was the specific risk in §6.
+- **`expo-blur` IS bundled** — the thing under test is present.
+- **All four dev screens bundle**, engine and fixture included.
+
+**No EAS build and no Apple Developer account.** Scan a QR in Expo Go.
+
+### Six steps had no instrument. They do now.
+
+Before this, only steps 4, 6, 7 and 8 were runnable — the frame budget. The Hermes group, which
+§2 calls the highest-value output of the session, **could not run at all: `@odyssey/engine` was not
+even a dependency of `apps/mobile`.**
+
+| screen              | steps       | what it does                                                                |
+| ------------------- | ----------- | --------------------------------------------------------------------------- |
+| `/dev`              | —           | the running order below, as the screen you start from                       |
+| `/dev/hermes-check` | 2           | replays the nine golden runs, digest for digest                             |
+| `/dev/device-check` | 1, 3, 5, 10 | dimensions · `Intl.PluralRules` · the UI-thread claim · cold start · memory |
+| `/dev/motion-lab`   | 4, 6, 7, 8  | the blur sweep and the direction-E verdict                                  |
+
+**The Hermes fixture is SELF-CERTIFYING.** `pnpm hermes:fixture` replays every run on V8 and
+refuses to write unless all nine digests reproduce. So a mismatch on the phone means Hermes and V8
+disagree — **it cannot mean the harness drifted**, because a drifted harness fails at generation
+time, loudly, on the developer's machine. Without that property a harness bug would surface on the
+device as a terrifying red result with the wrong obvious conclusion.
+
+The digest is not the only comparison: `historyKeys` is checked too, because a digest is a hash of
+the FINAL state and two different journeys can arrive at the same numbers.
+
 ## 9. RUNNING ORDER
 
 Ordered so that the cheapest thing that can invalidate the session happens first, and so that the
@@ -478,12 +513,12 @@ irreversible-looking results come before the ones that need judgement and a fres
 
 | #   | step                                                                              | settles                      |
 | --- | --------------------------------------------------------------------------------- | ---------------------------- |
-| 0   | **Does it launch in Expo Go?** If not, stop and set up EAS dev build.             | §6 — everything depends      |
+| 0   | **Does it launch in Expo Go?** Pre-verified green — see §8a.                      | §6 — everything depends      |
 | 1   | Record the device's own reported `Dimensions`, `PixelRatio`, refresh rate.        | §4's arithmetic, not my spec |
-| 2   | **Golden runs on Hermes.** Replay the fixtures; compare digests to CI.            | ADR 0012 §3 — highest value  |
-| 3   | `Intl.PluralRules` present? One throwaway plural key.                             | `stack-notes.md` open risk   |
+| 2   | **`/dev/hermes-check`** — replay the nine golden runs.                            | ADR 0012 §3 — highest value  |
+| 3   | **`/dev/device-check`** — `Intl.PluralRules` on Hermes, with a live `ru` check.   | `stack-notes.md` open risk   |
 | 4   | Frame meter wiring: does it report non-zero and plausible?                        | trap 2                       |
-| 5   | UI-thread claim: block JS 500 ms mid-transition; does the animation continue?     | trap 8                       |
+| 5   | **`/dev/device-check`** — block JS 500 ms and watch the bar. Binary.              | trap 8                       |
 | 6   | **Blur sweep, auto mode, 0 → 5 layers.** Record mean and worst per setting.       | §4 — the go/no-go            |
 | 7   | Compute ms-per-layer; apply §4's thresholds; **write the verdict in §4's words.** | the decision                 |
 | 8   | Reduce-motion form: legible? Does a flag change still register?                   | pillar-level requirement     |

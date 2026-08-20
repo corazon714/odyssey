@@ -16,6 +16,11 @@
     "useUnknownInCatchVariables": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
+    // The app imports @odyssey/engine, whose main is `./src/index.ts` and whose internal imports
+    // carry explicit `.ts` extensions (its own tsconfig enables this; Node strips types natively
+    // and Metro resolves them). Type-checking the app therefore follows TS into those imports, so
+    // the flag has to be set here too. Legal only alongside `noEmit`, which is set above.
+    "allowImportingTsExtensions": true,
     "paths": {
       "@/*": ["./src/*"]
     }

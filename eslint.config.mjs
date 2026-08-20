@@ -81,6 +81,20 @@ const GLASS_MESSAGE =
  * refuse. Whether that refusal is a ONE-TOKEN CHANGE or a REDESIGN depends entirely on whether
  * screens reached for BlurView directly, so only the design layer may.
  */
+/**
+ * The app may import the ENGINE BARREL and nothing deeper.
+ *
+ * CLAUDE.md's hard rule for `apps/mobile` is that it imports the engine and renders. A deep import
+ * — `@odyssey/engine/src/state/...`, or a relative path into `packages/engine` — reaches past the
+ * barrel and past the L2 conformance sweep that classifies everything the barrel exports, so a new
+ * vocabulary could reach a screen without ever being classified. The barrel is the contract; this
+ * keeps it the only door.
+ */
+const ENGINE_DEEP_IMPORT_MESSAGE =
+  'Import from the @odyssey/engine BARREL, not from inside it. The barrel is what the L2 ' +
+  'conformance sweep checks and what CLAUDE.md rule 2.2 makes a boundary; a deep import walks ' +
+  'past both. If what you need is not exported, export it.';
+
 const BLUR_MESSAGE =
   'Only apps/mobile/src/design/ may import expo-blur — use the Sheet primitive. The glass budget ' +
   'has to be one number in one place, or an Android frame-budget failure becomes a redesign ' +
@@ -281,10 +295,17 @@ export default tseslint.config(
     name: 'odyssey/app-design-layer',
     files: ['apps/mobile/src/design/**/*.{ts,tsx}'],
     rules: {
-      // The design layer MAY import expo-blur — it is the only place that may. Glass is still out.
+      // The design layer MAY import expo-blur — it is the only place that may. Glass is still out,
+      // and the engine-barrel boundary applies here exactly as it does everywhere else.
       'no-restricted-imports': [
         'error',
-        { paths: [{ name: 'expo-glass-effect', message: GLASS_MESSAGE }] },
+        {
+          paths: [{ name: 'expo-glass-effect', message: GLASS_MESSAGE }],
+          patterns: [
+            { group: ['@odyssey/engine/*'], message: ENGINE_DEEP_IMPORT_MESSAGE },
+            { group: ['**/packages/engine/**'], message: ENGINE_DEEP_IMPORT_MESSAGE },
+          ],
+        },
       ],
     },
   },
@@ -299,6 +320,10 @@ export default tseslint.config(
           paths: [
             { name: 'expo-glass-effect', message: GLASS_MESSAGE },
             { name: 'expo-blur', message: BLUR_MESSAGE },
+          ],
+          patterns: [
+            { group: ['@odyssey/engine/*'], message: ENGINE_DEEP_IMPORT_MESSAGE },
+            { group: ['**/packages/engine/**'], message: ENGINE_DEEP_IMPORT_MESSAGE },
           ],
         },
       ],

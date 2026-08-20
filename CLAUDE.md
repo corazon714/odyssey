@@ -176,10 +176,10 @@ assume a `(planned)` path exists — create it in the phase that needs it. Verif
 ```
 apps/mobile/                Expo app (UI only — no game rules here)
   app/                      expo-router routes                       ✅ _layout.tsx, index.tsx
-  app/dev/                  dev tools — `null` outside __DEV__       ✅ motion-lab
+  app/dev/                  dev tools — `null` outside __DEV__       ✅ 4 screens, session §9
   src/clock/                the ONE sanctioned wall-clock read       ✅
   src/design/               motion tokens + speed scale              ✅ motion.ts (tokens only)
-  src/dev/                  frame meter · the 3 candidate transitions ✅ the 4A spike
+  src/dev/                  frame meter · transitions · sweep · Hermes fixture ✅
   src/{features,audio}/     map · prep · journey · journal · sfx        (planned)
 packages/engine/            Pure TS game engine                      ✅
   src/index.ts              public barrel                            ✅
@@ -311,6 +311,7 @@ pnpm sim -- --by-route        # per-route completion + SE + peak — gate 9. Wri
 pnpm sim -- --moods           # mood occupancy per route — mood calibration. Writes nothing ✅
 pnpm sim:diff -- --runs=2000  # vs the pack's baseline. REFUSES another count — see DoD 6  ✅
 pnpm golden:update            # regenerate golden-runs.json from the engine — REVIEW the diff ✅
+pnpm hermes:fixture           # build the on-device replay fixture; VERIFIES on V8 before writing ✅
 pnpm geo:audit [-- --real]    # candidate pool vs the ADR 0024 budget; writes nothing        ✅
 pnpm geo:build                # derive the slice at the PINNED bbox and write the artifacts  ✅
 pnpm geo:diversity            # the M3.5 go/no-go: median route overlap vs a 70% ceiling     ✅

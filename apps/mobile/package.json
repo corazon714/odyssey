@@ -2,7 +2,7 @@
   "name": "@odyssey/mobile",
   "version": "0.0.0",
   "private": true,
-  "description": "Expo app. UI only — no game rules live here (CLAUDE.md 3).",
+  "description": "Expo app. UI only \u2014 no game rules live here (CLAUDE.md 3).",
   "main": "expo-router/entry",
   "scripts": {
     "dev": "expo start",
@@ -12,6 +12,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@odyssey/engine": "workspace:*",
     "@shopify/react-native-skia": "2.6.2",
     "expo": "~57.0.11",
     "expo-blur": "~57.0.2",

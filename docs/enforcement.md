@@ -164,6 +164,18 @@ do not overlap — the second `ignores` exactly what the first `files` — so ea
 one and order cannot matter. This is the same trap the repeated `RESTRICTED_*` spreads in layers 2
 and 4 exist to avoid.
 
+## The engine-barrel boundary for the app — **live**
+
+`no-restricted-imports` patterns banning `@odyssey/engine/*` and `**/packages/engine/**` throughout
+`apps/mobile/`, added 2026-08-20 when the app first took a dependency on the engine. **Verified
+failing on a deliberate violation** — a `@odyssey/engine/src/state/state-digest.ts` import planted in
+`app/dev/index.tsx`, rejected with its message, then removed.
+
+CLAUDE.md's hard rule for the app is that it imports the engine and renders. A deep import reaches
+past the barrel AND past the L2 conformance sweep, which classifies everything the barrel exports —
+so a new vocabulary could reach a screen without ever being classified. The barrel is the contract;
+this keeps it the only door. If something is not exported, export it.
+
 **What it does not catch:** a transitive import, a `require()`, or a native module reached through
 some other package. It matches import specifiers, which is a shape rather than an intent — the same
 honest limit as the determinism stack in rule 3.

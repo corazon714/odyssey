@@ -104,6 +104,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@odyssey/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@shopify/react-native-skia':
         specifier: 2.6.2
         version: 2.6.2(b81683fa03a99066693008cfefa9cae1)
