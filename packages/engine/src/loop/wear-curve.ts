@@ -77,7 +77,7 @@ import { wearJournalKey, type WearBand } from '../state/wear-state.ts';
  * **The knee is NOT re-swept, deliberately.** ADR 0044 found the gate-9 failure is route SHAPE —
  * a contiguous montage wall — and that no drain dial is implicated: the same `FULL_UNTIL` gives
  * 2.56% and 9.60% on the same multiset of legs. Re-sweeping now would tune a curve against a
- * generation defect, and Phase 4 item #2 may move the route set underneath the sweep anyway.
+ * generation defect, and carry-forward item #2 may move the route set underneath the sweep anyway.
  * **Re-sweep after item #2, against the route set it produces**, and regenerate this table with
  * its grid size stated in the caption so the next reader cannot make this mistake either.
  *

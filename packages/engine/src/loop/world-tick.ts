@@ -143,7 +143,7 @@ const HARSH_WEATHER_HOURS = 6;
  * **THE CONSTANTS ARE NOT RE-DERIVED, AND THAT IS DELIBERATE.** ADR 0044's finding is that no
  * dial is implicated in the gate-9 failure at all — the same 44/22 gives 2.56% and 9.60% on the
  * same multiset of legs, so what is wrong is route SHAPE, not the drain economy. Re-deriving
- * them now would tune against a route-shape defect, and Phase 4 item #2 may move the route set
+ * them now would tune against a route-shape defect, and carry-forward item #2 may move the route set
  * underneath the derivation anyway. **Re-derive after item #2, against the route set it
  * produces.** Until then this block records drift and nothing more.
  *

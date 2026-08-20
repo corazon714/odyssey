@@ -246,7 +246,7 @@ problem. Handed forward with an owner.
 
 # ADDENDUM — `peak` is a FLAG, not a dial. The comb permutation retires the stronger claim
 
-**Date:** 2026-08-20. Written against the same tree, before any Phase 4 work, so that the fix
+**Date:** 2026-08-20. Written against the same tree, before any carry-forward work, so that the fix
 above cannot be justified against a claim this measurement has weakened.
 
 ## What this ADR originally claimed, and what was measured

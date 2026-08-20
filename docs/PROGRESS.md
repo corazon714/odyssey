@@ -10,7 +10,7 @@
 > **`docs/phase-3-closeout.md` is the closing artefact and the thing to read first.** Closing is
 > a scheduling decision, not a pass. Eight gates pass, gate 9 FAILS on
 > `route.illicit.r1dlxpt5` (2.32%, −4.5 SE) and `route.illicit.r16kyujq` (2.81%, −1.1 SE), and
-> it is expected to keep failing until Phase 4 item #1 lands.
+> it is expected to keep failing until carry-forward item #1 lands.
 
 Committed on `dev`, six commits: `675d37a` (one run count for gate 9), `d4f40b7` (ADR 0044 — the
 finding), `a13db87` (the `peak` column), `5c79b64` (peak is a flag, not a dial), `1b945dc` (the
@@ -118,7 +118,7 @@ and an explicit note about why the old wording was a defect, since results move 
 do not.
 
 **Then the column's own interpretation was falsified and corrected** — ADR 0044's addendum, its
-own commit, before any Phase 4 work. The comb permutation took `peak` from 232 to 109 and gained
+own commit, before any carry-forward work. The comb permutation took `peak` from 232 to 109 and gained
 **less** than the variant that left `peak` at 232 (8.64% vs 9.32%, 1.7 SE apart). Add a partial
 correlation of only −0.296 once `hours` is held, inconsistent ordering within hours-strata, and
 an **empty 178–231 band** — so the clean-looking gap is a hole in the sample, not a cliff — and
@@ -127,9 +127,9 @@ failing routes from their comparables. It must never appear in an acceptance tes
 `conc` was considered as a second column and refused: its partial correlation holding hours is
 **+0.211, the wrong sign**.
 
-### Handed forward — **PHASE 4 ITEM #1**
+### Handed forward — **CARRY-FORWARD ITEM #1**
 
-- **THE MONTAGE SPACING CONSTRAINT. First thing in Phase 4, and nothing else in its commit.**
+- **THE MONTAGE SPACING CONSTRAINT. Its own commit, nothing else in it.**
   **Where:** `packages/engine/src/route/leg-plan.ts` — the selection loop in `planLegs`, beside
   `byDullness` and `protectedFromMontage`.
   **What:** `planLegs` picks montage by dullness alone; position enters only via
@@ -183,7 +183,7 @@ failing routes from their comparables. It must never appear in an acceptance tes
   order — in a direction the permutation experiment cannot predict. The ~9% is an estimate from
   the order-only family, not a promise.)_
 
-- **PHASE 4 ITEM #2 — montage SELECTION and path GRANULARITY**, the half of the gap a spacing
+- **CARRY-FORWARD ITEM #2 — montage SELECTION and path GRANULARITY**, the half of the gap a spacing
   constraint cannot reach. `illicit` detours around controls onto the coarsest long-edge path,
   which is how Beira-Aktobe's routes carry 16,983 km on 18 edges; montage then collapses each
   2,238 km segment to one leg clamped at `MAX_MONTAGE_HOURS`. Same root as ADR 0043's generator
@@ -245,8 +245,8 @@ except this paragraph.**
 > **Decide `greedy-safe`: player model, or instrument artefact? Then, and only then, decide
 > whether gate 9 becomes a per-CELL floor.**
 >
-> **Why this and not the Phase 4 fix.** Phase 4 item #1's acceptance criterion is measured per
-> route, pooled over five policies. If one of those policies is broken, the criterion is broken,
+> **Why this and not the spacing fix.** Carry-forward item #1's acceptance criterion is
+> measured per route, pooled over five policies. If one of those policies is broken, the criterion is broken,
 > and the fix would be validated against it. **This is upstream of item #1 and cheap; item #1 is
 > expensive and irreversible** (it moves `legKm` corpus-wide, both baselines and all nine
 > goldens). Do the cheap upstream check first.
@@ -274,7 +274,7 @@ EFFECT ON THE PLAYER` block first — that block records the exact class of bug 
 > If player model → an ADR recording that the game currently punishes cautious play on long
 > routes, and a decision on whether gate 9 becomes a per-cell floor and over which policies.
 >
-> **Do NOT start Phase 4 item #1 until this resolves.** Read `docs/phase-3-closeout.md` first.
+> **Do NOT start carry-forward item #1 until this resolves.** Read `docs/phase-3-closeout.md` first.
 
 ### Open questions for the human
 
@@ -288,10 +288,25 @@ EFFECT ON THE PLAYER` block first — that block records the exact class of bug 
    be excluded by design. `greedy-fast` is documented as an ORACLE rather than a member of the
    bracket, so arguably also excluded. That leaves `random`, `greedy-safe`, `risk-taker` — but
    nobody has written that argument down, and writing it is a prerequisite to changing the gate.
-4. **Phase 4 item order.** Closeout says #1 (spacing constraint) then #2 (generator/granularity).
-   But #2 fixes the n=1 problem that makes #1 unvalidatable, so there is a case for reversing
-   them. I did not reverse it unilaterally.
-5. **CLAUDE.md is 453 lines against its own ~400-line cap** (435 at session start). I trimmed the
+4. **Carry-forward item order.** Closeout says #1 (spacing constraint) then #2
+   (generator/granularity). But #2 fixes the n=1 problem that makes #1 unvalidatable, so there is
+   a case for reversing them. I did not reverse it unilaterally.
+5. **WHERE DO THE TWO CARRY-FORWARD ITEMS GO — before Phase 4, or in parallel with it?** They are
+   engine debt; **Phase 4 is the design system / mood / motion foundation** and nothing in it
+   blocks on them at compile time. An earlier draft of the closeout called them "Phase 4 item #1
+   and #2", which was a label invented here without checking the roadmap; that is corrected
+   throughout. **Recommendation: land them as a small interim engine milestone first**, because
+   (a) montage is a presentation concept and item #1 turns nine consecutive montage legs into ten
+   scattered ones — two different screens, so designing the montage UI first means designing it
+   twice; (b) mood calibration (pillar 3) is tuned against a state distribution the balance fix
+   moves — today energy floors by leg 5 and morale sits at 0 for most of a long run, so the
+   "exhausted" presentation is nearly always-on; (c) the fix moves all nine goldens and both
+   baselines, which is a cheap diff now and an expensive one once UI sits on top of it. **If the
+   design phase starts first instead, say so explicitly and record that montage presentation and
+   mood calibration wait for item #1.** Everything else in Phase 4 — tokens, typography, map,
+   prep screens, the animation substrate, `docs/motion-inventory.md` — is engine-independent.
+   Full argument in `docs/phase-3-closeout.md` §6.
+6. **CLAUDE.md is 453 lines against its own ~400-line cap** (435 at session start). I trimmed the
    milestone history that PROGRESS duplicates. Further trimming means deleting something a future
    session may need — say which, or accept the overage.
 

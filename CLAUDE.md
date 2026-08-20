@@ -27,8 +27,8 @@ The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 >
 > **`docs/phase-3-closeout.md` is the closing artefact — read it before starting Phase 4.** Eight
 > of the nine gates pass; **gate 9 FAILS** on `route.illicit.r1dlxpt5` (2.32%, −4.5 SE) and
-> `route.illicit.r16kyujq` (2.81%, −1.1 SE), and is expected to keep failing until Phase 4
-> item #1 lands. **Closing was a scheduling decision, not a pass**, for the reason the closeout
+> `route.illicit.r16kyujq` (2.81%, −1.1 SE), and is expected to keep failing until
+> carry-forward item #1 lands (an ENGINE fix — NOT Phase 4, see below). **Closing was a scheduling decision, not a pass**, for the reason the closeout
 > states: the fix moves `legKm` corpus-wide, therefore the baseline, therefore gate 9 itself, and
 > a fix validated by a measure that changed in the same commit is not validated.
 >
@@ -61,6 +61,13 @@ The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 > reading with a permutation that halved it and gained nothing. **No acceptance test may be
 > written as a `peak` threshold**, and the carry-forward criterion is three parts: completion
 > with its SE, the morale-floor share, and the ending histogram against a healthy comparable.
+>
+> **The two carry-forward items are ENGINE debt and are NOT Phase 4.** Phase 4 is **the design
+> system, mood, and motion foundation** — the app layer, §2 rules 9/10, pillar 7, and
+> `docs/motion-inventory.md`. Nothing there blocks on them at compile time, but **montage is a
+> presentation concept** and item #1 turns nine consecutive montage legs into ten scattered ones,
+> so the montage screen and the mood calibration should not be designed until it lands. The
+> closeout §6 argues the sequencing; where the items go is an OPEN DECISION in PROGRESS.
 >
 > **`docs/PROGRESS.md` is the authority on current state and this paragraph is not.**
 > `docs/engine-spec.md` Part II is the authority on what the engine does, written from the code.

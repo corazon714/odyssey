@@ -4,7 +4,7 @@
 >
 > # PHASE 3 IS CLOSED WITH GATE 9 RED.
 >
-> **`docs/phase-3-dod.md` gate 9 FAILS and is expected to keep failing until Phase 4 item #1
+> **`docs/phase-3-dod.md` gate 9 FAILS and is expected to keep failing until carry-forward item #1
 > lands.** Closing the phase is a scheduling decision, not a pass. Two routes are below the 3%
 > completion floor and nothing in this repo has fixed them. If you have arrived here believing
 > Phase 3 went green, that belief is wrong and this document exists to correct it.
@@ -75,10 +75,12 @@ itself. A fix validated by a measure that changed in the same commit is not vali
 
 That is the reason, stated as a reason. It is not that the fix is hard, or that time ran out, or
 that the failure is small — it is 2.32% against a 3% floor at 4.5 standard errors, and it is real.
-It is that the only honest sequence puts the fix and its measurement in different phases:
+It is that the only honest sequence puts the fix and its measurement in different commits, in
+this order:
 
 1. Phase 3 measures the failure and explains it, against a baseline nobody has moved. **Done.**
-2. Phase 4 changes route generation, regenerates the baseline, and re-measures. **Not started.**
+2. A separate engine milestone changes route generation, regenerates the baseline, and
+   re-measures. **Not started — see §6 for where it goes and why it is NOT Phase 4.**
 
 Doing both inside Phase 3 would mean regenerating `docs/sim-baseline-corpus.md` and then
 declaring the gate green against the new baseline — the same class of circularity ADR 0032 exists
@@ -91,7 +93,7 @@ of 19 nodes — 88.9% overlap.** Gate 9 fails on ONE CORRIDOR sampled twice; the
 exists only because Beira-Aktobe's generator collapsed to rung 3 (ADR 0043) and could not supply
 an alternative. So **any fix that clears gate 9 today is validated on n = 1.** Widening the
 corpus, or fixing the generator collapse, is a prerequisite for believing the fix generalises —
-and that is itself Phase 4 work.
+and that is itself carry-forward item #2.
 
 ---
 
@@ -198,6 +200,41 @@ Its entire apparent advantage is a two-point separation in a 28-route sample.
 ---
 
 ## 6. CARRY-FORWARD
+
+> ### These are DEBT ITEMS, not a phase. **They are NOT Phase 4.**
+>
+> An earlier draft of this document called them "carry-forward item #1" and "#2". **That was wrong and
+> the label was invented here without checking the roadmap.** Phase 4 is
+> **the design system, mood, and motion foundation** — `apps/mobile/src/{design,features,audio}/`,
+> CLAUDE.md rules 9 and 10, design pillar 7, and `docs/motion-inventory.md`, none of which exist
+> yet. It is app-layer work and has nothing to do with route generation.
+>
+> **Where these two items go is an OPEN DECISION** (see `docs/PROGRESS.md`, open questions).
+> They are engine work in `packages/engine/`, so nothing in the design phase blocks on them at
+> compile time and they can be scheduled independently. **The recommendation is to land them as a
+> small interim engine milestone BEFORE the design phase**, for three reasons that are about
+> sequencing cost rather than dependency:
+>
+> 1. **Montage IS a presentation concept.** A montage leg is a stretch the journal SUMMARISES
+>    rather than plays, so "what a montage screen looks like" is design-phase work. Item #1
+>    changes montage from **nine consecutive legs** to **ten scattered ones** (measured: 8-16
+>    becomes 3, 7, 12, 17, 21, 26, 30, 35, 40, 44). Those are two different screens — one long
+>    summary sequence versus ten short interludes. Designing the first and then shipping the
+>    second means designing it twice.
+> 2. **Mood calibration depends on the state distribution, and the balance moves it.** Pillar 3
+>    ("the world reacts": broke → desaturation, wanted → sirens) has to be tuned against how often
+>    each state actually occurs. Today, on long routes, energy floors by leg 5 and morale sits at
+>    0 for most of the run — so the "exhausted" presentation would be very nearly always-on.
+>    Calibrating mood against that and then fixing the balance invalidates the calibration.
+> 3. **The wear curve already writes to the journal.** `wearHistoryEntry` leaves a line on every
+>    band change (`wearChipKey`, `wearJournalKey`). That is a thing to present and it belongs in
+>    `docs/motion-inventory.md`, which does not exist yet.
+>
+> **If the design phase starts first instead**, that is defensible — but then decide it
+> explicitly and write down that **montage presentation and mood calibration are not to be
+> designed until item #1 lands.** Everything else in the design phase (tokens, typography, the
+> map, prep screens, the animation substrate, the motion inventory itself) is independent of the
+> engine and can proceed in parallel.
 
 ### ITEM #1 — the montage spacing constraint
 

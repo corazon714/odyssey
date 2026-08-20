@@ -62,11 +62,11 @@ good one. This ADR governs a gate that fails outright.
 
 - **`docs/phase-N-closeout.md` becomes a required output of any phase that closes red**, and
   `CLAUDE.md` §1 must name it and state the red gate in the status block. Both done for Phase 3.
-- **The carry-forward acceptance criterion is binding on the next phase.** Phase 4 item #1 may
+- **The carry-forward acceptance criterion is binding on the next phase.** carry-forward item #1 may
   not be declared done on completion alone; the criterion is three parts (completion with its SE,
   the morale-floor share, the ending histogram against a healthy comparable) and it was fixed
   before the fix was attempted, precisely so it could not be relaxed to fit.
-- **A gate closed red stays red in the record.** When Phase 4 lands item #1, gate 9 is re-run and
+- **A gate closed red stays red in the record.** When carry-forward item #1 lands, gate 9 is re-run and
   its result recorded against the NEW baseline, with the baseline change reviewed as its own
   diff. Gate 9 does not retroactively become a Phase 3 pass.
 - **This ADR is quotable in both directions.** If a future phase wants to close red on condition
