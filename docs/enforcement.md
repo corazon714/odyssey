@@ -126,7 +126,44 @@ the toolchain can check.
 
 ## Rule 10 — every animation is skippable and speed-scaled
 
-**(planned), and the rule's own wording overstates what exists.** "A hardcoded duration in a
-component is a lint error" is **not true today**: no such rule exists in `eslint.config.mjs`,
-and there are no motion tokens and no speed scale. Writing that rule is part of the phase that
-introduces motion tokens; until then this is review-only.
+**(partly planned), and the rule's own wording still overstates what exists.** "A hardcoded
+duration in a component is a lint error" is **not true today**: no such rule exists in
+`eslint.config.mjs`. What DOES exist as of 2026-08-20 is `apps/mobile/src/design/motion.ts` —
+named duration and easing tokens plus a `SPEED_SCALES` map with `instant: 0` — so there is now
+something for that lint rule to point at. **There is no skip system and no persisted speed scale.**
+Review-only until Phase 4C.
+
+---
+
+# Guards that are not one of the ten rules
+
+These enforce decisions recorded elsewhere. They live here because this file is where someone
+looks to find out what is actually mechanical.
+
+## The app's native-surface boundary — **live**
+
+Two `no-restricted-imports` blocks in `eslint.config.mjs`, added 2026-08-20. **Both verified
+failing on a deliberate violation before being recorded here**, which is this file's house rule.
+
+**`expo-glass-effect` is banned everywhere under `apps/mobile/`.** It is iOS-only — its own
+package description says so — and the project's only test device is an iPhone. That combination is
+the trap: it works perfectly on the hardware in front of you and is unbuilt on half the target
+platform. A resolution not to use it is worth nothing during a device session; a lint rule is.
+`docs/web-preview-traps.md` trap 4.
+
+**`expo-blur` is banned everywhere under `apps/mobile/` EXCEPT `src/design/`.** Blur is the entire
+cost of art direction E and the one thing an Android frame-budget measurement might refuse. Whether
+that refusal is a **one-token change** or a **redesign** depends only on whether screens reached for
+`BlurView` directly, so only the `Sheet` primitive may.
+`docs/device-measurement-session.md` §7.
+
+**The two are separate config blocks on purpose.** ESLint REPLACES a rule's options rather than
+merging them, so a single `no-restricted-imports` on `apps/mobile/**` plus another on
+`apps/mobile/src/design/**` would leave whichever matched last as the only one in force. The blocks
+do not overlap — the second `ignores` exactly what the first `files` — so each file gets precisely
+one and order cannot matter. This is the same trap the repeated `RESTRICTED_*` spreads in layers 2
+and 4 exist to avoid.
+
+**What it does not catch:** a transitive import, a `require()`, or a native module reached through
+some other package. It matches import specifiers, which is a shape rather than an intent — the same
+honest limit as the determinism stack in rule 3.

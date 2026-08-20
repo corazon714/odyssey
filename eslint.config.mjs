@@ -65,6 +65,27 @@ const NO_DEFAULT_EXPORT = {
     'rename-safe. expo-router route files under apps/mobile/app/ are the only exception.',
 };
 
+/**
+ * `expo-glass-effect` is iOS-ONLY — its own description says so — and the project's only test
+ * device is an iPhone. That combination is the trap: it will look perfect on the hardware in front
+ * of you and be unbuilt on half the target platform. Banned outright rather than left to
+ * discipline, because a device session is exactly when the temptation arrives.
+ */
+const GLASS_MESSAGE =
+  'expo-glass-effect is iOS-only, and the only device this project has is an iPhone, so it ' +
+  'will work here and not on Android. See docs/web-preview-traps.md trap 4. Use the Sheet ' +
+  'primitive in apps/mobile/src/design/ instead.';
+
+/**
+ * `expo-blur` is the real cost of direction E and the one thing an Android measurement might
+ * refuse. Whether that refusal is a ONE-TOKEN CHANGE or a REDESIGN depends entirely on whether
+ * screens reached for BlurView directly, so only the design layer may.
+ */
+const BLUR_MESSAGE =
+  'Only apps/mobile/src/design/ may import expo-blur — use the Sheet primitive. The glass budget ' +
+  'has to be one number in one place, or an Android frame-budget failure becomes a redesign ' +
+  'instead of a token change. See docs/device-measurement-session.md section 7.';
+
 /** Everything packages/engine may not import. CLAUDE.md rule 2.2. */
 const ENGINE_FORBIDDEN_PACKAGES = [
   'react',
@@ -247,6 +268,43 @@ export default tseslint.config(
       'no-restricted-syntax': ['error', ...RESTRICTED_SYNTAX],
     },
   },
+  // ---------------------------------------------------------------------------------
+  // Layer 5b — the app's NATIVE SURFACE BOUNDARY.
+  //
+  // Two bans, split across two blocks because ESLint REPLACES a rule's options rather than
+  // merging them: a single `no-restricted-imports` on `apps/mobile/**` plus another on
+  // `apps/mobile/src/design/**` would leave whichever matched last as the only one in force.
+  // The blocks below do not overlap — the second `ignores` exactly what the first `files` —
+  // so each file gets precisely one of them and order does not matter.
+  // ---------------------------------------------------------------------------------
+  {
+    name: 'odyssey/app-design-layer',
+    files: ['apps/mobile/src/design/**/*.{ts,tsx}'],
+    rules: {
+      // The design layer MAY import expo-blur — it is the only place that may. Glass is still out.
+      'no-restricted-imports': [
+        'error',
+        { paths: [{ name: 'expo-glass-effect', message: GLASS_MESSAGE }] },
+      ],
+    },
+  },
+  {
+    name: 'odyssey/app-native-surface-boundary',
+    files: ['apps/mobile/**/*.{ts,tsx}'],
+    ignores: ['apps/mobile/src/design/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'expo-glass-effect', message: GLASS_MESSAGE },
+            { name: 'expo-blur', message: BLUR_MESSAGE },
+          ],
+        },
+      ],
+    },
+  },
+
   {
     // CLAUDE.md rule 6 permits non-null assertions in tests. Tests also assert on
     // deliberately-wrong shapes, so unsafe-* type rules are noise there.
