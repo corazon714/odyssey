@@ -221,9 +221,19 @@ resolve anything nearer the floor than about ±1pp. Confirm at 280,000 only. It 
 This is the surviving half of ADR 0041's acceptance (the `|Kendall tau| < 0.6` clause was refuted
 by construction and dropped — `worn` is a monotone reparametrisation of the hour axis, so no knee
 anywhere can break a rank correlation). A route nobody can finish under any play is design pillar
-4's dead end, and it is invisible in the pooled number: at the chosen knee the worst route sits at
-4.8%, a **margin as thin as 4.1 standard errors**, while pooled completion reads a comfortable
-42.7%. Print the SE or the gate is decorative.
+4's dead end, and it is invisible in the pooled number. Print the SE or the gate is decorative:
+the difference between a route that reads 3.1% and is safe and one that reads 3.1% and is a 2.7%
+route that got lucky is the only thing this gate is for.
+
+> **THIS GATE IS CURRENTLY RED, AND THIS PARAGRAPH USED TO SAY OTHERWISE.** It read "at the chosen
+> knee the worst route sits at 4.8%, a margin as thin as 4.1 standard errors, while pooled
+> completion reads a comfortable 42.7%" — present tense, describing the 25-route grid the knee was
+> swept on. On the 28-route corpus this repo ships, **two routes are below the floor**
+> (`route.illicit.r1dlxpt5` 2.32% at −4.5 SE, `route.illicit.r16kyujq` 2.81% at −1.1 SE) and
+> pooled completion reads 46.1%. **The pooled number being healthy while the gate fails is the
+> whole point of the gate**, and quoting it as reassurance is the mistake this gate exists to
+> prevent. Cause, evidence and carry-forward: **`docs/phase-3-closeout.md`** and `docs/adr/0044`.
+> Live figures belong in the command's output, never here.
 
 > **`--by-route` SHIPPED at C4** (`packages/tools/sim/by-route.ts`, ADR 0042), so this gate runs
 > today and is the last of the nine to become measurable. It shipped as a **separate output mode,

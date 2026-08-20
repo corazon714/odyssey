@@ -5,11 +5,18 @@
 
 ---
 
-## D0 — **gate 9's failure is EXPLAINED, and the instrument can now read it.**
+## D0 — **PHASE 3 IS CLOSED WITH GATE 9 RED.** Its failure is explained; it is not fixed.
 
-Committed on `dev`. Three commits: `675d37a` (one run count for gate 9), `d4f40b7` (ADR 0044 —
-the finding), and the `peak` column on `--by-route`.
-**No engine change, no content change, no constant moved, both baselines untouched.**
+> **`docs/phase-3-closeout.md` is the closing artefact and the thing to read first.** Closing is
+> a scheduling decision, not a pass. Eight gates pass, gate 9 FAILS on
+> `route.illicit.r1dlxpt5` (2.32%, −4.5 SE) and `route.illicit.r16kyujq` (2.81%, −1.1 SE), and
+> it is expected to keep failing until Phase 4 item #1 lands.
+
+Committed on `dev`, six commits: `675d37a` (one run count for gate 9), `d4f40b7` (ADR 0044 — the
+finding), `a13db87` (the `peak` column), `5c79b64` (peak is a flag, not a dial), `1b945dc` (the
+closeout), plus the contradiction sweep.
+**No content change, no constant moved, both baselines untouched.** The only non-comment code in
+the whole sequence is the `peak` column; everything else is documentation or comments.
 
 ### The finding — `docs/adr/0044` is the authority and this is a pointer
 

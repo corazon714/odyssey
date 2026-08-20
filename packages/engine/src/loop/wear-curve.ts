@@ -67,6 +67,20 @@ import { wearJournalKey, type WearBand } from '../state/wear-state.ts';
  *   240    38.7%    4            6                   1.2%   <- fails acceptance
  *   none   36.0%    7            5                   0.0%
  *
+ * **THAT TABLE IS A HISTORICAL RECORD OF THE SWEEP ON THE 25-ROUTE GRID. ITS ACCEPTANCE NO
+ * LONGER HOLDS.** Read the `200` row carefully before quoting it: `0` routes under 3% and a
+ * worst route of 4.8% was true of the grid the sweep ran on, and **is false on the 28-route
+ * corpus this tree ships**, where the same knee gives 2 routes under the floor and a worst route
+ * of 2.32% (`docs/phase-3-closeout.md` §1, gate 9 FAIL). The route set was re-picked at ADR 0043
+ * and beat content shipped at C3; the knee was not touched and did not move.
+ *
+ * **The knee is NOT re-swept, deliberately.** ADR 0044 found the gate-9 failure is route SHAPE —
+ * a contiguous montage wall — and that no drain dial is implicated: the same `FULL_UNTIL` gives
+ * 2.56% and 9.60% on the same multiset of legs. Re-sweeping now would tune a curve against a
+ * generation defect, and Phase 4 item #2 may move the route set underneath the sweep anyway.
+ * **Re-sweep after item #2, against the route set it produces**, and regenerate this table with
+ * its grid size stated in the caption so the next reader cannot make this mistake either.
+ *
  * 140 puts pooled completion above the 30–50% band; 240 and the control leave routes on the
  * floor. Of the three survivors 200 is the highest, which is the stated tie-break — a higher
  * knee applies the curve to less of the corpus — AND it wins on its own merits: it disturbs

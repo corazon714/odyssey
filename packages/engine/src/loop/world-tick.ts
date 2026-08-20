@@ -120,15 +120,36 @@ const HARSH_WEATHER_HOURS = 6;
  *
  * M3.11 widened the geo slice to Afro-Eurasia, and a 48-leg route went from ~6,000 km to
  * ~15,300. Leg COUNT is capped at 48 by the compression curve (ADR 0026 Decision 4) but leg
- * LENGTH is not, so the same 48 legs now bill 407 travel hours where they billed ~215. Measured
- * over the whole corpus route set: total route hours span 112-510 where they spanned ~140-220,
- * and completion is a near-deterministic function of that one number — routes under ~150 hours
- * complete 55-85%, routes over ~250 hours complete 0.0%, with nothing in between.
+ * LENGTH is not, so the same 48 legs now bill 407 travel hours where they billed ~215. Total
+ * route hours span 112-513 across the corpus where they spanned ~140-220.
+ *
+ * **THE TWO CLAIMS THAT USED TO FOLLOW HERE WERE MEASURED AND ARE FALSE. Both are replaced
+ * rather than deleted, so the drift is legible instead of merely gone (ADR 0044,
+ * `docs/phase-3-closeout.md`).**
+ *
+ * 1. It said "completion is a near-deterministic function of that one number — routes under
+ *    ~150 hours complete 55-85%, routes over ~250 hours complete 0.0%, with nothing in
+ *    between." **The second half is refuted outright**: on the 28-route corpus the routes over
+ *    250 hours complete **2.32% to 18.71%**, and there is no gap. Worse for the word
+ *    "near-deterministic", FOUR routes at 490-513 hours — a 4.7% spread — complete **2.32%,
+ *    2.81%, 10.80% and 16.51%**. Total hours is still the strongest single predictor across the
+ *    corpus (Spearman -0.95) and it remains the right thing for this constant to be denominated
+ *    in. It is BLIND WITHIN A STRATUM, which is where a floor gate reads.
+ * 2. It said 44/22 "keeps collapse meaningful at 26.1%". `ending.failure_collapsed` reads
+ *    **8.3%** on this tree at `--pack=corpus --runs=2000` (completion 46.1%, `gave_up` 45.5%,
+ *    `arrival_quiet` 42.0%). The pillar-1 floor that refused 32/16 at M3.10b is a good deal
+ *    closer than that sentence implied.
+ *
+ * **THE CONSTANTS ARE NOT RE-DERIVED, AND THAT IS DELIBERATE.** ADR 0044's finding is that no
+ * dial is implicated in the gate-9 failure at all — the same 44/22 gives 2.56% and 9.60% on the
+ * same multiset of legs, so what is wrong is route SHAPE, not the drain economy. Re-deriving
+ * them now would tune against a route-shape defect, and Phase 4 item #2 may move the route set
+ * underneath the derivation anyway. **Re-derive after item #2, against the route set it
+ * produces.** Until then this block records drift and nothing more.
  *
  * 44/22 is chosen with `HOURS_PER_MORALE` 20; neither lever reaches the band alone, because the
- * failure mode is conserved (see `HOURS_PER_MORALE`). It keeps collapse meaningful at 26.1% —
- * the pillar-1 floor that refused 32/16 at M3.10b is not close to being crossed — and it holds
- * the 2:1 rung ratio the invariant test pins. Full sweep in docs/adr/0035's second addendum.
+ * failure mode is conserved (see `HOURS_PER_MORALE`), and it holds the 2:1 rung ratio the
+ * invariant test pins. Full sweep in docs/adr/0035's second addendum.
  */
 const HUNGER_HURTS = 8;
 const HUNGER_STARVING = 10;
@@ -161,9 +182,12 @@ const HOURS_PER_STARVING_DAMAGE = 22;
  * climbs to 65.4%. Each lever deletes its own failure mode and the other meter absorbs the runs
  * it saved. That is the conservation ADR 0035 named, measured a third time.
  *
- * Only moving both together clears the floor: 20 + 44/22 lands 41.0% with collapse 26.1% and
- * gave_up 32.8% — the first corpus measurement in this project where neither failure mode is
- * the majority ending.
+ * Only moving both together clears the floor: 20 + 44/22 landed 41.0% with collapse 26.1% and
+ * gave_up 32.8% AT M3.11 — the first corpus measurement in this project where neither failure
+ * mode was the majority ending. **Those three figures are a historical record of the sweep, not
+ * a description of this tree.** On the current 28-route corpus the same constants read
+ * completion 46.1%, `gave_up` 45.5%, collapse 8.3%: the route set was re-picked twice and beat
+ * content shipped since. See `HOURS_PER_HUNGER_DAMAGE` for why they are not re-derived yet.
  *
  * **Exported so its test can derive a span from it.** `world-tick.test.ts` pinned the
  * single-rung property with a hardcoded `span = 12`, which was this constant's own value and

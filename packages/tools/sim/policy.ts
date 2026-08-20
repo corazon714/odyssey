@@ -41,9 +41,15 @@ import { weightedGain } from './resource-weights.ts';
  *
  * It scores `-timeCost` and reads no resource at all, so it is a fixed tie-break rather than a
  * player model: no player optimises purely for elapsed hours while starving. It tops the table
- * because ADR 0035 established that completion is a near-deterministic function of total route
- * hours, which makes minimising time accidentally close to optimal PLAY. Read it as an oracle
- * bounding what the route allows, and assert the bracket over the other four.
+ * because total route hours is the strongest single predictor of completion across the corpus
+ * (Spearman -0.95), which makes minimising time accidentally close to optimal PLAY. Read it as
+ * an oracle bounding what the route allows, and assert the bracket over the other four.
+ *
+ * **This paragraph used to say ADR 0035 "established that completion is a near-deterministic
+ * function of total route hours". It is not near-deterministic and ADR 0044 refuted that
+ * reading**: four routes at 490-513 hours complete 2.32%, 2.81%, 10.80% and 16.51%. Strongest
+ * single predictor is what the claim can bear, and it is all `greedy-fast` needs — an oracle
+ * only has to be good, not exact. Nothing about the policy changed; only what is said about it.
  *
  * The policy's Rng is a SEPARATE generator from the run's. Drawing the player's decisions
  * from the engine's own cursors would make the "player" part of the world state and break the
