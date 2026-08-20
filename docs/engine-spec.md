@@ -342,8 +342,8 @@ CHECK_TAGS        social · haggle · deception · intimidate · authority · br
                   medical · navigate · perception · luck        ← 18, ADR 0015
 PREDICATE kinds   28, kind-tagged (ADR 0007)
 ERROR CODES       11, all RETURNED — the engine never throws
-MOOD_IDS          default · night · wanted · desperate · injured · wilderness · urban
-                  border_tension · storm · triumphant          ← presentation, NOT content
+MOOD_IDS          default · night · wanted · destitute · desperate · injured · wilderness
+                  urban · border_tension · storm · triumphant  ← 11, presentation NOT content
 MOOD_OVERLAYS     night · storm                                ← the two that also layer
 ```
 
@@ -364,19 +364,43 @@ asserted.
 **Priority order, highest first.** Terminal state, then threat, then scene, then body, then
 environment, then place:
 
-| # | mood                   | condition                                                       |
-| - | ---------------------- | --------------------------------------------------------------- |
-| 1 | `triumphant`           | `status === 'ended'` AND `ending.arrival_triumphant` unlocked      |
-| 2 | `wanted`               | `heat >= 7`                                                       |
-| 3 | `border_tension`       | leg location is `border_crossing` or `checkpoint`                  |
-| 4 | `desperate`            | `cash + bank === 0` AND (`hunger >= 7` OR `morale <= 2`)            |
-| 5 | `injured`              | `health <= 3`                                                     |
-| 6 | `storm`                | weather in `['rain', 'wind']`                                      |
-| 7 | `night`                | `timeOfDayFor(clock.hour) === 'night'`                             |
-| 8 | `wilderness` / `urban` | leg location is `wilderness` / `city` or `town`                    |
-| 9 | `default`              | —                                                                 |
+| #  | mood                   | condition                                                     | measured share |
+| -- | ---------------------- | ------------------------------------------------------------- | -------------: |
+| 1  | `triumphant`           | `status === 'ended'` AND `ending.arrival_triumphant` unlocked   | 1.25% of runs  |
+| 2  | `wanted`               | `heat >= 7`                                                    | 14.39%         |
+| 3  | `destitute`            | `cash + bank === 0`                                            | 0.01%          |
+| 4  | `border_tension`       | leg location is `border_crossing` or `checkpoint`               | 20.06%         |
+| 5  | `injured`              | `health <= 3`                                                  | 5.98%          |
+| 6  | `desperate`            | `morale <= 3`                                                  | 6.74%          |
+| 7  | `storm`                | weather in `['rain', 'wind']`                                   | 21.13%         |
+| 8  | `night`                | `timeOfDayFor(clock.hour) === 'night'`                          | 8.93%          |
+| 9  | `wilderness` / `urban` | leg location is `wilderness` / `city` or `town`                 | 3.21% / 9.56%  |
+| 10 | `default`              | —                                                              | 9.95%          |
 
-Four decisions in that table are not obvious and are argued in the file:
+Shares are `pnpm sim -- --pack=corpus --runs=2800 --moods`, 28 routes, 81,133 legs.
+
+### `destitute` and `desperate` were ONE mood, and the split was not a retune
+
+The original `desperate` required `cash + bank === 0` AND a failing meter and fired on **11 legs in
+81,133**. The defect was not the threshold: **its NAME and its PREDICATE disagreed.** `desperate`
+reads as a state of the person; the predicate measured the state of the wallet, and those come
+apart constantly. Tuning the conjunction would have moved a number that was measuring the wrong
+thing.
+
+- **`destitute`** keeps the money predicate, alone. Still rare — 11 legs, and 10 of 2,800 runs end
+  in it — because `wanted` suppresses 74% of its raw occurrences (43 legs raw). Being broke and
+  being hunted correlate, which is unsurprising once said aloud: bribes cost money and raise heat.
+- **`desperate`** is now the person: `morale <= 3`, and **no energy term**. `energy <= 1` holds on
+  **71.19%** of legs, so energy is floored for three quarters of the game and carries almost no
+  information. Measured, `morale <= 3 && energy <= 3` fires on 15.76% against `morale <= 3` alone
+  at 15.79% — **0.03 points**. Energy being non-informative is a BALANCE finding with its own
+  owner.
+
+The threshold was chosen as a SHARE, not a number: `morale <= 2` would have landed near 5.7%,
+below `injured`, making exhaustion rarer than injury. `morale <= 3` lands at 6.74% — above injury
+because it is a recurring condition, below night because it is not ambient.
+
+Four further decisions are not obvious and are argued in the file:
 
 - **`wanted` outranks `injured`** because heat is an external escalating threat with a scene
   attached, while low health is already displayed continuously by the resource meter. If `injured`

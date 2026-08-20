@@ -38,6 +38,7 @@ export const MOOD_IDS = [
   'default',
   'night',
   'wanted',
+  'destitute',
   'desperate',
   'injured',
   'wilderness',
@@ -113,6 +114,36 @@ const CROSSING_LOCATIONS: readonly LocationType[] = ['border_crossing', 'checkpo
 const TRIUMPHANT_ENDING = 'ending.arrival_triumphant';
 
 /**
+ * The morale at or below which the journey has worn the player down.
+ *
+ * ## Why there is NO energy term, which is the counter-intuitive part
+ *
+ * "Exhausted" should obviously mean low energy, and it cannot: **`energy <= 1` holds on 71.19% of
+ * legs and `energy <= 4` on 82.78%** (28 routes, 2,800 runs, 81,133 legs). Energy is floored for
+ * roughly three quarters of the game, so it carries almost no information — exactly the always-on
+ * failure `docs/phase-3-closeout.md` §6 warned a mood could have.
+ *
+ * The consequence is that an `AND` collapses onto the morale term and an `OR` collapses onto the
+ * energy one. Measured: `morale <= 3 && energy <= 3` fires on **15.76%** of legs against
+ * `morale <= 3` alone at **15.79%** — a difference of 0.03 percentage points. **A term that moves
+ * the answer by three hundredths of a point is not a signal, it is decoration that reads as
+ * rigour**, and the next person to open this file would reasonably assume it did something.
+ *
+ * So the predicate is morale alone, and this comment is here so nobody re-adds energy believing
+ * its absence was an oversight. Energy being floored 71% of the time is a BALANCE finding with its
+ * own owner; it is not this file's to fix.
+ *
+ * ## Why 3 and not 2
+ *
+ * The threshold was chosen as a SHARE rather than as a number. `morale <= 2` measures 9.66% of legs
+ * raw and lands near 5.7% once the moods above it take their slots — below `injured`, which makes
+ * exhaustion rarer than injury. `morale <= 3` measures 15.79% raw and lands in the intended band:
+ * more common than injury because it is a recurring condition, less common than night because it
+ * is not ambient.
+ */
+const WORN_DOWN_MORALE = 3;
+
+/**
  * The world's current mood.
  *
  * ## The priority order, and the reasoning that fixes it
@@ -122,12 +153,22 @@ const TRIUMPHANT_ENDING = 'ending.arrival_triumphant';
  *
  * 1. `triumphant` — the run is over and it went well. Nothing else is actionable.
  * 2. `wanted` — an escalating EXTERNAL threat with a scene attached, and the cue pillar 3 names.
- * 3. `border_tension` — the highest-stakes scene the game has.
- * 4. `desperate` — out of money AND failing on a meter. Pillar 3's "broke -> desaturation".
- * 5. `injured` — a persistent condition.
- * 6. `storm` / 7. `night` — environment, which is also carried by `moodOverlaysFromState`.
- * 8. `wilderness` / `urban` — where you are.
- * 9. `default`.
+ * 3. `destitute` — no money at all. Pillar 3's "broke -> desaturation". Rare, and placed high
+ *    BECAUSE it is rare — see the branch.
+ * 4. `border_tension` — the highest-stakes scene the game has.
+ * 5. `injured` — an acute condition of the body.
+ * 6. `desperate` — a recurring condition of the person. The background, not the alarm.
+ * 7. `storm` / 8. `night` — environment, which is also carried by `moodOverlaysFromState`.
+ * 9. `wilderness` / `urban` — where you are.
+ * 10. `default`.
+ *
+ * ### `destitute` and `desperate` were ONE mood and had to be split
+ *
+ * The original `desperate` required `cash + bank === 0` AND a failing meter, and fired on **11 legs
+ * in 81,133**. The defect was not the threshold, it was that the NAME and the PREDICATE disagreed:
+ * `desperate` reads as a state of the person while the predicate measured the state of the wallet,
+ * and those two come apart constantly. Splitting them gives each a name that matches what it
+ * tests; tuning the conjunction would only have moved a number that was measuring the wrong thing.
  *
  * ### Why `wanted` beats `injured`, which is the interesting case
  *
@@ -158,15 +199,28 @@ export function moodFromState(state: RunState): MoodId {
 
   if (state.resources.heat >= 7) return 'wanted';
 
+  // DESTITUTE OUTRANKS THE SCENE, and its rarity is the argument rather than an objection to it.
+  // Measured at 43 legs in 81,133 — 27 runs of 2,800, across 8 of 28 routes. A mood that fires on
+  // one run in a hundred is only ever SEEN if it wins when it fires; placed below the scene it
+  // would render approximately never, and the palette would be built for nobody. It also changes
+  // what every choice on the screen means — you cannot bribe, buy or pay your way out of anything
+  // — which is a bigger claim on the presentation than the place you happen to be standing in.
+  //
+  // `wanted` still beats it: being hunted is an escalating threat with a timer, while being broke
+  // is a static condition that will still be true on the next leg.
+  if (state.resources.cash + state.resources.bank === 0) return 'destitute';
+
   const location = locationAtLeg(state.route, state.route.legIndex);
   if (CROSSING_LOCATIONS.includes(location)) return 'border_tension';
 
-  // Broke is not enough on its own: a player with no cash and full meters is between jobs, not
-  // desperate. It takes being out of money AND failing on one of the two meters that end runs.
-  const broke = state.resources.cash + state.resources.bank === 0;
-  if (broke && (state.resources.hunger >= 7 || state.resources.morale <= 2)) return 'desperate';
-
   if (state.resources.health <= 3) return 'injured';
+
+  // DESPERATE SITS BELOW INJURED, and that is deliberate. It is a recurring condition rather than
+  // an event, so it belongs where the background lives — it is what you see when nothing more
+  // specific is happening, which is exactly what "the journey is grinding you down" should be.
+  // Placing it above `injured` would also cannibalise that mood, because low morale and low health
+  // correlate: both are the same run failing.
+  if (state.resources.morale <= WORN_DOWN_MORALE) return 'desperate';
   if (STORM_WEATHER.includes(state.weather)) return 'storm';
   if (timeOfDayFor(state.clock.hour) === 'night') return 'night';
   if (location === 'wilderness') return 'wilderness';

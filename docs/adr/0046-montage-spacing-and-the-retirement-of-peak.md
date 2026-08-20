@@ -161,6 +161,35 @@ into `format-report.ts`: `diff-report.ts` compares by LINE INDEX, so a column in
 report would force both baselines to regenerate for a formatting change (ADR 0032, ADR 0042). A
 test asserts the standard report contains neither string.
 
+## Decision 5 — the PER-ROUTE breakdown has now earned itself TWICE, on independent grounds
+
+**Added 2026-08-20, after the fact, and deliberately so.** Decision 3 above removes a column from
+`--by-route`. That makes this ADR the place a future simplification pass will look, and it should
+find an argument for what stays as well as a reason for what went.
+
+**The instrument is not the `--by-route` command; it is the decision to report PER ROUTE rather
+than POOLED.** It has now been justified twice, by two measurements that share no mechanism:
+
+1. **Gate 9, completion.** Pooled completion read a comfortable 46.1% while two routes sat below
+   the 3% floor at −4.5 SE. The pooled figure was not merely less precise — it pointed the opposite
+   way. `docs/phase-3-dod.md` gate 9 exists because of that.
+2. **Mood occupancy, `border_tension`.** The corpus mean is 20.06%; one route reads **57.09%**, and
+   five routes exceed 40%. The mean alone would have reported a border as a reasonable one-leg-in-
+   five scene and hidden the fact that over half of `route.scenic.rss5ost` is spent at a crossing.
+
+Two different quantities, two different modes, two different failure directions — a floor breach
+hidden by an average, and a concentration hidden by an average. **A single justification can be a
+coincidence of one dataset; two independent ones are a property of this corpus**, which is 28
+routes generated from real geography and therefore heterogeneous by construction.
+
+**Consequence for anyone simplifying this tooling:** the peak-beside-the-mean column in
+`--moods`, the per-route table in `--by-route`, and the per-route ending histograms are not three
+conveniences that happen to exist. They are one design decision with two independent confirmations,
+and removing any of them to tidy the output would re-open a class of defect this project has been
+caught by twice. Retire a COLUMN on evidence, as Decision 3 did. Do not retire the per-route axis.
+
+ADR 0042 is where the axis originated; this is where it was confirmed a second time.
+
 ## Consequences
 
 ### The fixture baseline and the goldens did NOT move, and the closeout said they would

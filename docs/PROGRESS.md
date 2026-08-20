@@ -5,6 +5,90 @@
 
 ---
 
+## D8 — the split, and TWO findings with owners outside the mood system
+
+### `desperate` split into `destitute` + `desperate`. The bug was the NAME, not the threshold
+
+The old mood required `cash + bank === 0` AND a failing meter. `desperate` reads as a state of the
+PERSON; the predicate measured the state of the WALLET. Those come apart constantly, which is why
+it fired 11 times in 81,133 legs. Tuning the conjunction would have moved a number that was
+measuring the wrong thing.
+
+| mood        | predicate           | before |     after | note                               |
+| ----------- | ------------------- | -----: | --------: | ---------------------------------- |
+| `destitute` | `cash + bank === 0` |      — | **0.01%** | 11 legs; 10 of 2,800 runs end here |
+| `desperate` | `morale <= 3`       |  0.01% | **6.74%** | in the intended band               |
+| `injured`   | unchanged           |  5.98% | **5.98%** | untouched, as predicted            |
+
+**Prediction was 7–9% for `desperate`; actual 6.74%.** Slightly under, and still inside the target
+band — above injury (5.98%) because it is a recurring condition, below night (8.93%) because it is
+not ambient.
+
+### THE ENERGY TERM WAS DROPPED, and the data is why
+
+`energy <= 1` holds on **71.19%** of legs and `energy <= 4` on **82.78%**. Energy is floored for
+three quarters of the game, so it carries almost no information — an OR keyed on it fires 71–83% of
+the time, and an AND collapses onto the morale term: `morale<=3 && energy<=3` measures **15.76%**
+against `morale<=3` alone at **15.79%**. A term worth 0.03 points is decoration that reads as
+rigour. The absence is asserted by a test so nobody re-adds it as an oversight.
+
+> **FINDING WITH ANOTHER OWNER: energy is floored on 71% of legs, so it is not functioning as a
+> resource.** That is a balance question, not a mood one. Filed, not fixed.
+
+### `destitute` is still nearly invisible, and now we know exactly why
+
+11 legs of 81,133 raw-suppressed from 43: **`wanted` eats 74% of broke legs.** Being broke and
+being hunted correlate — bribes cost money and raise heat. So roughly **1 run in 280 ends
+destitute**.
+
+**Recommendation, and it is a decision rather than a measurement:** keep `destitute` in the SELECTOR
+— it costs nothing and keeps the state measurable — but do **not** author a palette for it in 4B.
+Alias it to `desperate`'s theme until there is evidence it matters. That honours "rarity is not the
+same as dead" without spending design effort on 0.36% of runs.
+
+### `border_tension` at 57% — a DISTRIBUTION, not an outlier, and the mechanism is known
+
+The go/no-go was "three routes above 40%". **Five are.** Crossing density read straight off
+`legLocations`, which needs no sim because `locationAtLeg` is exact:
+
+    rss5ost 62.9% · rr93niq 47.1% · r54pi1a 45.8% · rf52s2j 42.5% · r15tmihf 41.4%
+    median 20.9%   p90 45.8%   16 of 28 routes above 20%
+
+**The predicate is NOT greedy.** `locationAtLeg` is `legLocations[legIndex] ?? 'roadside'` — no
+"near a crossing" smearing. The mechanism is `route/leg-locations.ts` `applyCrossingApproach`,
+which types the leg BEFORE every `border_crossing` as `checkpoint`. **Every crossing costs two legs
+by construction**, which is why the border/checkpoint counts are equal on almost every route.
+
+That doubling is DELIBERATE and correct for its own purpose: a border beat carries slack 1, so both
+legs of its window must be location-eligible or the beat gate passes while the location filter
+rejects every border event. So there are three contributors with three owners:
+
+1. **Raw crossing density on non-illicit corridors** — even undoubled, `rss5ost` is 11/35 = 31%.
+   **Route generation. A Phase 5 item.**
+2. **The 2x from `applyCrossingApproach`** — deliberate, correct, owned by beat eligibility.
+3. **The mood predicate inheriting the doubling** by treating `checkpoint` as `border_tension`.
+   Dropping `checkpoint` would halve it. **Not done** — filed as an option, not a fix.
+
+The profile system is working, and the numbers show it: `illicit` routes are the LOWEST (4.17% —
+they detour around controls, exactly as designed) and `scenic` the highest.
+
+### One thing got slightly worse, said plainly
+
+`default` fell **11.31% -> 9.95%** and the reacting share rose to **90.05%**. Adding a mood made the
+baseline rarer. Pillar 3's world reacts FROM a baseline and there is now marginally less of one.
+
+### OPEN
+
+- **`destitute`: build a palette or alias it?** Recommendation above; the call is not mine.
+- **Energy floored on 71% of legs** — balance, unowned.
+- **Crossing density** — Phase 5 route-generation item.
+- Unchanged: the session needs a phone; ADR 0047 owed; CLAUDE.md ~504 lines; carry-forward item #2;
+  shadow ramp; the Android-frost recommendation.
+- **Themes remain PARKED.** Both new moods are selector-only — no palette, no theme file — so
+  nothing is wasted if the SE 3 session kills direction E.
+
+---
+
 ## D7 — mood occupancy MEASURED. `desperate` is a near-dead palette
 
 > `pnpm sim -- --pack=corpus --moods`. A FOURTH output mode, same baseline-neutrality reason as

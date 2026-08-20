@@ -91,46 +91,82 @@ describe('the priority order, and the argument behind each rung', () => {
     expect(moodFromState(huntedAtBorder)).toBe('wanted');
 
     for (const location of ['border_crossing', 'checkpoint'] as const) {
-      const brokeAtCrossing = withState({
+      // SOLVENT on purpose. `destitute` now sits above the scene, so a broke fixture here would
+      // pass for the wrong reason — the claim under test is that a crossing beats the BODY and the
+      // PERSON, which are the rungs below it.
+      const failingAtCrossing = withState({
         ...CALM,
         location,
-        resources: { cash: 0, bank: 0, morale: 0, health: 1, hunger: 10, heat: 0 },
+        resources: { cash: 200, bank: 0, morale: 0, health: 1, hunger: 10, heat: 0 },
       });
-      expect(moodFromState(brokeAtCrossing)).toBe('border_tension');
+      expect(moodFromState(failingAtCrossing)).toBe('border_tension');
     }
   });
 
-  it('`desperate` needs BOTH no money and a failing meter', () => {
-    // Broke alone is between jobs, not desperate. The mood has to mean something.
-    const brokeButFine = withState({
+  it('`destitute` is the WALLET and outranks the scene, because it is rare', () => {
+    // Measured at 43 legs in 81,133 — 27 runs of 2,800. A mood that rare is only ever SEEN if it
+    // wins when it fires; below the scene it would render approximately never.
+    const brokeAtBorder = withState({
       ...CALM,
+      location: 'border_crossing',
       resources: { cash: 0, bank: 0, health: 10, morale: 8, hunger: 0, heat: 0 },
     });
-    expect(moodFromState(brokeButFine)).toBe('default');
+    expect(moodFromState(brokeAtBorder)).toBe('destitute');
 
-    // Failing but solvent is likewise not desperate — you can still buy your way out.
-    const hungryButPaid = withState({
+    // ...but a threat with a timer still beats a static condition.
+    const huntedAndBroke = withState({
       ...CALM,
-      resources: { ...CALM.resources, cash: 500, hunger: 9 },
+      resources: { cash: 0, bank: 0, health: 10, morale: 8, hunger: 0, heat: 9 },
     });
-    expect(moodFromState(hungryButPaid)).toBe('default');
+    expect(moodFromState(huntedAndBroke)).toBe('wanted');
+  });
 
-    // Either meter, with no money, does it.
-    for (const failing of [{ hunger: 7 }, { morale: 2 }]) {
-      const state = withState({
-        ...CALM,
-        resources: { cash: 0, bank: 0, health: 10, morale: 8, hunger: 0, heat: 0, ...failing },
-      });
-      expect(moodFromState(state)).toBe('desperate');
-    }
-
-    // BANK counts as money. A player with a full account is not desperate, whatever the meters
-    // say — the three-tier money model (ADR 0016) exists precisely so cash is not the only test.
+  it('BANK counts as money — destitute means no money at all', () => {
+    // The three-tier money model (ADR 0016) exists precisely so cash is not the only test. A
+    // player with a full account is not destitute however empty their pockets are.
     const banked = withState({
       ...CALM,
-      resources: { cash: 0, bank: 400, health: 10, morale: 0, hunger: 10, heat: 0 },
+      resources: { cash: 0, bank: 400, health: 10, morale: 8, hunger: 0, heat: 0 },
     });
-    expect(moodFromState(banked)).not.toBe('desperate');
+    expect(moodFromState(banked)).toBe('default');
+  });
+
+  it('`desperate` is the PERSON, keyed on morale with no money term', () => {
+    // The split. The old mood required `cash + bank === 0` AND a failing meter and fired on 11 legs
+    // in 81,133 — its NAME and its PREDICATE disagreed, which is a different defect from a badly
+    // chosen threshold. Being worn down has nothing to do with the wallet.
+    const wornButSolvent = withState({
+      ...CALM,
+      resources: { cash: 900, bank: 900, health: 10, morale: 3, hunger: 0, heat: 0 },
+    });
+    expect(moodFromState(wornButSolvent)).toBe('desperate');
+  });
+
+  it('`desperate` carries NO energy term, because energy is floored 71% of the time', () => {
+    // Measured: `morale<=3 && energy<=3` fires on 15.76% of legs against `morale<=3` alone at
+    // 15.79%. An energy term moves the answer by 0.03 points. This asserts the absence so nobody
+    // re-adds it believing it was an oversight.
+    const fullEnergy = withState({
+      ...CALM,
+      resources: { ...CALM.resources, morale: 3, energy: 10 },
+    });
+    expect(moodFromState(fullEnergy)).toBe('desperate');
+
+    const noEnergyGoodMorale = withState({
+      ...CALM,
+      resources: { ...CALM.resources, morale: 9, energy: 0 },
+    });
+    expect(moodFromState(noEnergyGoodMorale)).toBe('default');
+  });
+
+  it('`injured` outranks `desperate` — an acute condition beats a recurring one', () => {
+    // Low morale and low health correlate, so placing `desperate` above `injured` would cannibalise
+    // it. The body is the more specific and more actionable of the two.
+    const both = withState({
+      ...CALM,
+      resources: { ...CALM.resources, health: 2, morale: 1 },
+    });
+    expect(moodFromState(both)).toBe('injured');
   });
 
   it('`storm` is rain and wind — NOT world-tick.ts HARSH_WEATHER, which includes heat', () => {
@@ -194,9 +230,11 @@ describe('`triumphant` is gated on status, and on ONE ending', () => {
       hour: 12,
       weather: 'clear',
       location: 'roadside',
+      // Broke AND worn down. `destitute` is the higher rung, so that is the screen — and it is
+      // still not `triumphant`, which is what this test is about.
       resources: { cash: 0, bank: 0, health: 6, morale: 1, hunger: 3, heat: 0 },
     });
-    expect(moodFromState(hollow)).toBe('desperate');
+    expect(moodFromState(hollow)).toBe('destitute');
   });
 
   it('a failure ending is not triumphant either', () => {
@@ -249,10 +287,11 @@ describe('the vocabulary is honest', () => {
       default: withState(CALM),
       night: withState({ ...CALM, hour: 2 }),
       wanted: withState({ ...CALM, resources: { ...CALM.resources, heat: 9 } }),
-      desperate: withState({
+      destitute: withState({
         ...CALM,
-        resources: { cash: 0, bank: 0, health: 10, morale: 0, hunger: 0, heat: 0 },
+        resources: { cash: 0, bank: 0, health: 10, morale: 8, hunger: 0, heat: 0 },
       }),
+      desperate: withState({ ...CALM, resources: { ...CALM.resources, morale: 2 } }),
       injured: withState({ ...CALM, resources: { ...CALM.resources, health: 1 } }),
       wilderness: withState({ ...CALM, location: 'wilderness' }),
       urban: withState({ ...CALM, location: 'city' }),
