@@ -23,32 +23,44 @@ Loop:
 
 The fantasy: _a long, unpredictable, consequence-heavy overland journey._
 
-> **Status: Phases 1, 2A and 2B complete; Phase 3 through M3.12a, plus the recovery milestone
-> (2026-08-14).** Shipped since M3.10b: **M3.11** (chip collapse, ADR 0037), **M3.11c–g** (the
-> 692-node continental slice, the hour economy, `geo:verify` re-measured, the sampling-stride fix
-> — ADR 0035/0036/0038), **M3.12a** (the quiet-leg gate, fenced at `BASE_EVENT_ODDS = 1:0`), and
-> the un-numbered recovery work: **montage's second regime** (ADR 0039), the **policy scorer
-> weighting**, and the **wear curve** with its knee sweep (ADR 0040/0041, `SAVE_VERSION` 6).
-> Phase 3 was then **verified adversarially** — `docs/phase-3-verification.md`, four findings,
-> none fixed, all handed forward.
+> # Status: Phases 1, 2A, 2B and **3** are CLOSED. **PHASE 3 CLOSED WITH GATE 9 RED.**
+>
+> **`docs/phase-3-closeout.md` is the closing artefact — read it before starting Phase 4.** Eight
+> of the nine gates pass; **gate 9 FAILS** on `route.illicit.r1dlxpt5` (2.32%, −4.5 SE) and
+> `route.illicit.r16kyujq` (2.81%, −1.1 SE), and is expected to keep failing until Phase 4
+> item #1 lands. **Closing was a scheduling decision, not a pass**, for the reason the closeout
+> states: the fix moves `legKm` corpus-wide, therefore the baseline, therefore gate 9 itself, and
+> a fix validated by a measure that changed in the same commit is not validated.
+>
+> Phase 3 covered M3.1–M3.12a plus the un-numbered recovery milestone (2026-08-14) and an
+> adversarial verification pass. **The milestone-by-milestone history is `docs/PROGRESS.md`; it
+> is not repeated here.** Two of its outputs bind current work: `BASE_EVENT_ODDS` is fenced at
+> `1:0` (M3.12a), and the wear curve ships at `SAVE_VERSION` 6 (ADR 0040/0041).
 >
 > Steps **5-7 RUN** against a real corpus — 17 events, 137 modifiers, 25 complications,
-> 16 universal choices, a complete `en` locale, `content:lint` clean. **Every one of the six beat
-> types is fillable** as of C3, so `pack.unfillableBeatTypes` is empty and beat fill is 47.8%
-> against a structural ceiling of 100% rather than 28.2% against 55.8%. **Step 2 routes on real
-> geography** (ADR 0033) and its diversity gate exits 0 at median 54% — **but the median is not
-> the finding**: p90 is 88% and two named pairs breach the ceiling, one of them a genuine filter
-> defect. Generation is COMPLETE and **the corpus sim runs on generated routes** (ADR 0034) —
-> six endpoint pairs, five profiles (ADR 0043); the APP still supplies `RunInit.route`. Steps 1,
-> 3 and 4 do not exist. Three of §9's registries are live.
+> 16 universal choices, a complete `en` locale, `content:lint` clean (1 warning,
+> `MISSING_IMAGE_MANIFEST`). **Every one of the six beat types is fillable** as of C3, so
+> `pack.unfillableBeatTypes` is empty and beat fill is **48.5%** against a structural ceiling of
+> 100%, rather than 28.2% against 55.8%. **Step 2 routes on real geography** (ADR 0033) and its
+> diversity gate exits 0 at **median 53% (n = 747), p90 87%** — **but the median is not the
+> finding**: **one** named pair still breaches the ceiling (Chongjin–Jeju City 80%, and it is
+> **structural** — a degree-1 endpoint whose floor alone is 71%). The genuine filter defect that
+> sat beside it, Valencia–Palermo, **was closed at C2** and now passes at 63%. Generation is
+> COMPLETE and **the corpus sim runs on generated routes** (ADR 0034) — six endpoint pairs, five
+> profiles, **28 routes** (ADR 0043); the APP still supplies `RunInit.route`. Steps 1, 3 and 4 do
+> not exist. Three of §9's registries are live.
 >
-> **Every one of `docs/phase-3-dod.md`'s nine gates can now be RUN**, gate 9 included, since
-> `--by-route` shipped (ADR 0042). **Gate 9 does not PASS.** Being able to measure a gate and
-> clearing it are different things, and PROGRESS is where the current reading lives. Its failure
-> is **explained** since **ADR 0044**: drain is charged per HOUR and recovery arrives per LEG, so
-> a contiguous montage WALL — 232 of 509 hours in nine consecutive legs — is lethal at a total
-> the same route survives when spread. It is **one corridor sampled twice** (the two breaching
-> routes share 88.9% of their edges), so gate 9 and ADR 0043's generator collapse are one bug.
+> **Every one of `docs/phase-3-dod.md`'s nine gates RUNS**, gate 9 included, since `--by-route`
+> shipped (ADR 0042). Gate 9's failure is **explained** by **ADR 0044**: drain is charged per
+> HOUR and recovery arrives per LEG, so a contiguous montage WALL — 232 of 509 hours in nine
+> consecutive legs — is lethal at a total the same route survives when spread. It is **one
+> corridor sampled twice** (the two breaching routes share 88.9% of their edges), so gate 9 and
+> ADR 0043's generator collapse are **one bug**, carried forward as closeout items #1 and #2.
+>
+> **`peak` on `--by-route` is a FLAG, not a dial** — ADR 0044's addendum falsified the stronger
+> reading with a permutation that halved it and gained nothing. **No acceptance test may be
+> written as a `peak` threshold**, and the carry-forward criterion is three parts: completion
+> with its SE, the morale-floor share, and the ending histogram against a healthy comparable.
 >
 > **`docs/PROGRESS.md` is the authority on current state and this paragraph is not.**
 > `docs/engine-spec.md` Part II is the authority on what the engine does, written from the code.
@@ -173,7 +185,9 @@ packages/tools/                                                      ✅
   imagegen/ · i18n-check/                                              (empty)
 docs/                       adr/0001-0044 · engine-spec · PROGRESS   ✅
   phase-3-dod.md            the NINE phase gates, runnable           ✅ §7
+  phase-3-closeout.md       PHASE 3 CLOSED, GATE 9 RED — read first  ✅
   phase-3-verification.md   the measured handoff — 4 findings, 0 fixed ✅
+  geo-data-licensing.md     source licences and attribution          ✅ ADR 0024
   enforcement.md            what enforces each §2 rule               ✅
   stack-notes.md            the dependency traps, in full            ✅
   content-style-guide.md    how to author; registry-vs-event         ✅
@@ -246,7 +260,7 @@ pnpm content:stats            # counts by category/tag/check-tag + a 4-axis cove
 pnpm sim -- --runs=20000      # headless balance simulation (fixture pack)                 ✅
 pnpm sim -- --pack=corpus     # sim against packages/content/ — the REAL registries         ✅
 pnpm sim -- --json            # per-run TRACE (fired events + picks in order) not the report ✅
-pnpm sim -- --by-route        # per-route completion + SE — phase-3-dod gate 9. Writes nothing ✅
+pnpm sim -- --by-route        # per-route completion + SE + peak — gate 9. Writes nothing    ✅
 pnpm sim:diff -- --runs=2000  # vs the pack's baseline. REFUSES another count — see DoD 6  ✅
 pnpm golden:update            # regenerate golden-runs.json from the engine — REVIEW the diff ✅
 pnpm geo:audit [-- --real]    # candidate pool vs the ADR 0024 budget; writes nothing        ✅
