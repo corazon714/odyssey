@@ -21,6 +21,7 @@ const OPTIONS = {
   diff: false,
   json: false,
   byRoute: true,
+  moods: false,
   pack: 'fixture',
 } as const;
 const SUMMARY = runMany(PACK, SCENARIOS, OPTIONS);

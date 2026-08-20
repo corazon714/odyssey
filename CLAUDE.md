@@ -308,6 +308,7 @@ pnpm sim -- --runs=20000      # headless balance simulation (fixture pack)      
 pnpm sim -- --pack=corpus     # sim against packages/content/ — the REAL registries         ✅
 pnpm sim -- --json            # per-run TRACE (fired events + picks in order) not the report ✅
 pnpm sim -- --by-route        # per-route completion + SE + peak — gate 9. Writes nothing    ✅
+pnpm sim -- --moods           # mood occupancy per route — mood calibration. Writes nothing ✅
 pnpm sim:diff -- --runs=2000  # vs the pack's baseline. REFUSES another count — see DoD 6  ✅
 pnpm golden:update            # regenerate golden-runs.json from the engine — REVIEW the diff ✅
 pnpm geo:audit [-- --real]    # candidate pool vs the ADR 0024 budget; writes nothing        ✅
@@ -322,10 +323,13 @@ pnpm i18n:{check,pseudo}      # key coverage, length audit, pseudo-localization 
 If a command in this list does not exist yet, that means the corresponding phase has not shipped.
 Do not invent an alternative — say so.
 
-> **`--json`, `--by-route` and the default report are THREE MUTUALLY EXCLUSIVE output modes**, and
-> `parse-args.ts` refuses the combinations rather than silently ranking them. `--by-route` returns
-> before `formatReport` is called, so it cannot write `reports/` and cannot move either baseline —
-> which is the whole reason it is a mode and not a report section (`docs/adr/0042`).
+> **`--json`, `--by-route`, `--moods` and the default report are FOUR MUTUALLY EXCLUSIVE output
+> modes**, and `parse-args.ts` refuses the combinations rather than silently ranking them. Both
+> `--by-route` and `--moods` return before `formatReport` is called, so neither can write
+> `reports/` and neither can move either baseline — the whole reason they are modes rather than
+> report sections (`docs/adr/0042`). `--moods` has a second reason of its own: **gate 9 needs
+> 280,000 runs to resolve a tail and a distributional mean converges in a fraction of that**, so
+> the two want different counts and must not share an invocation.
 
 ---
 

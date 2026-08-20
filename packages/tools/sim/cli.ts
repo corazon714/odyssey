@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { findWorkspaceRoot } from '../shared/workspace-root.ts';
 import { formatByRoute } from './by-route.ts';
 import { diffReports, runCountOf } from './diff-report.ts';
+import { formatMoods } from './moods.ts';
 import { formatReport } from './format-report.ts';
 import {
   loadCorpusPack,
@@ -31,7 +32,7 @@ const parsed = parseArgs(process.argv.slice(2));
 if (!parsed.ok) {
   console.error(`sim: ${parsed.message}`);
   console.error(
-    'usage: pnpm sim -- --runs=1000 [--seed=base] [--policy=random ...] [--pack=fixture|corpus] [--diff] [--json] [--by-route]',
+    'usage: pnpm sim -- --runs=1000 [--seed=base] [--policy=random ...] [--pack=fixture|corpus] [--diff] [--json] [--by-route] [--moods]',
   );
   process.exit(1);
 }
@@ -102,6 +103,23 @@ if (parsed.options.byRoute) {
     }),
   );
   process.exit(summary.errors.length > 0 || summary.turnCapHits > 0 ? 1 : 0);
+}
+
+// MOOD CALIBRATION's measurement, and it returns before `formatReport` for the same reason the
+// block above does: it must not be able to move either baseline. Unlike gate 9 this has no
+// verdict, so it exits 0 unless a run actually errored — an unreadable distribution is a finding
+// to look at, not a failure to fail on.
+if (parsed.options.moods) {
+  // eslint-disable-next-line no-console -- the table IS this command's output.
+  console.log(
+    formatMoods(summary, scenarios, {
+      seed: parsed.options.seed,
+      runs: parsed.options.runs,
+      pack: parsed.options.pack,
+      elapsedMs,
+    }),
+  );
+  process.exit(summary.errors.length > 0 ? 1 : 0);
 }
 
 const report = formatReport(summary, pack, {

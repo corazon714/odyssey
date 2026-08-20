@@ -21,6 +21,7 @@ const DEFAULTS: SimOptions = {
   diff: false,
   json: false,
   byRoute: false,
+  moods: false,
   // DEFAULTS TO FIXTURE so `sim:diff` keeps comparing like with like. The fixture pack is the
   // stable control the golden runs are built on; the corpus is the thing under development.
   pack: 'fixture',
@@ -33,6 +34,7 @@ export function parseArgs(argv: readonly string[]): ParseResult {
   let diff = false;
   let json = false;
   let byRoute = false;
+  let moods = false;
   let pack = DEFAULTS.pack;
 
   for (const arg of argv) {
@@ -62,6 +64,15 @@ export function parseArgs(argv: readonly string[]): ParseResult {
     // `by-route.ts`.
     if (rawKey === '--by-route') {
       byRoute = true;
+      continue;
+    }
+    // Mood occupancy per route — what share of the game each mood covers, which is what mood
+    // CALIBRATION is read against (`docs/phase-3-closeout.md` §6). A FOURTH output mode for the
+    // same baseline-neutrality reason as `--by-route`, plus one of its own: gate 9 needs 280,000
+    // runs to resolve a tail, and a distributional mean converges in a fraction of that, so the
+    // two want different counts and must not share an invocation. See `moods.ts`.
+    if (rawKey === '--moods') {
+      moods = true;
       continue;
     }
     if (rawValue === null) return { ok: false, message: `${rawKey} needs a value` };
@@ -113,8 +124,22 @@ export function parseArgs(argv: readonly string[]): ParseResult {
   if (byRoute && json) {
     return { ok: false, message: '--by-route and --json are two different outputs; pick one' };
   }
+  if (moods && diff) {
+    return { ok: false, message: '--moods has no baseline to diff against; drop --diff' };
+  }
+  if (moods && json) {
+    return { ok: false, message: '--moods and --json are two different outputs; pick one' };
+  }
+  if (moods && byRoute) {
+    return {
+      ok: false,
+      message:
+        '--moods and --by-route are two different measurements at two different run counts; ' +
+        'pick one',
+    };
+  }
 
-  return { ok: true, options: { runs, seed, policies, diff, json, byRoute, pack } };
+  return { ok: true, options: { runs, seed, policies, diff, json, byRoute, moods, pack } };
 }
 
 /** Accepts both `--runs=10` and `--runs 10` is NOT supported — one form, no ambiguity. */

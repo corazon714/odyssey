@@ -12,6 +12,8 @@ export type SimOptions = {
   readonly json: boolean;
   /** The per-route completion table — gate 9's measurement. A separate mode; see `by-route.ts`. */
   readonly byRoute: boolean;
+  /** Mood occupancy per route — mood calibration's measurement. A separate mode; see `moods.ts`. */
+  readonly moods: boolean;
   readonly pack: PackName;
 };
 

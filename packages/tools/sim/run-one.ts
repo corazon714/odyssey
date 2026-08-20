@@ -5,12 +5,14 @@ import {
   createRunInit,
   createRunState,
   dueBeatSlot,
+  moodFromState,
   resolveChoice,
   stateDigest,
   unresolvedThreads,
   type ContentPack,
   type EndingId,
   type EventId,
+  type MoodId,
   type RouteState,
 } from '@odyssey/engine';
 import { type FixtureScenario } from './load-pack.ts';
@@ -49,6 +51,29 @@ export type SimRun = {
    * legs 5, 15 and 25, and a run that floors on leg 14 and recovers by 15 is invisible to them.
    */
   readonly moraleFloored: boolean;
+  /**
+   * Legs spent in each mood — the fold `docs/phase-3-closeout.md` §6 asks for by implication.
+   *
+   * Its §6 argues that mood calibration depends on the state distribution: "today, on long routes,
+   * energy floors by leg 5 and morale sits at 0 for most of the run — so the 'exhausted'
+   * presentation would be very nearly always-on." **That is a measurable claim, and this is the
+   * measurement.** It is also why `moodFromState` lives in the engine rather than in
+   * `apps/mobile/`: a derivation inside a React component cannot be folded over a corpus.
+   *
+   * Sampled once per leg, immediately after `advanceLeg` — the state the leg's event is presented
+   * against. NOT after `resolveChoice` as well: a choice can move the mood within a leg, so
+   * sampling twice would count one leg as two and put this denominator out of step with every
+   * other per-leg rate in this file.
+   */
+  readonly moodLegs: Readonly<Record<MoodId, number>>;
+  /**
+   * The mood the run ENDED in — the ending screen, one sample per run.
+   *
+   * Carried separately because `triumphant` is reachable ONLY at `status === 'ended'`, so a
+   * per-leg fold reports it at ~0% and makes the palette look dead when it is merely terminal.
+   * Two different screens, two different denominators.
+   */
+  readonly finalMood: MoodId;
   readonly legs: number;
   readonly days: number;
   readonly endings: readonly EndingId[];
@@ -173,6 +198,9 @@ export function runOne(
   // `morale` is clamped at a minimum of 0 by `clampResources`, so `<= 0` and `=== 0` are the
   // same test; `<=` is written because it stays correct if that bound ever moves.
   let moraleFloored = state.resources.morale <= 0;
+  // A plain object rather than a Map: it stays JSON-shaped like the rest of `SimRun`, and ten
+  // integer keys is small beside the `firedEvents` and `choicesPicked` arrays already carried.
+  const moodLegs = {} as Record<MoodId, number>;
   const firedEvents: EventId[] = [];
   let selections = 0;
   let uneventfulLegs = 0;
@@ -221,6 +249,8 @@ export function runOne(
     if (!advanced.ok) return blank(seed, route, policyName, `advanceLeg: ${advanced.error.code}`);
     state = advanced.state;
     if (state.resources.morale <= 0) moraleFloored = true;
+    const mood = moodFromState(state);
+    moodLegs[mood] = (moodLegs[mood] ?? 0) + 1;
     queueDrops += advanced.queueDrops.length;
     beatsFilled += advanced.beatsFilled;
     beatsExpired += advanced.beatsExpired;
@@ -332,6 +362,8 @@ export function runOne(
     policy: policyName,
     completed: state.route.legIndex >= state.route.legCount,
     moraleFloored,
+    moodLegs,
+    finalMood: moodFromState(state),
     legs: state.route.legIndex,
     days: state.clock.day,
     endings: state.unlockedEndings,
@@ -382,6 +414,10 @@ function blank(
     // here is "not observed", and `statOf` divides by the ERROR-FREE population so it never
     // enters a share.
     moraleFloored: false,
+    // An errored run reached no legs and produced no screens. `moodStats` folds over the
+    // error-free population, so these never enter a share.
+    moodLegs: {} as Record<MoodId, number>,
+    finalMood: 'default',
     legs: 0,
     days: 0,
     endings: [],

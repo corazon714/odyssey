@@ -5,6 +5,63 @@
 
 ---
 
+## D7 — mood occupancy MEASURED. `desperate` is a near-dead palette
+
+> `pnpm sim -- --pack=corpus --moods`. A FOURTH output mode, same baseline-neutrality reason as
+> `--by-route` (ADR 0042) plus one of its own: gate 9 needs 280,000 runs to resolve a tail and a
+> distributional mean converges in a fraction of that, so they must not share an invocation.
+
+**First measurement, 28 routes, 2,800 runs, 81,133 legs:**
+
+| mood             |    corpus | peak route | where                     |
+| ---------------- | --------: | ---------: | ------------------------- |
+| `storm`          |    23.72% |     42.07% | route.illicit.r12l3w31    |
+| `border_tension` |    20.06% | **57.09%** | route.scenic.rss5ost      |
+| `wanted`         |    14.39% |     22.64% | route.safest.r6j5abf      |
+| `default`        |    11.31% |     24.36% | route.fastest.rz0cpvs     |
+| `urban`          |    10.85% |     21.12% | route.illicit.r1xu51k0    |
+| `night`          |    10.13% |     14.78% | route.fastest.r172n9vj    |
+| `injured`        |     5.98% |     26.09% | route.illicit.rskpfno     |
+| `wilderness`     |     3.51% |     27.06% | route.fastest.r172n9vj    |
+| `triumphant`     |     0.04% |      0.27% | terminal-only, correctly  |
+| **`desperate`**  | **0.01%** |      0.35% | **11 legs out of 81,133** |
+
+### Three findings, none of them tuned away
+
+1. **`desperate` is effectively dead: 11 legs in 81,133.** It requires `cash + bank === 0` AND a
+   failing meter, and the sim shows players are almost never broke — `resource-weights.ts` already
+   records `greedy-safe` sitting on 2,457 cash at leg 25. **The AND is what kills it.** Either the
+   broke test is too strict, or the closeout's "exhausted" case wants its OWN mood keyed on morale
+   and energy rather than on money. **Not changed** — a threshold moved to fit its own first
+   measurement has stopped being a design decision.
+2. **`default` shows on 11.31% of legs; 88.69% of legs are reacting.** Pillar 3's world REACTS,
+   which presupposes a baseline to react FROM, and there is barely one. This is the real, measured
+   version of the closeout's concern — its specific claim about an "exhausted" presentation could
+   not be confirmed because no such mood exists.
+3. **`border_tension` is 20% corpus-wide and 57% on one route.** Over half of `route.scenic.rss5ost`
+   is at a crossing or checkpoint. A border is supposed to be a SCENE; at 57% it is scenery. That is
+   a content/route finding rather than a mood one, and it is the peak column doing its job — the
+   corpus mean alone would have hidden it.
+
+### Design notes carried in the instrument
+
+- **Two denominators, deliberately.** Leg shares divide by legs, terminal shares by runs.
+  `triumphant` is one sample per run against ~48 legs; sharing a denominator would make it look
+  fifty times rarer than it is.
+- **A terminal-only mood is NOT reported as `NEVER OBSERVED`.** That signal means "do not build this
+  palette", and reporting `triumphant` as dead would delete a screen that exists.
+- **The peak route is printed beside the mean** for the same reason gate 9 refuses the pooled
+  completion figure. Finding 3 above is that argument paying off on its first run.
+
+### OPEN
+
+- **The `desperate` threshold is an open design question**, now with a number attached.
+- **`border_tension` at 57% on one route** wants someone to look at that route's `legLocations`.
+- Unchanged: the session needs a phone; ADR 0047 owed; CLAUDE.md 504 lines vs its ~400 cap;
+  carry-forward item #2; shadow ramp; the Android-frost recommendation.
+
+---
+
 ## D6 — `moodFromState` ships in the ENGINE. Phase 4B has started
 
 > `docs/engine-spec.md` **II.1a** is the authority. `packages/engine/src/presentation/mood.ts`.

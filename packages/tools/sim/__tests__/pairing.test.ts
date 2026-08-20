@@ -341,6 +341,7 @@ describe('runMany — the stride, end to end', () => {
       diff: false,
       json: false,
       byRoute: false,
+      moods: false,
       pack: 'fixture',
     });
 
@@ -360,6 +361,7 @@ describe('runMany — the stride, end to end', () => {
       diff: false,
       json: false,
       byRoute: false,
+      moods: false,
       pack: 'fixture',
     });
     expect(new Set(summary.runs.map((run) => run.seed)).size).toBe(summary.runs.length);
@@ -386,6 +388,7 @@ describe('runMany — the stride, end to end', () => {
       diff: false,
       json: false,
       byRoute: false,
+      moods: false,
       pack: 'fixture',
     });
 
