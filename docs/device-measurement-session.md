@@ -15,7 +15,73 @@
 
 ---
 
+## 0. CORRECTION, 2026-08-20 — **`expo-blur` DOES NOT BLUR ON ANDROID BY DEFAULT**
+
+> **This was found after §§1–9 were written, and it changes what several of them are about. It is
+> recorded here rather than edited invisibly into them, because the superseded reasoning is what a
+> later reader will otherwise reconstruct from scratch.**
+
+Read from the installed package rather than from documentation about it:
+
+- **`blurMethod` is `@default 'none'`, `@platform android`**, and `'none'` means _"Renders a
+  semi-transparent view instead of rendering a blur effect"_ (`BlurView.types.d.ts`). The package
+  README is blunter still: _"This package only supports iOS. On Android, a plain `View` with a
+  translucent background will be rendered."_
+- Real Android blur is opt-in via `'dimezisBlurView'` or `'dimezisBlurViewSdk31Plus'`, and **Expo
+  warns about the performance of both in their own type documentation** — the SDK-31-plus variant
+  exists precisely because of "performance limitations on older versions of Android".
+- **The composition model differs, not just the speed.** On Android a `BlurView` blurs a
+  designated `BlurTargetView`; on iOS `BlurTargetView` compiles to a plain `View`, because iOS
+  blurs whatever happens to be behind it. Android has no true backdrop filter even with blur
+  enabled — you must nominate what gets blurred, which constrains layout.
+
+### What this changes
+
+**1. The blur term inverts.** §1 argues SE 3 understates Android because it has 2.6× fewer pixels
+on a stronger GPU. That is true of the whole frame and **false of the blur specifically**: in the
+default configuration Android does no blur work at all, so **SE 3 is the MOST expensive platform
+for blur and the LEAST expensive for everything else.** §1's verdict survives; its arithmetic
+applies to the opt-in configuration only.
+
+**2. The session measures iOS, and that is now the point rather than a limitation.** With
+`blurMethod: 'none'`, blur cost is an iOS-only quantity, and the SE 3 is an iOS device. **The
+session is no longer extrapolating** — it is measuring the platform the cost actually lives on.
+
+**3. §4's 10× multiplier prices a configuration we have not chosen.** It is retained below for the
+opt-in case and must not be applied to the default one. §4's fatal threshold survives on a
+different basis — see the re-derivation there.
+
+**4. §7's ladder gets stronger, not weaker.** "E flat" is not a hypothetical fallback; **it is what
+Android renders today by default.** The `Sheet` primitive and its lint boundary turn out to be
+describing existing platform behaviour rather than anticipating a failure.
+
+### THE DECISION THIS FORCES, and it is design rather than measurement
+
+**Do we want frost on Android at all?** Three options, and none of them is settled by any device:
+
+| option                         | what Android gets                  | cost                                                                  |
+| ------------------------------ | ---------------------------------- | --------------------------------------------------------------------- |
+| **`'none'` (today's default)** | the flat variant, essentially free | E's glass is an iOS-only identity. A real, principled platform split. |
+| `'dimezisBlurViewSdk31Plus'`   | frost on Android 12+, flat below   | two Android appearances; needs `BlurTargetView` plumbing              |
+| `'dimezisBlurView'`            | frost everywhere                   | Expo's own performance warning; the §4 multiplier applies in full     |
+
+**`Sheet` now sets `blurMethod` explicitly rather than inheriting the default**, so this is a
+recorded decision rather than an accident waiting on a dependency update to flip it.
+
+**Recommendation: stay on `'none'`.** E's identity is layering, occlusion, shadow and the shuffle;
+frost is a surface finish, and buying it on Android costs a performance warning, a second
+composition model, and a layout constraint. But note what it means honestly: **direction E looks
+materially different on Android, and combined with trap 5's shadow ramp it now diverges on two axes
+— neither of which is observable on the hardware available.**
+
+---
+
 ## 1. THE ASYMMETRY — the load-bearing idea, stated before any threshold
+
+> **READ §0 FIRST.** The arithmetic below applies to the OPT-IN Android blur configuration. In the
+> default one Android does no blur at all, so for the blur term specifically SE 3 is the expensive
+> platform rather than the cheap one. **The verdict rule survives unchanged; its justification for
+> the blur term does not.**
 
 **An iPhone SE 3 is not a low-end Android, and the ways it differs all point the same direction for
 the one measurement that matters.**
@@ -40,6 +106,11 @@ Therefore:
 
 This asymmetry is why the session is worth running despite the wrong device: **it can kill E, and
 killing E early is worth more than confirming it late.**
+
+> **AND IT STILL HOLDS FOR EVERYTHING THAT IS NOT BLUR.** Transforms, shadows, text layout and
+> compositing all cost more on a budget Android — more pixels, weaker GPU, possible 120 Hz budget.
+> So a pass on SE 3 remains weak evidence about the FRAME even where blur is free. What §0 changes
+> is that blur is no longer the term being extrapolated; the rest of the frame is.
 
 ---
 
@@ -135,7 +206,28 @@ Between 5% and 25% of budget, the session has not decided anything. **The conseq
 "proceed cautiously" — it is that §7's flat-fill architecture stops being a recommendation and
 becomes mandatory, and an Android measurement becomes a release blocker rather than a nice-to-have.**
 
-### The multiplier behind those numbers — **THIS IS A GUESS, AND HERE IS ITS BASIS**
+### The fatal line survives §0 on a DIFFERENT basis — and was not loosened to fit the finding
+
+§0 removes the Android penalty from the default configuration, which would be a reason to relax the
+25% line if that line existed only to be multiplied by 10. **It is kept, and the honest reason is
+that iOS is not one device either.**
+
+An iPhone 15 Pro Max is 1290 × 2796 = **3.6 million pixels against the SE 3's 1.0 million**. The
+same pixel argument §1 makes about Android applies WITHIN iOS, and the SE 3 sits at the cheap end
+of the range — it is the smallest, lowest-resolution iPhone Apple currently sells. So blur taking a
+quarter of the frame budget on the cheapest iPhone is alarming for iOS on its own terms, before any
+Android is considered.
+
+**A threshold moved to accommodate a finding is a threshold that has stopped being a gate.** This
+one keeps its number and changes its justification, which is the only honest way to survive a
+correction.
+
+### The multiplier behind those numbers — **A GUESS, ITS BASIS, AND NOW ITS SCOPE**
+
+> **APPLIES TO THE OPT-IN ANDROID BLUR CONFIGURATION ONLY (§0).** With `blurMethod: 'none'` there
+> is no Android blur cost to extrapolate and none of this arithmetic is needed. Retained because
+> choosing `'dimezisBlurView'` would make it live again immediately — and because Expo's own
+> performance warning suggests the real figure would be worse than the guess below.
 
 I am assuming a **10× penalty** from SE 3 to a mid-range Android, and I believe 10× is the
 _optimistic_ end. It is built from four factors, of which only the first is arithmetic:
@@ -243,6 +335,17 @@ Only these, from §2: E's blur-layer ceiling, the 60 fps sign-off, and trap 5's 
 a short list, and **none of it blocks Phase 4B or 4C** provided §7's architecture is adopted — which
 is exactly what makes §7 the important section of this document.
 
+> **§0 SHORTENS THIS LIST FURTHER, and changes what is left.** On `blurMethod: 'none'` there is no
+> Android blur ceiling to find, so the reason to reach an Android is no longer "does the glass fit".
+> What remains genuinely Android-only is:
+>
+> 1. **Does the FLAT variant hold 60 fps** — transforms, shadows, text and compositing on 2.6× the
+>    pixels with a weaker GPU, possibly against an 8.3 ms budget. Cheaper to satisfy than blur, and
+>    still unmeasured.
+> 2. **Trap 5's shadow ramp**, which `elevation` cannot express and which an iPhone flatters.
+> 3. **Whether E is acceptable looking materially different on Android** — a design judgement, and
+>    the one an emulator can actually inform (§5.1), because it is about appearance rather than cost.
+
 **Everything else — the entire Hermes group, cold start, memory, the UI-thread claim, reduce-motion
 legibility, type and touch targets — is available on SE 3 now.** That group is most of the value of
 a first hardware run and none of it is waiting on a purchase.
@@ -290,6 +393,11 @@ is transform and compositing work, none of it is backdrop sampling. Blur is a _s
 top of that structure. Turn every `BlurView` off and you still have stacked translucent sheets that
 occlude each other and shuffle on the Y axis — **that is E without frost, and it is nothing like F**,
 which is light-led with near-static geometry and a wipe.
+
+> **§0 STRENGTHENS THIS SECTION.** "E flat" is not a contingency being designed against a possible
+> future measurement — **it is what Android renders today**, by default, in every build. The `Sheet`
+> primitive and its lint boundary turned out to be describing existing platform behaviour rather
+> than anticipating a failure, which is a much easier thing to justify keeping.
 
 So the fallback ladder has three rungs, not two:
 

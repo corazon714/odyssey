@@ -5,6 +5,52 @@
 
 ---
 
+## D5 — **`expo-blur` does not blur on Android.** The session is an iOS measurement now
+
+> `docs/device-measurement-session.md` **§0** is the correction and the authority.
+
+Found by reading the installed package rather than documentation about it: `blurMethod` is
+`@default 'none'` on Android, and `'none'` renders **a semi-transparent view with no blur**. The
+README is blunter — _"This package only supports iOS."_ Real Android blur is opt-in via
+`dimezisBlurView`, which Expo's own type docs warn about on SDK <= 30, and which needs
+`BlurTargetView` plumbing iOS does not, because **Android has no true backdrop filter even with
+blur enabled** — you nominate what gets blurred.
+
+### What it changes
+
+- **The blur term inverts.** SE 3 is the MOST expensive platform for blur and the least expensive
+  for everything else. §1's verdict rule survives; its arithmetic now scopes to the opt-in case.
+- **The session stops extrapolating and starts measuring.** Blur cost is iOS-only, and SE 3 is an
+  iOS device. That is a stronger position than the one it replaces.
+- **§7's ladder got stronger.** "E flat" is not a contingency — it is what Android renders today.
+  `Sheet` and its lint boundary describe existing platform behaviour rather than anticipate a
+  failure.
+- **§4's fatal 25% line was KEPT and re-derived**, deliberately not loosened to fit the finding. Its
+  new basis is that iOS is not one device either: an iPhone 15 Pro Max is 3.6M pixels against the
+  SE 3's 1.0M, so the pixel argument applies within iOS and SE 3 sits at the cheap end.
+  **A threshold moved to accommodate a finding has stopped being a gate.**
+
+### The decision it forces — design, not measurement
+
+**Do we want frost on Android at all?** `Sheet` now sets `ANDROID_BLUR_METHOD = 'none'` explicitly,
+so it is a recorded decision rather than an inherited default a dependency update can flip.
+Recommendation is to stay there: frost is a surface finish, and buying it on Android costs a
+performance warning, a second composition model and a layout constraint.
+
+**But say the consequence plainly: direction E looks materially different on Android**, and with
+trap 5's shadow ramp it now diverges on TWO axes, neither observable on the only device available.
+
+### OPEN
+
+- **Unchanged:** the session needs a phone; ADR 0047 owed; CLAUDE.md at 499 lines; carry-forward
+  item #2; the shadow ramp unimplemented.
+- **New:** the Android-frost decision is recorded as a recommendation, not an approval.
+- **What Android measurement is still FOR** has shrunk to three things (§5.4): does the flat variant
+  hold 60 fps, the shadow ramp, and whether E is acceptable looking different there. The third is a
+  design judgement an emulator can actually inform.
+
+---
+
 ## D4 — The lab's session changes and the two lint rules are BUILT
 
 > `docs/device-measurement-session.md` §3's prerequisites are satisfied. **The session can now be

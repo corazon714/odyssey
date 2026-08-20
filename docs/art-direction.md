@@ -210,6 +210,21 @@ occlude and restack. Depth is **occlusion and shadow**, not distance. Its signat
 the **shuffle** — the answered card rotates out on Y as its shadow lengthens while the next rises
 from beneath the stack, with the remaining choices restacking on a 40 ms cascade.
 
+> ### CORRECTION, 2026-08-20 — the Android half of this risk mostly does not exist
+>
+> **`expo-blur` does not blur on Android by default** (`blurMethod: 'none'` renders a
+> semi-transparent view; its README says "This package only supports iOS"). So E's overdraw risk is
+> an **iOS** cost, `Sheet` states that choice explicitly, and **Android already renders the flat
+> variant** this section's ladder was designed as a fallback.
+>
+> That de-risks the frame budget and replaces it with a DESIGN question:
+> **E looks materially different on Android, and combined with the shadow ramp
+> (`docs/web-preview-traps.md` trap 5) it now diverges on two axes.** Neither is observable on the
+> only device available. `docs/device-measurement-session.md` §0 holds the options.
+>
+> The gate below still stands — it is now an iOS gate, measured on an iOS device, which is a
+> stronger position than the extrapolation it replaces.
+
 > ### IT IS PROVISIONAL, AND THIS IS THE GATE
 >
 > E's specific risk is **overdraw**: every translucent sheet re-reads the framebuffer behind it,

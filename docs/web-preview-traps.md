@@ -23,7 +23,11 @@ noticing. On a phone it is a real framebuffer read-and-blur per translucent shee
 one thing that could kill the chosen art direction. **The browser reading is not a weak signal, it
 is an inverted one**: the layer count that looks free on web is exactly the number under test.
 
-**Settled by:** hardware. Partially by SE 3 — see the session doc's asymmetry rule.
+**Settled by:** hardware — and **by iOS hardware specifically**, which is a correction rather than
+a convenience. `expo-blur` defaults to `blurMethod: 'none'` on Android and renders a
+semi-transparent view with no blur at all, so on the configuration this project ships, **the frosted
+look and its whole cost are iOS-only.** SE 3 is therefore the right device for this one, not a
+compromise. `docs/device-measurement-session.md` §0.
 
 ---
 
@@ -79,9 +83,15 @@ live, because it will work beautifully on the one piece of hardware available. *
 to depend on it during a measurement session is unbuilt on half the target platform**, and the
 session is the moment that mistake is most likely to be made.
 
-**Guard:** it is not installed. It must not become installed as a convenience during a device
-session. `docs/device-measurement-session.md` §7 proposes making that a lint rule rather than a
-resolution.
+**Guard:** it is not installed, and `eslint.config.mjs` now bans importing it anywhere under
+`apps/mobile/` — verified failing on a deliberate violation. `docs/enforcement.md` records it.
+
+**A SECOND MEMBER OF THIS CLASS, found 2026-08-20 and worse because it is already installed:**
+`expo-blur` blurs on iOS and renders a plain translucent view on Android. It is not a trap in the
+same way — nothing is silently dropped, and the fallback is a reasonable one — but it has the same
+shape: **a visual identity that the only available device will show you and half the target
+platform will not.** The difference is that this one is now an explicit decision
+(`ANDROID_BLUR_METHOD` in `src/design/sheet.tsx`) rather than an inherited default.
 
 ---
 
@@ -149,5 +159,8 @@ does not stutter. The session doc includes that as an explicit experiment.
 2. **If a feature does not exist on native, web will not tell you.** It will render it.
 3. **If a feature exists only on one native platform, the device you own will not tell you either.**
    That is trap 4, and it is the one that needs a mechanical guard rather than discipline.
+   **Its sharper form:** a cross-platform package can still be single-platform in the part you care
+   about. `expo-blur` installs, types, renders and imports identically on both, and blurs on one.
+   Check what a dependency does per platform, not whether it exists per platform.
 4. **A green browser reading on anything in this file is worth nothing.** Not "weak evidence" —
    nothing. Several of these are inverted rather than merely noisy.
